@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Flowforge.NUnit")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8008f0a7dbface49ff9cc9b625980b7f4677c7eb")]
 [assembly: System.Reflection.AssemblyProductAttribute("Flowforge.NUnit")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Flowforge.NUnit")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
