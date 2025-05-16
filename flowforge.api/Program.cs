@@ -14,6 +14,9 @@ builder.Services.AddDbContext<FlowforgeDbContext>(options =>
 builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
 builder.Services.AddScoped<WorkflowService, WorkflowService>();
 
+builder.Services.AddScoped<IBlockRepository, BlockRepository>();
+builder.Services.AddScoped<WorkflowService, WorkflowService>();
+
 var app = builder.Build();
 
 // Konfiguracja pipeline
