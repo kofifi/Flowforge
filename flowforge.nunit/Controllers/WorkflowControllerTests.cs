@@ -1,6 +1,8 @@
 ﻿using Flowforge.Controllers;
 using Flowforge.Data;
 using Flowforge.Models;
+using Flowforge.Repositories;
+using Flowforge.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,6 +11,8 @@ namespace Flowforge.NUnit.Controllers;
 public class WorkflowControllerTests
 {
     private FlowforgeDbContext _context;
+    private IWorkflowRepository _repository;
+    private WorkflowService _service;
     private WorkflowController _controller;
 
     [SetUp]
@@ -18,7 +22,9 @@ public class WorkflowControllerTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _context = new FlowforgeDbContext(options);
-        _controller = new WorkflowController(_context);
+        _repository = new WorkflowRepository(_context);
+        _service = new WorkflowService(_repository);
+        _controller = new WorkflowController(_service);
     }
 
     [TearDown]

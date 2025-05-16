@@ -1,28 +1,29 @@
 using Flowforge.Data;
+using Flowforge.Repositories;
+using Flowforge.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Dodawanie serwisów do kontenera DI
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<FlowforgeDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
+builder.Services.AddScoped<WorkflowService, WorkflowService>();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Konfiguracja pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
-
 app.UseHttpsRedirection();
 app.UseRouting();
-
 app.UseAuthorization();
-
 app.Run();

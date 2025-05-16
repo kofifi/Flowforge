@@ -1,7 +1,6 @@
-﻿using Flowforge.Data;
+﻿using Flowforge.Models;
+using Flowforge.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Flowforge.Models;
 
 namespace Flowforge.Controllers;
 
@@ -9,73 +8,48 @@ namespace Flowforge.Controllers;
 [Route("api/[controller]")]
 public class WorkflowController : ControllerBase
 {
-    private readonly FlowforgeDbContext _context;
+    private readonly WorkflowService _service;
 
-    public WorkflowController(FlowforgeDbContext context)
+    public WorkflowController(WorkflowService service)
     {
-        _context = context;
+        _service = service;
     }
 
-    // GET: api/Workflow
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Workflow>>> GetWorkflows()
-    {
-        return await _context.Workflows.ToListAsync();
-    }
+        => await _service.GetAllAsync();
 
-    // GET: api/Workflow/5
     [HttpGet("{id}")]
     public async Task<ActionResult<Workflow>> GetWorkflow(int id)
     {
-        var workflow = await _context.Workflows.FindAsync(id);
+        var workflow = await _service.GetByIdAsync(id);
         if (workflow == null)
             return NotFound();
         return workflow;
     }
 
-    // POST: api/Workflow
     [HttpPost]
     public async Task<ActionResult<Workflow>> CreateWorkflow(Workflow workflow)
     {
-        _context.Workflows.Add(workflow);
-        await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetWorkflow), new { id = workflow.Id }, workflow);
+        var created = await _service.CreateAsync(workflow);
+        return CreatedAtAction(nameof(GetWorkflow), new { id = created.Id }, created);
     }
 
-    // PUT: api/Workflow/5
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateWorkflow(int id, Workflow workflow)
     {
-        if (id != workflow.Id)
+        var updated = await _service.UpdateAsync(id, workflow);
+        if (!updated)
             return BadRequest();
-
-        _context.Entry(workflow).State = EntityState.Modified;
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!_context.Workflows.Any(e => e.Id == id))
-                return NotFound();
-            throw;
-        }
-
         return NoContent();
     }
 
-    // DELETE: api/Workflow/5
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteWorkflow(int id)
     {
-        var workflow = await _context.Workflows.FindAsync(id);
-        if (workflow == null)
+        var deleted = await _service.DeleteAsync(id);
+        if (!deleted)
             return NotFound();
-
-        _context.Workflows.Remove(workflow);
-        await _context.SaveChangesAsync();
-
         return NoContent();
     }
 }
