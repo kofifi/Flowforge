@@ -3,6 +3,7 @@ using Flowforge.Models;
 using Flowforge.Repositories;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -18,10 +19,9 @@ public class WorkflowExecutionRepositoryTests
     public void Setup()
     {
         var options = new DbContextOptionsBuilder<FlowforgeDbContext>()
-            .UseInMemoryDatabase(databaseName: "WorkflowExecutionRepositoryTests")
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _context = new FlowforgeDbContext(options);
-        _context.Database.EnsureDeleted();
         _context.Database.EnsureCreated();
         _repository = new WorkflowExecutionRepository(_context);
     }
@@ -35,7 +35,11 @@ public class WorkflowExecutionRepositoryTests
     [Test]
     public async Task AddAsync_AddsExecution()
     {
-        var execution = new WorkflowExecution { ExecutedAt = System.DateTime.UtcNow, WorkflowId = 1 };
+        var workflow = new Workflow { Name = "Test" };
+        _context.Workflows.Add(workflow);
+        await _context.SaveChangesAsync();
+
+        var execution = new WorkflowExecution { ExecutedAt = DateTime.UtcNow, WorkflowId = workflow.Id };
         var result = await _repository.AddAsync(execution);
 
         Assert.That(result.Id, Is.Not.EqualTo(0));
@@ -45,8 +49,13 @@ public class WorkflowExecutionRepositoryTests
     [Test]
     public async Task GetAllAsync_ReturnsAllExecutions()
     {
-        _context.WorkflowExecutions.Add(new WorkflowExecution { ExecutedAt = System.DateTime.UtcNow, WorkflowId = 1 });
-        _context.WorkflowExecutions.Add(new WorkflowExecution { ExecutedAt = System.DateTime.UtcNow, WorkflowId = 2 });
+        var workflow1 = new Workflow { Name = "Test1" };
+        var workflow2 = new Workflow { Name = "Test2" };
+        _context.Workflows.AddRange(workflow1, workflow2);
+        await _context.SaveChangesAsync();
+
+        _context.WorkflowExecutions.Add(new WorkflowExecution { ExecutedAt = DateTime.UtcNow, WorkflowId = workflow1.Id });
+        _context.WorkflowExecutions.Add(new WorkflowExecution { ExecutedAt = DateTime.UtcNow, WorkflowId = workflow2.Id });
         await _context.SaveChangesAsync();
 
         var executions = await _repository.GetAllAsync();
@@ -57,14 +66,18 @@ public class WorkflowExecutionRepositoryTests
     [Test]
     public async Task GetByIdAsync_ReturnsExecution_WhenExists()
     {
-        var execution = new WorkflowExecution { ExecutedAt = System.DateTime.UtcNow, WorkflowId = 1 };
+        var workflow = new Workflow { Name = "Test" };
+        _context.Workflows.Add(workflow);
+        await _context.SaveChangesAsync();
+
+        var execution = new WorkflowExecution { ExecutedAt = DateTime.UtcNow, WorkflowId = workflow.Id };
         _context.WorkflowExecutions.Add(execution);
         await _context.SaveChangesAsync();
 
         var result = await _repository.GetByIdAsync(execution.Id);
 
         Assert.That(result, Is.Not.Null);
-        Assert.That(result!.WorkflowId, Is.EqualTo(1));
+        Assert.That(result!.WorkflowId, Is.EqualTo(workflow.Id));
     }
 
     [Test]
@@ -77,7 +90,11 @@ public class WorkflowExecutionRepositoryTests
     [Test]
     public async Task UpdateAsync_UpdatesExecution_WhenExists()
     {
-        var execution = new WorkflowExecution { ExecutedAt = System.DateTime.UtcNow, WorkflowId = 1 };
+        var workflow = new Workflow { Name = "Test" };
+        _context.Workflows.Add(workflow);
+        await _context.SaveChangesAsync();
+
+        var execution = new WorkflowExecution { ExecutedAt = DateTime.UtcNow, WorkflowId = workflow.Id };
         _context.WorkflowExecutions.Add(execution);
         await _context.SaveChangesAsync();
 
@@ -91,7 +108,7 @@ public class WorkflowExecutionRepositoryTests
     [Test]
     public async Task UpdateAsync_ReturnsFalse_WhenNotExists()
     {
-        var execution = new WorkflowExecution { Id = 123, ExecutedAt = System.DateTime.UtcNow, WorkflowId = 1 };
+        var execution = new WorkflowExecution { Id = 123, ExecutedAt = DateTime.UtcNow, WorkflowId = 1 };
         var updated = await _repository.UpdateAsync(execution);
 
         Assert.That(updated, Is.False);
@@ -100,7 +117,11 @@ public class WorkflowExecutionRepositoryTests
     [Test]
     public async Task DeleteAsync_DeletesExecution_WhenExists()
     {
-        var execution = new WorkflowExecution { ExecutedAt = System.DateTime.UtcNow, WorkflowId = 1 };
+        var workflow = new Workflow { Name = "Test" };
+        _context.Workflows.Add(workflow);
+        await _context.SaveChangesAsync();
+
+        var execution = new WorkflowExecution { ExecutedAt = DateTime.UtcNow, WorkflowId = workflow.Id };
         _context.WorkflowExecutions.Add(execution);
         await _context.SaveChangesAsync();
 

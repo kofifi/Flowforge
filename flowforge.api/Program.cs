@@ -30,6 +30,9 @@ builder.Services.AddScoped<ISystemBlockService, SystemBlockService>();
 builder.Services.AddScoped<IWorkflowExecutionRepository, WorkflowExecutionRepository>();
 builder.Services.AddScoped<IWorkflowExecutionService, WorkflowExecutionService>();
 
+builder.Services.AddScoped<IWorkflowRevisionRepository, WorkflowRevisionRepository>();
+builder.Services.AddScoped<IWorkflowRevisionService, WorkflowRevisionService>();
+
 var app = builder.Build();
 
 // Konfiguracja pipeline
