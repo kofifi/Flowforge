@@ -1,4 +1,5 @@
 using Flowforge.Data;
+using Flowforge.Models;
 using Flowforge.Repositories;
 using Flowforge.Services;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,9 @@ builder.Services.AddScoped<WorkflowService, WorkflowService>();
 
 builder.Services.AddScoped<IBlockRepository, BlockRepository>();
 builder.Services.AddScoped<WorkflowService, WorkflowService>();
+
+builder.Services.AddScoped<IWorkflowVariableRepository, WorkflowVariableRepository>();
+builder.Services.AddScoped<IWorkflowVariableService, WorkflowVariableService>();
 
 var app = builder.Build();
 
