@@ -9,21 +9,21 @@ using System.Threading.Tasks;
 namespace Flowforge.NUnit.Repositories;
 
 [TestFixture]
-public class IBlockConnectionRepositoryTests
+public class IWorkflowExecutionRepositoryTests
 {
-    private Mock<IBlockConnectionRepository> _repoMock;
+    private Mock<IWorkflowExecutionRepository> _repoMock;
 
     [SetUp]
     public void Setup()
     {
-        _repoMock = new Mock<IBlockConnectionRepository>();
+        _repoMock = new Mock<IWorkflowExecutionRepository>();
     }
 
     [Test]
-    public async Task GetAllAsync_ReturnsConnections()
+    public async Task GetAllAsync_ReturnsExecutions()
     {
-        var connections = new List<BlockConnection> { new BlockConnection { Id = 1, SourceBlockId = 1, TargetBlockId = 2 } };
-        _repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(connections);
+        var executions = new List<WorkflowExecution> { new WorkflowExecution { Id = 1 } };
+        _repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(executions);
 
         var result = await _repoMock.Object.GetAllAsync();
 
@@ -33,21 +33,21 @@ public class IBlockConnectionRepositoryTests
     }
 
     [Test]
-    public async Task GetByIdAsync_ReturnsConnection_WhenExists()
+    public async Task GetByIdAsync_ReturnsExecution_WhenExists()
     {
-        var connection = new BlockConnection { Id = 1, SourceBlockId = 1, TargetBlockId = 2 };
-        _repoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(connection);
+        var execution = new WorkflowExecution { Id = 1 };
+        _repoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(execution);
 
         var result = await _repoMock.Object.GetByIdAsync(1);
 
-        Assert.That(result, Is.EqualTo(connection));
+        Assert.That(result, Is.EqualTo(execution));
         _repoMock.Verify(r => r.GetByIdAsync(1), Times.Once);
     }
 
     [Test]
     public async Task GetByIdAsync_ReturnsNull_WhenNotExists()
     {
-        _repoMock.Setup(r => r.GetByIdAsync(2)).ReturnsAsync((BlockConnection?)null);
+        _repoMock.Setup(r => r.GetByIdAsync(2)).ReturnsAsync((WorkflowExecution?)null);
 
         var result = await _repoMock.Object.GetByIdAsync(2);
 
@@ -56,39 +56,39 @@ public class IBlockConnectionRepositoryTests
     }
 
     [Test]
-    public async Task AddAsync_ReturnsConnection()
+    public async Task AddAsync_ReturnsExecution()
     {
-        var connection = new BlockConnection { Id = 1, SourceBlockId = 1, TargetBlockId = 2 };
-        _repoMock.Setup(r => r.AddAsync(connection)).ReturnsAsync(connection);
+        var execution = new WorkflowExecution { Id = 1 };
+        _repoMock.Setup(r => r.AddAsync(execution)).ReturnsAsync(execution);
 
-        var result = await _repoMock.Object.AddAsync(connection);
+        var result = await _repoMock.Object.AddAsync(execution);
 
-        Assert.That(result, Is.EqualTo(connection));
-        _repoMock.Verify(r => r.AddAsync(connection), Times.Once);
+        Assert.That(result, Is.EqualTo(execution));
+        _repoMock.Verify(r => r.AddAsync(execution), Times.Once);
     }
 
     [Test]
     public async Task UpdateAsync_ReturnsTrue_WhenSuccess()
     {
-        var connection = new BlockConnection { Id = 1, SourceBlockId = 1, TargetBlockId = 2 };
-        _repoMock.Setup(r => r.UpdateAsync(connection)).ReturnsAsync(true);
+        var execution = new WorkflowExecution { Id = 1 };
+        _repoMock.Setup(r => r.UpdateAsync(execution)).ReturnsAsync(true);
 
-        var result = await _repoMock.Object.UpdateAsync(connection);
+        var result = await _repoMock.Object.UpdateAsync(execution);
 
         Assert.That(result, Is.True);
-        _repoMock.Verify(r => r.UpdateAsync(connection), Times.Once);
+        _repoMock.Verify(r => r.UpdateAsync(execution), Times.Once);
     }
 
     [Test]
     public async Task UpdateAsync_ReturnsFalse_WhenFail()
     {
-        var connection = new BlockConnection { Id = 2, SourceBlockId = 1, TargetBlockId = 2 };
-        _repoMock.Setup(r => r.UpdateAsync(connection)).ReturnsAsync(false);
+        var execution = new WorkflowExecution { Id = 2 };
+        _repoMock.Setup(r => r.UpdateAsync(execution)).ReturnsAsync(false);
 
-        var result = await _repoMock.Object.UpdateAsync(connection);
+        var result = await _repoMock.Object.UpdateAsync(execution);
 
         Assert.That(result, Is.False);
-        _repoMock.Verify(r => r.UpdateAsync(connection), Times.Once);
+        _repoMock.Verify(r => r.UpdateAsync(execution), Times.Once);
     }
 
     [Test]

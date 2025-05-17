@@ -1,10 +1,6 @@
 ﻿using Flowforge.Models;
 using Flowforge.Services;
 using Moq;
-using NUnit.Framework;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Flowforge.NUnit.Services;
 
@@ -27,8 +23,9 @@ public class IWorkflowVariableServiceTests
 
         var result = await _serviceMock.Object.GetAllAsync();
 
-        Assert.That(result.Count(), Is.EqualTo(1));
-        Assert.That(result.First().Name, Is.EqualTo("A"));
+        var workflowVariables = result as WorkflowVariable[] ?? result.ToArray();
+        Assert.That(workflowVariables.Count(), Is.EqualTo(1));
+        Assert.That(workflowVariables.First().Name, Is.EqualTo("A"));
         _serviceMock.Verify(s => s.GetAllAsync(), Times.Once);
     }
 

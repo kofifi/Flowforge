@@ -1,4 +1,5 @@
 ﻿using Flowforge.Models;
+using NUnit.Framework;
 
 namespace Flowforge.NUnit.Models;
 
