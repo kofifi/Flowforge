@@ -8,10 +8,14 @@ namespace Flowforge.Services;
 public class WorkflowRevisionService : IWorkflowRevisionService
 {
     private readonly IWorkflowRevisionRepository _repository;
+    private readonly IWorkflowRepository _workflowRepository;
 
-    public WorkflowRevisionService(IWorkflowRevisionRepository repository)
+    public WorkflowRevisionService(
+        IWorkflowRevisionRepository repository,
+        IWorkflowRepository workflowRepository)
     {
         _repository = repository;
+        _workflowRepository = workflowRepository;
     }
 
     public Task<IEnumerable<WorkflowRevision>> GetAllAsync() => _repository.GetAllAsync();
@@ -28,4 +32,24 @@ public class WorkflowRevisionService : IWorkflowRevisionService
     }
 
     public Task<bool> DeleteAsync(int id) => _repository.DeleteAsync(id);
+
+    public Task<WorkflowRevision?> GetLatestByWorkflowIdAsync(int workflowId)
+    {
+        return _repository.GetLatestByWorkflowIdAsync(workflowId);
+    }
+
+    public async Task<bool> RollbackToRevisionAsync(int workflowId, int revisionId)
+    {
+        var revision = await _repository.GetByIdAsync(revisionId);
+        if (revision == null || revision.WorkflowId != workflowId)
+            return false;
+
+        var workflow = await _workflowRepository.GetByIdAsync(workflowId);
+        if (workflow == null)
+            return false;
+
+        workflow.Name = revision.Version;
+        await _workflowRepository.UpdateAsync(workflow);
+        return true;
+    }
 }

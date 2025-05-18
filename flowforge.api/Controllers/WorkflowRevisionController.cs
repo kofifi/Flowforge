@@ -59,4 +59,22 @@ public class WorkflowRevisionController : ControllerBase
             return NotFound();
         return NoContent();
     }
+    
+    [HttpGet("latest/{workflowId}")]
+    public async Task<ActionResult<WorkflowRevision>> GetLatestByWorkflowId(int workflowId)
+    {
+        var revision = await _service.GetLatestByWorkflowIdAsync(workflowId);
+        if (revision == null)
+            return NotFound();
+        return Ok(revision);
+    }
+    
+    [HttpPost("rollback/{workflowId}/{revisionId}")]
+    public async Task<IActionResult> RollbackToRevision(int workflowId, int revisionId)
+    {
+        var result = await _service.RollbackToRevisionAsync(workflowId, revisionId);
+        if (!result)
+            return NotFound();
+        return NoContent();
+    }
 }

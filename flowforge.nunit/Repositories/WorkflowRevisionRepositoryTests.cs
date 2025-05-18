@@ -144,4 +144,29 @@ public class WorkflowRevisionRepositoryTests
         var deleted = await _repository.DeleteAsync(999);
         Assert.That(deleted, Is.False);
     }
+    
+    [Test]
+    public async Task GetLatestByWorkflowIdAsync_ReturnsLatestRevision()
+    {
+        var workflow = new Workflow { Name = "TestWorkflow" };
+        _context.Workflows.Add(workflow);
+        await _context.SaveChangesAsync();
+
+        var rev1 = new WorkflowRevision { Version = "v1", CreatedAt = new DateTime(2023, 1, 1), WorkflowId = workflow.Id };
+        var rev2 = new WorkflowRevision { Version = "v2", CreatedAt = new DateTime(2023, 2, 1), WorkflowId = workflow.Id };
+        _context.WorkflowRevisions.AddRange(rev1, rev2);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.GetLatestByWorkflowIdAsync(workflow.Id);
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result!.Version, Is.EqualTo("v2"));
+    }
+
+    [Test]
+    public async Task GetLatestByWorkflowIdAsync_ReturnsNull_WhenNoRevisions()
+    {
+        var result = await _repository.GetLatestByWorkflowIdAsync(999);
+        Assert.That(result, Is.Null);
+    }
 }

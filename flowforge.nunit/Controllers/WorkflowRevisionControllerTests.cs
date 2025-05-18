@@ -122,4 +122,49 @@ public class WorkflowRevisionControllerTests
 
         Assert.That(result, Is.InstanceOf<NotFoundResult>());
     }
+    
+    [Test]
+    public async Task GetLatestByWorkflowId_ReturnsOk_WhenFound()
+    {
+        var revision = new WorkflowRevision { Id = 10, WorkflowId = 7 };
+        _serviceMock.Setup(s => s.GetLatestByWorkflowIdAsync(7)).ReturnsAsync(revision);
+
+        var result = await _controller.GetLatestByWorkflowId(7);
+
+        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        var ok = result.Result as OkObjectResult;
+        Assert.That(ok!.Value, Is.EqualTo(revision));
+    }
+
+    [Test]
+    public async Task GetLatestByWorkflowId_ReturnsNotFound_WhenMissing()
+    {
+        _serviceMock.Setup(s => s.GetLatestByWorkflowIdAsync(7)).ReturnsAsync((WorkflowRevision?)null);
+
+        var result = await _controller.GetLatestByWorkflowId(7);
+
+        Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+    }
+    
+    [Test]
+    public async Task RollbackToRevision_ReturnsNoContent_WhenSuccess()
+    {
+        _serviceMock.Setup(s => s.RollbackToRevisionAsync(1, 5)).ReturnsAsync(true);
+
+        var result = await _controller.RollbackToRevision(1, 5);
+
+        Assert.That(result, Is.InstanceOf<NoContentResult>());
+        _serviceMock.Verify(s => s.RollbackToRevisionAsync(1, 5), Times.Once);
+    }
+
+    [Test]
+    public async Task RollbackToRevision_ReturnsNotFound_WhenFails()
+    {
+        _serviceMock.Setup(s => s.RollbackToRevisionAsync(1, 5)).ReturnsAsync(false);
+
+        var result = await _controller.RollbackToRevision(1, 5);
+
+        Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        _serviceMock.Verify(s => s.RollbackToRevisionAsync(1, 5), Times.Once);
+    }
 }

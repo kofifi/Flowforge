@@ -59,4 +59,14 @@ public class IWorkflowRevisionRepositoryTests
         var result = await _mock.Object.DeleteAsync(3);
         _mock.Verify(r => r.DeleteAsync(3), Times.Once);
     }
+
+    [Test]
+    public async Task GetLatestByWorkflowIdAsync_CalledWithCorrectWorkflowId()
+    {
+        var revision = new WorkflowRevision { Id = 10, WorkflowId = 7 };
+        _mock.Setup(r => r.GetLatestByWorkflowIdAsync(7)).ReturnsAsync(revision);
+        var result = await _mock.Object.GetLatestByWorkflowIdAsync(7);
+        _mock.Verify(r => r.GetLatestByWorkflowIdAsync(7), Times.Once);
+        Assert.That(result, Is.EqualTo(revision));
+    }
 }

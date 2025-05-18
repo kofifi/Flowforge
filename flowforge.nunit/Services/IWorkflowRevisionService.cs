@@ -59,4 +59,25 @@ public class IWorkflowRevisionServiceTests
         var result = await _serviceMock.Object.DeleteAsync(3);
         _serviceMock.Verify(s => s.DeleteAsync(3), Times.Once);
     }
+
+    [Test]
+    public async Task GetLatestByWorkflowIdAsync_CalledWithCorrectWorkflowId()
+    {
+        var revision = new WorkflowRevision { Id = 10, WorkflowId = 7 };
+        _serviceMock.Setup(s => s.GetLatestByWorkflowIdAsync(7)).ReturnsAsync(revision);
+        var result = await _serviceMock.Object.GetLatestByWorkflowIdAsync(7);
+        _serviceMock.Verify(s => s.GetLatestByWorkflowIdAsync(7), Times.Once);
+        Assert.That(result, Is.EqualTo(revision));
+    }
+    
+    [Test]
+    public async Task RollbackToRevisionAsync_CalledWithCorrectParams()
+    {
+        _serviceMock.Setup(s => s.RollbackToRevisionAsync(1, 5)).ReturnsAsync(true);
+
+        var result = await _serviceMock.Object.RollbackToRevisionAsync(1, 5);
+
+        _serviceMock.Verify(s => s.RollbackToRevisionAsync(1, 5), Times.Once);
+        Assert.That(result, Is.True);
+    }
 }

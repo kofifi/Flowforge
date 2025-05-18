@@ -51,4 +51,12 @@ public class WorkflowRevisionRepository : IWorkflowRevisionRepository
         await _context.SaveChangesAsync();
         return true;
     }
+    
+    public async Task<WorkflowRevision?> GetLatestByWorkflowIdAsync(int workflowId)
+    {
+        return await _context.WorkflowRevisions
+            .Where(r => r.WorkflowId == workflowId)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync();
+    }
 }
