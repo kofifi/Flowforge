@@ -1,6 +1,8 @@
 ﻿using Flowforge.Models;
 using Microsoft.AspNetCore.Mvc;
-using Flowforge.Repositories;
+using Flowforge.Services;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Flowforge.Controllers;
 
@@ -8,24 +10,24 @@ namespace Flowforge.Controllers;
 [Route("api/[controller]")]
 public class BlocksController : ControllerBase
 {
-    private readonly IBlockRepository _repository;
+    private readonly IBlockService _service;
 
-    public BlocksController(IBlockRepository repository)
+    public BlocksController(IBlockService service)
     {
-        _repository = repository;
+        _service = service;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Block>>> GetAll()
     {
-        var blocks = await _repository.GetAllAsync();
+        var blocks = await _service.GetAllAsync();
         return Ok(blocks);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Block>> GetById(int id)
     {
-        var block = await _repository.GetByIdAsync(id);
+        var block = await _service.GetByIdAsync(id);
         if (block == null)
             return NotFound();
         return Ok(block);
@@ -34,7 +36,7 @@ public class BlocksController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Block>> Create(Block block)
     {
-        var created = await _repository.AddAsync(block);
+        var created = await _service.CreateAsync(block);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -44,7 +46,7 @@ public class BlocksController : ControllerBase
         if (id != block.Id)
             return BadRequest();
 
-        var updated = await _repository.UpdateAsync(block);
+        var updated = await _service.UpdateAsync(id, block);
         if (!updated)
             return NotFound();
 
@@ -54,7 +56,7 @@ public class BlocksController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _repository.DeleteAsync(id);
+        var deleted = await _service.DeleteAsync(id);
         if (!deleted)
             return NotFound();
 
