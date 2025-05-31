@@ -8,5 +8,5 @@ public class WorkflowVariable
     public string? DefaultValue { get; set; }
 
     public int WorkflowId { get; set; }
-    public Workflow Workflow { get; set; } = null!;
+    public Workflow? Workflow { get; set; }
 }

@@ -70,5 +70,12 @@ public class FlowforgeDbContext : DbContext
             .WithMany(w => w.WorkflowExecutions)
             .HasForeignKey(we => we.WorkflowId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Seed danych do SystemBlocks
+        modelBuilder.Entity<SystemBlock>().HasData(
+            new SystemBlock { Id = 1, Type = "Start", Description = "Blok początkowy" },
+            new SystemBlock { Id = 2, Type = "End", Description = "Blok końcowy" },
+            new SystemBlock { Id = 3, Type = "Add", Description = "Blok dodawania" }
+        );
     }
 }

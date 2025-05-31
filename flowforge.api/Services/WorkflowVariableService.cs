@@ -8,10 +8,14 @@ namespace Flowforge.Services;
 public class WorkflowVariableService : IWorkflowVariableService
 {
     private readonly IWorkflowVariableRepository _repository;
+    private readonly IWorkflowRepository _workflowRepository;
 
-    public WorkflowVariableService(IWorkflowVariableRepository repository)
+    public WorkflowVariableService(
+        IWorkflowVariableRepository repository,
+        IWorkflowRepository workflowRepository)
     {
         _repository = repository;
+        _workflowRepository = workflowRepository;
     }
 
     public async Task<IEnumerable<WorkflowVariable>> GetAllAsync()
@@ -21,12 +25,27 @@ public class WorkflowVariableService : IWorkflowVariableService
         => await _repository.GetByIdAsync(id);
 
     public async Task<WorkflowVariable> CreateAsync(WorkflowVariable variable)
-        => await _repository.AddAsync(variable);
+    {
+        // Pobierz istniejący workflow po ID
+        var workflow = await _workflowRepository.GetByIdAsync(variable.WorkflowId);
+        if (workflow == null)
+            throw new KeyNotFoundException("Workflow not found");
+
+        variable.Workflow = workflow;
+        return await _repository.AddAsync(variable);
+    }
 
     public async Task<bool> UpdateAsync(int id, WorkflowVariable variable)
     {
         if (id != variable.Id)
             return false;
+
+        // Pobierz istniejący workflow po ID
+        var workflow = await _workflowRepository.GetByIdAsync(variable.WorkflowId);
+        if (workflow == null)
+            return false;
+
+        variable.Workflow = workflow;
         return await _repository.UpdateAsync(variable);
     }
 
