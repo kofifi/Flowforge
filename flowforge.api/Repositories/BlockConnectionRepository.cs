@@ -34,6 +34,16 @@ public class BlockConnectionRepository : IBlockConnectionRepository
 
     public async Task<BlockConnection> AddAsync(BlockConnection connection)
     {
+        if (connection.SourceBlock != null)
+        {
+            _context.Attach(connection.SourceBlock).State = EntityState.Unchanged;
+        }
+
+        if (connection.TargetBlock != null)
+        {
+            _context.Attach(connection.TargetBlock).State = EntityState.Unchanged;
+        }
+
         _context.BlockConnections.Add(connection);
         await _context.SaveChangesAsync();
         return connection;
