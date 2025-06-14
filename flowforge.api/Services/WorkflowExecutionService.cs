@@ -56,11 +56,14 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                 {
                     variables.TryGetValue(config.FirstVariable, out var first);
                     variables.TryGetValue(config.SecondVariable, out var second);
+                    var destination = string.IsNullOrEmpty(config.ResultVariable)
+                        ? config.FirstVariable
+                        : config.ResultVariable;
 
                     switch (config.Operation)
                     {
                         case CalculationOperation.Concat:
-                            variables[config.FirstVariable] = (first ?? string.Empty) + (second ?? string.Empty);
+                            variables[destination] = (first ?? string.Empty) + (second ?? string.Empty);
                             break;
                         default:
                             double.TryParse(first, out var a);
@@ -73,7 +76,7 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                                 CalculationOperation.Divide => b == 0 ? a : a / b,
                                 _ => a
                             };
-                            variables[config.FirstVariable] = result.ToString();
+                            variables[destination] = result.ToString();
                             break;
                     }
                 }
