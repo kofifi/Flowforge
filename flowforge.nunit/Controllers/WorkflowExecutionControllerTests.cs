@@ -1,6 +1,8 @@
 ﻿using Flowforge.Controllers;
 using Flowforge.Models;
 using Flowforge.Services;
+using Flowforge.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NUnit.Framework;
@@ -12,14 +14,25 @@ namespace Flowforge.NUnit.Controllers;
 [TestFixture]
 public class WorkflowExecutionControllerTests
 {
-    private Mock<IWorkflowExecutionService> _serviceMock;
-    private WorkflowExecutionController _controller;
+    private Flowforge.Data.FlowforgeDbContext _context = null!;
+    private Mock<IWorkflowExecutionService> _serviceMock = null!;
+    private WorkflowExecutionController _controller = null!;
 
     [SetUp]
     public void Setup()
     {
+        var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<Flowforge.Data.FlowforgeDbContext>()
+            .UseInMemoryDatabase(System.Guid.NewGuid().ToString())
+            .Options;
+        _context = new Flowforge.Data.FlowforgeDbContext(options);
         _serviceMock = new Mock<IWorkflowExecutionService>();
-        _controller = new WorkflowExecutionController(_serviceMock.Object);
+        _controller = new WorkflowExecutionController(_serviceMock.Object, _context);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        _context.Dispose();
     }
 
     [Test]
