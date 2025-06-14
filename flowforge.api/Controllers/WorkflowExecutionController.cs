@@ -1,6 +1,8 @@
 ﻿using Flowforge.Models;
 using Flowforge.Services;
+using Flowforge.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -11,10 +13,12 @@ namespace Flowforge.Controllers;
 public class WorkflowExecutionController : ControllerBase
 {
     private readonly IWorkflowExecutionService _service;
+    private readonly FlowforgeDbContext _context;
 
-    public WorkflowExecutionController(IWorkflowExecutionService service)
+    public WorkflowExecutionController(IWorkflowExecutionService service, FlowforgeDbContext context)
     {
         _service = service;
+        _context = context;
     }
 
     [HttpGet]
@@ -61,5 +65,23 @@ public class WorkflowExecutionController : ControllerBase
             return NotFound();
 
         return NoContent();
+    }
+
+    [HttpPost("/api/Workflow/{id}/run")]
+    public async Task<ActionResult<WorkflowExecution>> Run(int id)
+    {
+        var workflow = await _context.Workflows
+            .Include(w => w.Blocks).ThenInclude(b => b.SystemBlock)
+            .Include(w => w.Blocks).ThenInclude(b => b.SourceConnections)
+                .ThenInclude(c => c.TargetBlock).ThenInclude(tb => tb.SystemBlock)
+            .Include(w => w.WorkflowVariables)
+            .FirstOrDefaultAsync(w => w.Id == id);
+
+        if (workflow == null)
+            return NotFound();
+
+        var execution = await _service.EvaluateAsync(workflow);
+
+        return CreatedAtAction(nameof(GetById), new { id = execution.Id }, execution);
     }
 }
