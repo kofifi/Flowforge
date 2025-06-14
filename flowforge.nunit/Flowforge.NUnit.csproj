@@ -23,7 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Flowforge.Api\Flowforge.Api.csproj" />    
+        <ProjectReference Include="..\flowforge.api\Flowforge.Api.csproj" />
     </ItemGroup>
 
 </Project>
