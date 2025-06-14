@@ -1,7 +1,5 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Flowforge.Api", "Flowforge.Api.csproj", "{46EC8C60-9133-4F7F-937D-59E35AFD2FB9}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Flowforge.NUnit", "..\Flowforge.NUnit\Flowforge.NUnit.csproj", "{8538DE66-6CBE-4CDC-8A45-2E1D6860186D}"
 EndProject
 Global
@@ -10,10 +8,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{46EC8C60-9133-4F7F-937D-59E35AFD2FB9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{46EC8C60-9133-4F7F-937D-59E35AFD2FB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{46EC8C60-9133-4F7F-937D-59E35AFD2FB9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{46EC8C60-9133-4F7F-937D-59E35AFD2FB9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8538DE66-6CBE-4CDC-8A45-2E1D6860186D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8538DE66-6CBE-4CDC-8A45-2E1D6860186D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8538DE66-6CBE-4CDC-8A45-2E1D6860186D}.Release|Any CPU.ActiveCfg = Release|Any CPU
