@@ -193,4 +193,22 @@ public class WorkflowRevisionServiceTests
         _workflowRepoMock.Verify(r => r.GetByIdAsync(1), Times.Once);
         _workflowRepoMock.Verify(r => r.UpdateAsync(workflow), Times.Once);
     }
+
+    [Test]
+    public async Task RollbackToRevisionAsync_ReturnsFalse_WhenUpdateFails()
+    {
+        var revision = new WorkflowRevision { Id = 5, WorkflowId = 1, Version = "v2" };
+        var workflow = new Workflow { Id = 1, Name = "old" };
+        _repoMock.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(revision);
+        _workflowRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(workflow);
+        _workflowRepoMock.Setup(r => r.UpdateAsync(workflow)).Returns(Task.FromResult(false));
+
+        var result = await _service.RollbackToRevisionAsync(1, 5);
+
+        Assert.That(result, Is.False);
+        Assert.That(workflow.Name, Is.EqualTo("v2"));
+        _repoMock.Verify(r => r.GetByIdAsync(5), Times.Once);
+        _workflowRepoMock.Verify(r => r.GetByIdAsync(1), Times.Once);
+        _workflowRepoMock.Verify(r => r.UpdateAsync(workflow), Times.Once);
+    }
 }

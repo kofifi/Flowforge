@@ -49,7 +49,7 @@ public class WorkflowRevisionService : IWorkflowRevisionService
             return false;
 
         workflow.Name = revision.Version;
-        await _workflowRepository.UpdateAsync(workflow);
-        return true;
+        var updated = await _workflowRepository.UpdateAsync(workflow);
+        return updated;
     }
 }
