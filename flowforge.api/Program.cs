@@ -19,10 +19,10 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();
-builder.Services.AddScoped<WorkflowService, WorkflowService>();
+builder.Services.AddScoped<IWorkflowService, WorkflowService>();
 
 builder.Services.AddScoped<IBlockRepository, BlockRepository>();
-builder.Services.AddScoped<WorkflowService, WorkflowService>();
+builder.Services.AddScoped<IBlockService, BlockService>();
 
 builder.Services.AddScoped<IWorkflowVariableRepository, WorkflowVariableRepository>();
 builder.Services.AddScoped<IWorkflowVariableService, WorkflowVariableService>();
