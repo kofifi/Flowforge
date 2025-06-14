@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Flowforge.Services;
 
-public class BlockService
+public class BlockService : IBlockService
 {
     private readonly IBlockRepository _repository;
 

@@ -13,13 +13,15 @@ namespace Flowforge.NUnit.Services;
 public class WorkflowVariableServiceTests
 {
     private Mock<IWorkflowVariableRepository> _repoMock;
+    private Mock<IWorkflowRepository> _workflowRepoMock;
     private WorkflowVariableService _service;
 
     [SetUp]
     public void Setup()
     {
         _repoMock = new Mock<IWorkflowVariableRepository>();
-        _service = new WorkflowVariableService(_repoMock.Object);
+        _workflowRepoMock = new Mock<IWorkflowRepository>();
+        _service = new WorkflowVariableService(_repoMock.Object, _workflowRepoMock.Object);
     }
 
     [Test]
