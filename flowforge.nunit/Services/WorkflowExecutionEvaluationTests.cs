@@ -34,7 +34,7 @@ public class WorkflowExecutionEvaluationTests
         _repoMock.Verify(r => r.AddAsync(It.IsAny<WorkflowExecution>()), Times.Once);
         Assert.That(result.ResultData, Is.Not.Null);
         var vars = JsonSerializer.Deserialize<Dictionary<string,string>>(result.ResultData!);
-        Assert.That(vars!["A"], Is.EqualTo("5"));
+        Assert.That(vars!["C"], Is.EqualTo("5"));
     }
 
     private static Workflow BuildWorkflow()
@@ -47,7 +47,7 @@ public class WorkflowExecutionEvaluationTests
 
         var start = new Block { Id = 1, Workflow = workflow, WorkflowId = 1, SystemBlock = startSb, SystemBlockId = 1 };
         var calc = new Block { Id = 2, Workflow = workflow, WorkflowId = 1, SystemBlock = calcSb, SystemBlockId = 3,
-            JsonConfig = JsonSerializer.Serialize(new CalculationConfig { Operation = CalculationOperation.Add, FirstVariable = "A", SecondVariable = "B" }) };
+            JsonConfig = JsonSerializer.Serialize(new CalculationConfig { Operation = CalculationOperation.Add, FirstVariable = "A", SecondVariable = "B", ResultVariable = "C" }) };
         var end = new Block { Id = 3, Workflow = workflow, WorkflowId = 1, SystemBlock = endSb, SystemBlockId = 2 };
 
         start.SourceConnections.Add(new BlockConnection { SourceBlock = start, TargetBlock = calc });
@@ -59,6 +59,7 @@ public class WorkflowExecutionEvaluationTests
 
         workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 1, Name = "A", DefaultValue = "2", Workflow = workflow, WorkflowId = 1, Type = "number" });
         workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 2, Name = "B", DefaultValue = "3", Workflow = workflow, WorkflowId = 1, Type = "number" });
+        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 3, Name = "C", DefaultValue = "", Workflow = workflow, WorkflowId = 1, Type = "number" });
 
         return workflow;
     }
