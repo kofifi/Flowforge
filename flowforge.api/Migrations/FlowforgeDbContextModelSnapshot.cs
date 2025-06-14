@@ -100,8 +100,8 @@ namespace Flowforge.Migrations
                         new
                         {
                             Id = 3,
-                            Description = "Blok dodawania",
-                            Type = "Add"
+                            Description = "Blok kalkulacji",
+                            Type = "Calculation"
                         });
                 });
 

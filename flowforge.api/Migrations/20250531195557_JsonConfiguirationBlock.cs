@@ -21,7 +21,7 @@ namespace Flowforge.Migrations
                 keyColumn: "Id",
                 keyValue: 3,
                 columns: new[] { "Description", "Type" },
-                values: new object[] { "Blok dodawania", "Add" });
+                values: new object[] { "Blok kalkulacji", "Calculation" });
         }
 
         /// <inheritdoc />
