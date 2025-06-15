@@ -3,6 +3,7 @@ using System;
 using Flowforge.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Flowforge.Migrations
 {
     [DbContext(typeof(FlowforgeDbContext))]
-    partial class FlowforgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250615100000_AddConnectionTypeToBlockConnection")]
+    partial class AddConnectionTypeToBlockConnection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");

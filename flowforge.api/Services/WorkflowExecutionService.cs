@@ -1,10 +1,10 @@
-﻿using Flowforge.Models;
+using Flowforge.Models;
 using Flowforge.Repositories;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Flowforge.Services;
-
 public class WorkflowExecutionService : IWorkflowExecutionService
 {
     private readonly IWorkflowExecutionRepository _repository;
@@ -56,6 +56,7 @@ public class WorkflowExecutionService : IWorkflowExecutionService
     while (queue.Count > 0)
     {
         var (current, pathVisited) = queue.Dequeue();
+        var error = false;
 
         // Zapobiegaj cyklom
         if (!pathVisited.Add(current.Id))
@@ -105,8 +106,9 @@ public class WorkflowExecutionService : IWorkflowExecutionService
             }
         }
 
-        // ZAWSZE idź po SourceConnections (połączenia wychodzące)
-        var nextConnections = current.SourceConnections;
+        // Wybierz połączenia w zależności od błędu
+        var nextConnections = current.SourceConnections
+            ?.Where(c => c.ConnectionType == (error ? ConnectionType.Error : ConnectionType.Success));
 
         if (nextConnections != null)
         {
