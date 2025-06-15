@@ -34,10 +34,18 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         => await _repository.DeleteAsync(id);
 
 
-    public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow)
+    public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null)
 {
     var variables = workflow.WorkflowVariables
         .ToDictionary(v => v.Name, v => v.DefaultValue ?? string.Empty);
+
+    if (inputs != null)
+    {
+        foreach (var (key, value) in inputs)
+        {
+            variables[key] = value;
+        }
+    }
 
     var start = workflow.Blocks.FirstOrDefault(b => b.SystemBlock?.Type == "Start");
     var queue = new Queue<(Flowforge.Models.Block block, HashSet<int> pathVisited)>();
@@ -105,6 +113,7 @@ public class WorkflowExecutionService : IWorkflowExecutionService
     {
         ExecutedAt = DateTime.UtcNow,
         WorkflowId = workflow.Id,
+        InputData = inputs == null ? null : System.Text.Json.JsonSerializer.Serialize(inputs),
         ResultData = System.Text.Json.JsonSerializer.Serialize(variables)
     };
 

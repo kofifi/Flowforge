@@ -37,6 +37,23 @@ public class WorkflowExecutionEvaluationTests
         Assert.That(vars!["C"], Is.EqualTo("5"));
     }
 
+    [Test]
+    public async Task EvaluateAsync_UsesInputOverrides()
+    {
+        var workflow = BuildWorkflow();
+        var inputs = new Dictionary<string, string> { ["A"] = "4", ["B"] = "6" };
+
+        var result = await _service.EvaluateAsync(workflow, inputs);
+
+        _repoMock.Verify(r => r.AddAsync(It.IsAny<WorkflowExecution>()), Times.Once);
+        Assert.That(result.InputData, Is.Not.Null);
+        var inputVars = JsonSerializer.Deserialize<Dictionary<string,string>>(result.InputData!);
+        Assert.That(inputVars!["A"], Is.EqualTo("4"));
+
+        var vars = JsonSerializer.Deserialize<Dictionary<string,string>>(result.ResultData!);
+        Assert.That(vars!["C"], Is.EqualTo("10"));
+    }
+
     private static Workflow BuildWorkflow()
     {
         var startSb = new SystemBlock { Id = 1, Type = "Start" };
