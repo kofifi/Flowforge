@@ -74,6 +74,15 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                     ? config.FirstVariable
                     : config.ResultVariable;
 
+                var defFirst = workflow.WorkflowVariables.FirstOrDefault(v => v.Name == config.FirstVariable);
+                var defSecond = workflow.WorkflowVariables.FirstOrDefault(v => v.Name == config.SecondVariable);
+
+                if ((defFirst?.Type != WorkflowVariableType.Number || defSecond?.Type != WorkflowVariableType.Number) &&
+                    config.Operation != CalculationOperation.Concat)
+                {
+                    throw new InvalidOperationException("Invalid variable type for calculation");
+                }
+
                 switch (config.Operation)
                 {
                     case CalculationOperation.Concat:
