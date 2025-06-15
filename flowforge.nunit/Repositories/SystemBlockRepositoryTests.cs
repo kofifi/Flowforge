@@ -23,6 +23,8 @@ public class SystemBlockRepositoryTests
         _context = new FlowforgeDbContext(options);
         _context.Database.EnsureDeleted();
         _context.Database.EnsureCreated();
+        _context.SystemBlocks.RemoveRange(_context.SystemBlocks);
+        _context.SaveChanges();
         _repository = new SystemBlockRepository(_context);
     }
 

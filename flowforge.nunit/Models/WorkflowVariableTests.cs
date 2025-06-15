@@ -19,10 +19,10 @@ public class WorkflowVariableTests
     }
 
     [Test]
-    public void Type_DefaultValue_IsEmptyString()
+    public void Type_DefaultValue_IsString()
     {
         var variable = new WorkflowVariable();
-        Assert.That(variable.Type, Is.EqualTo(string.Empty));
+        Assert.That(variable.Type, Is.EqualTo(WorkflowVariableType.String));
     }
 
     [Test]

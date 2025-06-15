@@ -61,7 +61,9 @@ public class WorkflowVariableServiceTests
     [Test]
     public async Task CreateAsync_ReturnsVariable()
     {
-        var variable = new WorkflowVariable { Id = 1, Name = "A" };
+        var variable = new WorkflowVariable { Id = 1, Name = "A", WorkflowId = 1 };
+        var workflow = new Workflow { Id = 1, Name = "W" };
+        _workflowRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(workflow);
         _repoMock.Setup(r => r.AddAsync(variable)).ReturnsAsync(variable);
 
         var result = await _service.CreateAsync(variable);
@@ -72,7 +74,9 @@ public class WorkflowVariableServiceTests
     [Test]
     public async Task UpdateAsync_ReturnsTrue_WhenSuccess()
     {
-        var variable = new WorkflowVariable { Id = 1, Name = "A" };
+        var variable = new WorkflowVariable { Id = 1, Name = "A", WorkflowId = 1 };
+        var workflow = new Workflow { Id = 1, Name = "W" };
+        _workflowRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(workflow);
         _repoMock.Setup(r => r.UpdateAsync(variable)).ReturnsAsync(true);
 
         var result = await _service.UpdateAsync(1, variable);
@@ -93,7 +97,9 @@ public class WorkflowVariableServiceTests
     [Test]
     public async Task UpdateAsync_ReturnsFalse_WhenRepositoryFails()
     {
-        var variable = new WorkflowVariable { Id = 1, Name = "A" };
+        var variable = new WorkflowVariable { Id = 1, Name = "A", WorkflowId = 1 };
+        var workflow = new Workflow { Id = 1, Name = "W" };
+        _workflowRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(workflow);
         _repoMock.Setup(r => r.UpdateAsync(variable)).ReturnsAsync(false);
 
         var result = await _service.UpdateAsync(1, variable);
