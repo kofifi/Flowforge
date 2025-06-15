@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Flowforge.Data;
 using Flowforge.Models;
 using Flowforge.Repositories;
@@ -16,6 +17,12 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+    });
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
 builder.Services.AddScoped<IWorkflowRepository, WorkflowRepository>();

@@ -33,66 +33,81 @@ public class WorkflowExecutionService : IWorkflowExecutionService
     public async Task<bool> DeleteAsync(int id)
         => await _repository.DeleteAsync(id);
 
+
     public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow)
+{
+    var variables = workflow.WorkflowVariables
+        .ToDictionary(v => v.Name, v => v.DefaultValue ?? string.Empty);
+
+    var start = workflow.Blocks.FirstOrDefault(b => b.SystemBlock?.Type == "Start");
+    var queue = new Queue<(Flowforge.Models.Block block, HashSet<int> pathVisited)>();
+
+    if (start != null)
+        queue.Enqueue((start, new HashSet<int>()));
+
+    while (queue.Count > 0)
     {
-        var variables = workflow.WorkflowVariables
-            .ToDictionary(v => v.Name, v => v.DefaultValue ?? string.Empty);
+        var (current, pathVisited) = queue.Dequeue();
 
-        var current = workflow.Blocks
-            .FirstOrDefault(b => b.SystemBlock?.Type == "Start");
-        var visited = new HashSet<int>();
+        // Zapobiegaj cyklom
+        if (!pathVisited.Add(current.Id))
+            continue;
 
-        while (current != null && current.SystemBlock?.Type != "End")
+        if (current.SystemBlock?.Type == "Calculation" &&
+            !string.IsNullOrEmpty(current.JsonConfig))
         {
-            if (!visited.Add(current.Id))
-                break;
-
-            if (current.SystemBlock?.Type == "Calculation" &&
-                !string.IsNullOrEmpty(current.JsonConfig))
+            var config = System.Text.Json.JsonSerializer
+                .Deserialize<CalculationConfig>(current.JsonConfig!);
+            if (config != null)
             {
-                var config = System.Text.Json.JsonSerializer
-                    .Deserialize<CalculationConfig>(current.JsonConfig!);
-                if (config != null)
-                {
-                    variables.TryGetValue(config.FirstVariable, out var first);
-                    variables.TryGetValue(config.SecondVariable, out var second);
-                    var destination = string.IsNullOrEmpty(config.ResultVariable)
-                        ? config.FirstVariable
-                        : config.ResultVariable;
+                var first = variables.ContainsKey(config.FirstVariable) ? variables[config.FirstVariable] : string.Empty;
+                var second = variables.ContainsKey(config.SecondVariable) ? variables[config.SecondVariable] : string.Empty;
+                var destination = string.IsNullOrEmpty(config.ResultVariable)
+                    ? config.FirstVariable
+                    : config.ResultVariable;
 
-                    switch (config.Operation)
-                    {
-                        case CalculationOperation.Concat:
-                            variables[destination] = (first ?? string.Empty) + (second ?? string.Empty);
-                            break;
-                        default:
-                            double.TryParse(first, out var a);
-                            double.TryParse(second, out var b);
-                            var result = config.Operation switch
-                            {
-                                CalculationOperation.Add => a + b,
-                                CalculationOperation.Subtract => a - b,
-                                CalculationOperation.Multiply => a * b,
-                                CalculationOperation.Divide => b == 0 ? a : a / b,
-                                _ => a
-                            };
-                            variables[destination] = result.ToString();
-                            break;
-                    }
+                switch (config.Operation)
+                {
+                    case CalculationOperation.Concat:
+                        variables[destination] = first + second;
+                        break;
+                    default:
+                        double.TryParse(first, out var a);
+                        double.TryParse(second, out var b);
+                        var result = config.Operation switch
+                        {
+                            CalculationOperation.Add => a + b,
+                            CalculationOperation.Subtract => a - b,
+                            CalculationOperation.Multiply => a * b,
+                            CalculationOperation.Divide => b == 0 ? a : a / b,
+                            _ => a
+                        };
+                        variables[destination] = result.ToString();
+                        break;
                 }
             }
-
-            var next = current.SourceConnections.FirstOrDefault();
-            current = next?.TargetBlock;
         }
 
-        var execution = new WorkflowExecution
-        {
-            ExecutedAt = DateTime.UtcNow,
-            WorkflowId = workflow.Id,
-            ResultData = System.Text.Json.JsonSerializer.Serialize(variables)
-        };
+        // ZAWSZE idź po SourceConnections (połączenia wychodzące)
+        var nextConnections = current.SourceConnections;
 
-        return await _repository.AddAsync(execution);
+        if (nextConnections != null)
+        {
+            foreach (var conn in nextConnections)
+            {
+                if (conn.TargetBlock != null)
+                    queue.Enqueue((conn.TargetBlock, new HashSet<int>(pathVisited)));
+            }
+        }
     }
+
+    var execution = new WorkflowExecution
+    {
+        ExecutedAt = DateTime.UtcNow,
+        WorkflowId = workflow.Id,
+        ResultData = System.Text.Json.JsonSerializer.Serialize(variables)
+    };
+
+    return await _repository.AddAsync(execution);
+}
 }
