@@ -136,9 +136,9 @@ public class WorkflowExecutionEvaluationTests
         workflow.Blocks.Add(calc);
         workflow.Blocks.Add(end);
 
-        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 1, Name = "A", DefaultValue = firstDefault, Workflow = workflow, WorkflowId = 1, Type = WorkflowVariableType.Number });
-        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 2, Name = "B", DefaultValue = secondDefault, Workflow = workflow, WorkflowId = 1, Type = WorkflowVariableType.Number });
-        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 3, Name = "C", DefaultValue = string.Empty, Workflow = workflow, WorkflowId = 1, Type = WorkflowVariableType.Number });
+        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 1, Name = "A", DefaultValue = firstDefault, Workflow = workflow, WorkflowId = 1 });
+        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 2, Name = "B", DefaultValue = secondDefault, Workflow = workflow, WorkflowId = 1 });
+        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 3, Name = "C", DefaultValue = string.Empty, Workflow = workflow, WorkflowId = 1 });
 
         return workflow;
     }

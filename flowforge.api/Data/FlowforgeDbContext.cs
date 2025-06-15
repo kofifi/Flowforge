@@ -60,9 +60,6 @@ public class FlowforgeDbContext : DbContext
             .WithMany(w => w.WorkflowVariables)
             .HasForeignKey(wv => wv.WorkflowId)
             .OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<WorkflowVariable>()
-            .Property(wv => wv.Type)
-            .HasConversion<string>();
 
         // Workflow 1:N WorkflowRevision
         modelBuilder.Entity<WorkflowRevision>()
