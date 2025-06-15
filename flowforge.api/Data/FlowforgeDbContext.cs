@@ -50,12 +50,19 @@ public class FlowforgeDbContext : DbContext
             .HasForeignKey(bc => bc.TargetBlockId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<BlockConnection>()
+            .Property(bc => bc.ConnectionType)
+            .HasConversion<string>();
+
         // Workflow 1:N WorkflowVariable
         modelBuilder.Entity<WorkflowVariable>()
             .HasOne(wv => wv.Workflow)
             .WithMany(w => w.WorkflowVariables)
             .HasForeignKey(wv => wv.WorkflowId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<WorkflowVariable>()
+            .Property(wv => wv.Type)
+            .HasConversion<string>();
 
         // Workflow 1:N WorkflowRevision
         modelBuilder.Entity<WorkflowRevision>()

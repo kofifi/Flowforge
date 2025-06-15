@@ -1,4 +1,6 @@
-﻿namespace Flowforge.Models;
+using System.Text.Json.Serialization;
+
+namespace Flowforge.Models;
 
 public class BlockConnection
 {
@@ -9,4 +11,6 @@ public class BlockConnection
 
     public int TargetBlockId { get; set; }
     public Block TargetBlock { get; set; } = null!;
+
+    public ConnectionType ConnectionType { get; set; } = ConnectionType.Success;
 }

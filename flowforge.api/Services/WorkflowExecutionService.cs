@@ -1,10 +1,10 @@
-﻿using Flowforge.Models;
+using Flowforge.Models;
 using Flowforge.Repositories;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Flowforge.Services;
-
 public class WorkflowExecutionService : IWorkflowExecutionService
 {
     private readonly IWorkflowExecutionRepository _repository;
@@ -56,6 +56,7 @@ public class WorkflowExecutionService : IWorkflowExecutionService
     while (queue.Count > 0)
     {
         var (current, pathVisited) = queue.Dequeue();
+        var error = false;
 
         // Zapobiegaj cyklom
         if (!pathVisited.Add(current.Id))
@@ -73,6 +74,15 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                 var destination = string.IsNullOrEmpty(config.ResultVariable)
                     ? config.FirstVariable
                     : config.ResultVariable;
+
+                var defFirst = workflow.WorkflowVariables.FirstOrDefault(v => v.Name == config.FirstVariable);
+                var defSecond = workflow.WorkflowVariables.FirstOrDefault(v => v.Name == config.SecondVariable);
+
+                if ((defFirst?.Type != WorkflowVariableType.Number || defSecond?.Type != WorkflowVariableType.Number) &&
+                    config.Operation != CalculationOperation.Concat)
+                {
+                    error = true;
+                }
 
                 switch (config.Operation)
                 {
@@ -96,8 +106,9 @@ public class WorkflowExecutionService : IWorkflowExecutionService
             }
         }
 
-        // ZAWSZE idź po SourceConnections (połączenia wychodzące)
-        var nextConnections = current.SourceConnections;
+        // Wybierz połączenia w zależności od błędu
+        var nextConnections = current.SourceConnections
+            ?.Where(c => c.ConnectionType == (error ? ConnectionType.Error : ConnectionType.Success));
 
         if (nextConnections != null)
         {

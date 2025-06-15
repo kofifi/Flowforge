@@ -3,6 +3,7 @@ using System;
 using Flowforge.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Flowforge.Migrations
 {
     [DbContext(typeof(FlowforgeDbContext))]
-    partial class FlowforgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250615095708_AddWorkflowVariableType")]
+    partial class AddWorkflowVariableType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
@@ -56,10 +59,6 @@ namespace Flowforge.Migrations
 
                     b.Property<int>("TargetBlockId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("ConnectionType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
