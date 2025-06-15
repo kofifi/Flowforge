@@ -39,7 +39,7 @@ public class WorkflowVariableRepositoryTests
         _context.Workflows.Add(workflow);
         await _context.SaveChangesAsync();
 
-        var variable = new WorkflowVariable { Name = "Var", Type = WorkflowVariableType.String, WorkflowId = workflow.Id };
+        var variable = new WorkflowVariable { Name = "Var", WorkflowId = workflow.Id };
         var result = await _repository.AddAsync(variable);
 
         Assert.That(result.Id, Is.Not.EqualTo(0));
@@ -53,8 +53,8 @@ public class WorkflowVariableRepositoryTests
         _context.Workflows.Add(workflow);
         await _context.SaveChangesAsync();
 
-        _context.WorkflowVariables.Add(new WorkflowVariable { Name = "A", Type = WorkflowVariableType.Number, WorkflowId = workflow.Id });
-        _context.WorkflowVariables.Add(new WorkflowVariable { Name = "B", Type = WorkflowVariableType.String, WorkflowId = workflow.Id });
+        _context.WorkflowVariables.Add(new WorkflowVariable { Name = "A", WorkflowId = workflow.Id });
+        _context.WorkflowVariables.Add(new WorkflowVariable { Name = "B", WorkflowId = workflow.Id });
         await _context.SaveChangesAsync();
 
         var variables = await _repository.GetAllAsync();
@@ -69,7 +69,7 @@ public class WorkflowVariableRepositoryTests
         _context.Workflows.Add(workflow);
         await _context.SaveChangesAsync();
 
-        var variable = new WorkflowVariable { Name = "A", Type = WorkflowVariableType.Number, WorkflowId = workflow.Id };
+        var variable = new WorkflowVariable { Name = "A", WorkflowId = workflow.Id };
         _context.WorkflowVariables.Add(variable);
         await _context.SaveChangesAsync();
 
@@ -93,7 +93,7 @@ public class WorkflowVariableRepositoryTests
         _context.Workflows.Add(workflow);
         await _context.SaveChangesAsync();
 
-        var variable = new WorkflowVariable { Name = "A", Type = WorkflowVariableType.Number, WorkflowId = workflow.Id };
+        var variable = new WorkflowVariable { Name = "A", WorkflowId = workflow.Id };
         _context.WorkflowVariables.Add(variable);
         await _context.SaveChangesAsync();
 
@@ -107,7 +107,7 @@ public class WorkflowVariableRepositoryTests
     [Test]
     public async Task UpdateAsync_ReturnsFalse_WhenNotExists()
     {
-        var variable = new WorkflowVariable { Id = 123, Name = "X", Type = WorkflowVariableType.Number, WorkflowId = 1 };
+        var variable = new WorkflowVariable { Id = 123, Name = "X", WorkflowId = 1 };
         var updated = await _repository.UpdateAsync(variable);
 
         Assert.That(updated, Is.False);
@@ -120,7 +120,7 @@ public class WorkflowVariableRepositoryTests
         _context.Workflows.Add(workflow);
         await _context.SaveChangesAsync();
 
-        var variable = new WorkflowVariable { Name = "A", Type = WorkflowVariableType.Number, WorkflowId = workflow.Id };
+        var variable = new WorkflowVariable { Name = "A", WorkflowId = workflow.Id };
         _context.WorkflowVariables.Add(variable);
         await _context.SaveChangesAsync();
 

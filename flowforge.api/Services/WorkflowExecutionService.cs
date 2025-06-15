@@ -33,7 +33,6 @@ public class WorkflowExecutionService : IWorkflowExecutionService
     public async Task<bool> DeleteAsync(int id)
         => await _repository.DeleteAsync(id);
 
-
     public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null)
 {
     var variables = workflow.WorkflowVariables
@@ -74,16 +73,6 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                 var destination = string.IsNullOrEmpty(config.ResultVariable)
                     ? config.FirstVariable
                     : config.ResultVariable;
-
-                var defFirst = workflow.WorkflowVariables.FirstOrDefault(v => v.Name == config.FirstVariable);
-                var defSecond = workflow.WorkflowVariables.FirstOrDefault(v => v.Name == config.SecondVariable);
-
-                if ((defFirst?.Type != WorkflowVariableType.Number || defSecond?.Type != WorkflowVariableType.Number) &&
-                    config.Operation != CalculationOperation.Concat)
-                {
-                    throw new InvalidOperationException("Invalid variable type for calculation");
-                }
-
                 switch (config.Operation)
                 {
                     case CalculationOperation.Concat:
