@@ -8,9 +8,9 @@ namespace Flowforge.Controllers;
 [Route("api/[controller]")]
 public class WorkflowController : ControllerBase
 {
-    private readonly WorkflowService _service;
+    private readonly IWorkflowService _service;
 
-    public WorkflowController(WorkflowService service)
+    public WorkflowController(IWorkflowService service)
     {
         _service = service;
     }
