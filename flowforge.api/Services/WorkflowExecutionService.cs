@@ -81,7 +81,7 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                 if ((defFirst?.Type != WorkflowVariableType.Number || defSecond?.Type != WorkflowVariableType.Number) &&
                     config.Operation != CalculationOperation.Concat)
                 {
-                    error = true;
+                    throw new InvalidOperationException("Invalid variable type for calculation");
                 }
 
                 switch (config.Operation)
