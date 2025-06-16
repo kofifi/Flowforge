@@ -79,7 +79,8 @@ public class FlowforgeDbContext : DbContext
         modelBuilder.Entity<SystemBlock>().HasData(
             new SystemBlock { Id = 1, Type = "Start", Description = "Blok początkowy" },
             new SystemBlock { Id = 2, Type = "End", Description = "Blok końcowy" },
-            new SystemBlock { Id = 3, Type = "Calculation", Description = "Blok kalkulacji" }
+            new SystemBlock { Id = 3, Type = "Calculation", Description = "Blok kalkulacji" },
+            new SystemBlock { Id = 4, Type = "If", Description = "Blok warunkowy" }
         );
     }
 }

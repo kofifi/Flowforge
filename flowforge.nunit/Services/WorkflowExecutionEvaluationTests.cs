@@ -4,6 +4,7 @@ using Flowforge.Repositories;
 using Moq;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -96,6 +97,28 @@ public class WorkflowExecutionEvaluationTests
         });
     }
 
+    [Test]
+    public async Task EvaluateAsync_IfBlock_TruePath()
+    {
+        var workflow = BuildIfWorkflow(true);
+
+        var result = await _service.EvaluateAsync(workflow);
+
+        Assert.That(result.Path, Is.Not.Null);
+        Assert.That(result.Path!.Last(), Is.EqualTo("EndTrue"));
+    }
+
+    [Test]
+    public async Task EvaluateAsync_IfBlock_FalsePath()
+    {
+        var workflow = BuildIfWorkflow(false);
+
+        var result = await _service.EvaluateAsync(workflow);
+
+        Assert.That(result.Path, Is.Not.Null);
+        Assert.That(result.Path!.Last(), Is.EqualTo("EndFalse"));
+    }
+
     private static Workflow BuildWorkflow(
         CalculationOperation operation = CalculationOperation.Add,
         string firstDefault = "2",
@@ -139,6 +162,48 @@ public class WorkflowExecutionEvaluationTests
         workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 1, Name = "A", DefaultValue = firstDefault, Workflow = workflow, WorkflowId = 1 });
         workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 2, Name = "B", DefaultValue = secondDefault, Workflow = workflow, WorkflowId = 1 });
         workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 3, Name = "C", DefaultValue = string.Empty, Workflow = workflow, WorkflowId = 1 });
+
+        return workflow;
+    }
+
+    private static Workflow BuildIfWorkflow(bool equal)
+    {
+        var startSb = new SystemBlock { Id = 1, Type = "Start" };
+        var endSbT = new SystemBlock { Id = 2, Type = "End" };
+        var endSbF = new SystemBlock { Id = 3, Type = "End" };
+        var ifSb = new SystemBlock { Id = 4, Type = "If" };
+
+        var workflow = new Workflow { Id = 1, Name = "wf" };
+
+        var start = new Block { Id = 1, Workflow = workflow, WorkflowId = 1, SystemBlock = startSb, SystemBlockId = 1 };
+        var ifBlock = new Block
+        {
+            Id = 2,
+            Workflow = workflow,
+            WorkflowId = 1,
+            SystemBlock = ifSb,
+            SystemBlockId = 4,
+            JsonConfig = JsonSerializer.Serialize(new ConditionConfig
+            {
+                DataType = ConditionDataType.Number,
+                First = "$A",
+                Second = equal ? "$B" : "10"
+            })
+        };
+        var endTrue = new Block { Id = 3, Workflow = workflow, WorkflowId = 1, SystemBlock = endSbT, SystemBlockId = 2, Name = "EndTrue" };
+        var endFalse = new Block { Id = 4, Workflow = workflow, WorkflowId = 1, SystemBlock = endSbF, SystemBlockId = 3, Name = "EndFalse" };
+
+        start.SourceConnections.Add(new BlockConnection { SourceBlock = start, TargetBlock = ifBlock });
+        ifBlock.SourceConnections.Add(new BlockConnection { SourceBlock = ifBlock, TargetBlock = endTrue, ConnectionType = ConnectionType.Success });
+        ifBlock.SourceConnections.Add(new BlockConnection { SourceBlock = ifBlock, TargetBlock = endFalse, ConnectionType = ConnectionType.Error });
+
+        workflow.Blocks.Add(start);
+        workflow.Blocks.Add(ifBlock);
+        workflow.Blocks.Add(endTrue);
+        workflow.Blocks.Add(endFalse);
+
+        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 1, Name = "A", DefaultValue = "5", Workflow = workflow, WorkflowId = 1 });
+        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 2, Name = "B", DefaultValue = equal ? "5" : "3", Workflow = workflow, WorkflowId = 1 });
 
         return workflow;
     }
