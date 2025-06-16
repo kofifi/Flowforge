@@ -20,4 +20,5 @@ public class WorkflowExecutionDto
 
     [JsonPropertyName("actions")]
     public IList<string>? Actions { get; set; }
+
 }

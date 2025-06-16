@@ -92,6 +92,7 @@ public class WorkflowExecutionController : ControllerBase
             ResultData = execution.Result,
             Path = execution.Path,
             Actions = execution.Actions
+
         };
 
         return CreatedAtAction(nameof(GetById), new { id = execution.Id }, dto);

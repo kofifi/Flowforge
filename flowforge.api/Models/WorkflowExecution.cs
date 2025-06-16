@@ -41,8 +41,9 @@ public class WorkflowExecution
     [NotMapped]
     [JsonPropertyName("path")]
     public IList<string>? Path { get; set; }
-
+  
     [NotMapped]
     [JsonPropertyName("actions")]
     public IList<string>? Actions { get; set; }
+
 }

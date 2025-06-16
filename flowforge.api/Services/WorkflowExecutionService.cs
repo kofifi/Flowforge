@@ -40,6 +40,7 @@ public class WorkflowExecutionService : IWorkflowExecutionService
     var path = new List<string>();
     var actions = new List<string>();
 
+
     if (inputs != null)
     {
         foreach (var (key, value) in inputs)
@@ -68,6 +69,7 @@ public class WorkflowExecutionService : IWorkflowExecutionService
             : current.Name;
         path.Add(name);
         string description = current.SystemBlock?.Description ?? $"Executed block {name}";
+
 
         if (current.SystemBlock?.Type == "Calculation" &&
             !string.IsNullOrEmpty(current.JsonConfig))
@@ -137,6 +139,7 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         ResultData = System.Text.Json.JsonSerializer.Serialize(variables),
         Path = path,
         Actions = actions
+
     };
 
     return await _repository.AddAsync(execution);
