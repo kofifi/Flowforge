@@ -1,6 +1,7 @@
 ﻿using Flowforge.Models;
 using Flowforge.Services;
 using Flowforge.Data;
+using Flowforge.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -83,6 +84,16 @@ public class WorkflowExecutionController : ControllerBase
 
         var execution = await _service.EvaluateAsync(workflow, inputs);
 
-        return CreatedAtAction(nameof(GetById), new { id = execution.Id }, execution);
+        var dto = new WorkflowExecutionDto
+        {
+            Id = execution.Id,
+            ExecutedAt = execution.ExecutedAt,
+            InputData = execution.Input,
+            ResultData = execution.Result,
+            Path = execution.Path,
+            Actions = execution.Actions
+        };
+
+        return CreatedAtAction(nameof(GetById), new { id = execution.Id }, dto);
     }
 }
