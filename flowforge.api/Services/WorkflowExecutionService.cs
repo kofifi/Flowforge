@@ -38,6 +38,8 @@ public class WorkflowExecutionService : IWorkflowExecutionService
     var variables = workflow.WorkflowVariables
         .ToDictionary(v => v.Name, v => v.DefaultValue ?? string.Empty);
     var path = new List<string>();
+    var actions = new List<string>();
+
 
     if (inputs != null)
     {
@@ -62,8 +64,12 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         if (!pathVisited.Add(current.Id))
             continue;
 
-        var name = string.IsNullOrWhiteSpace(current.Name) ? current.SystemBlock?.Type ?? current.Id.ToString() : current.Name;
+        var name = string.IsNullOrWhiteSpace(current.Name)
+            ? current.SystemBlock?.Type ?? current.Id.ToString()
+            : current.Name;
         path.Add(name);
+        string description = current.SystemBlock?.Description ?? $"Executed block {name}";
+
 
         if (current.SystemBlock?.Type == "Calculation" &&
             !string.IsNullOrEmpty(current.JsonConfig))
@@ -77,10 +83,20 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                 var destination = string.IsNullOrEmpty(config.ResultVariable)
                     ? config.FirstVariable
                     : config.ResultVariable;
+                var symbol = config.Operation switch
+                {
+                    CalculationOperation.Add => "+",
+                    CalculationOperation.Subtract => "-",
+                    CalculationOperation.Multiply => "*",
+                    CalculationOperation.Divide => "/",
+                    CalculationOperation.Concat => "+",
+                    _ => ""
+                };
                 switch (config.Operation)
                 {
                     case CalculationOperation.Concat:
                         variables[destination] = first + second;
+                        description = $"{destination} = {first} + {second}";
                         break;
                     default:
                         double.TryParse(first, out var a);
@@ -94,10 +110,12 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                             _ => a
                         };
                         variables[destination] = result.ToString();
+                        description = $"{destination} = {a} {symbol} {b} => {result}";
                         break;
                 }
             }
         }
+        actions.Add(description);
 
         // Wybierz połączenia w zależności od błędu
         var nextConnections = current.SourceConnections
@@ -119,7 +137,9 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         WorkflowId = workflow.Id,
         InputData = inputs == null ? null : System.Text.Json.JsonSerializer.Serialize(inputs),
         ResultData = System.Text.Json.JsonSerializer.Serialize(variables),
-        Path = path
+        Path = path,
+        Actions = actions
+
     };
 
     return await _repository.AddAsync(execution);

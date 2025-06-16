@@ -17,4 +17,8 @@ public class WorkflowExecutionDto
 
     [JsonPropertyName("path")]
     public IList<string>? Path { get; set; }
+
+    [JsonPropertyName("actions")]
+    public IList<string>? Actions { get; set; }
+
 }
