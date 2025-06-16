@@ -34,9 +34,10 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         => await _repository.DeleteAsync(id);
 
     public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null)
-{
+    {
     var variables = workflow.WorkflowVariables
         .ToDictionary(v => v.Name, v => v.DefaultValue ?? string.Empty);
+    var path = new List<string>();
 
     if (inputs != null)
     {
@@ -60,6 +61,9 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         // Zapobiegaj cyklom
         if (!pathVisited.Add(current.Id))
             continue;
+
+        var name = string.IsNullOrWhiteSpace(current.Name) ? current.SystemBlock?.Type ?? current.Id.ToString() : current.Name;
+        path.Add(name);
 
         if (current.SystemBlock?.Type == "Calculation" &&
             !string.IsNullOrEmpty(current.JsonConfig))
@@ -114,7 +118,8 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         ExecutedAt = DateTime.UtcNow,
         WorkflowId = workflow.Id,
         InputData = inputs == null ? null : System.Text.Json.JsonSerializer.Serialize(inputs),
-        ResultData = System.Text.Json.JsonSerializer.Serialize(variables)
+        ResultData = System.Text.Json.JsonSerializer.Serialize(variables),
+        Path = path
     };
 
     return await _repository.AddAsync(execution);

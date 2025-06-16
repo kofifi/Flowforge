@@ -37,4 +37,8 @@ public class WorkflowExecution
 
     public int WorkflowId { get; set; }
     public Workflow Workflow { get; set; } = null!;
+
+    [NotMapped]
+    [JsonPropertyName("path")]
+    public IList<string>? Path { get; set; }
 }
