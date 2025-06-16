@@ -106,6 +106,12 @@ namespace Flowforge.Migrations
                             Id = 3,
                             Description = "Blok kalkulacji",
                             Type = "Calculation"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Blok warunkowy",
+                            Type = "If"
                         });
                 });
 

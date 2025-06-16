@@ -115,6 +115,42 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                 }
             }
         }
+        else if (current.SystemBlock?.Type == "If" &&
+            !string.IsNullOrEmpty(current.JsonConfig))
+        {
+            var config = System.Text.Json.JsonSerializer
+                .Deserialize<ConditionConfig>(current.JsonConfig!);
+            if (config != null)
+            {
+                string GetValue(string val)
+                {
+                    if (val.StartsWith("$"))
+                    {
+                        var key = val.Substring(1);
+                        return variables.ContainsKey(key) ? variables[key] : string.Empty;
+                    }
+                    return val;
+                }
+
+                var first = GetValue(config.First);
+                var second = GetValue(config.Second);
+                bool condition = false;
+
+                if (config.DataType == ConditionDataType.Number)
+                {
+                    double.TryParse(first, out var a);
+                    double.TryParse(second, out var b);
+                    condition = a == b;
+                }
+                else
+                {
+                    condition = first == second;
+                }
+
+                description = $"IF {first} == {second}";
+                error = !condition;
+            }
+        }
         actions.Add(description);
 
         // Wybierz połączenia w zależności od błędu
