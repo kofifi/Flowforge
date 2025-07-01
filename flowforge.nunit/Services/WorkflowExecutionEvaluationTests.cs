@@ -143,9 +143,9 @@ public class WorkflowExecutionEvaluationTests
             JsonConfig = JsonSerializer.Serialize(new CalculationConfig
             {
                 Operation = operation,
-                FirstVariable = "A",
-                SecondVariable = "B",
-                ResultVariable = resultVariable ?? string.Empty
+                First = "$A",
+                Second = "$B",
+                Result = string.IsNullOrEmpty(resultVariable) ? string.Empty : "$" + resultVariable
             })
         };
         var end = new Block { Id = 3, Workflow = workflow, WorkflowId = 1, SystemBlock = endSb, SystemBlockId = 2 };

@@ -14,7 +14,17 @@ public enum CalculationOperation
 public class CalculationConfig
 {
     public CalculationOperation Operation { get; set; } = CalculationOperation.Add;
-    public string FirstVariable { get; set; } = string.Empty;
-    public string SecondVariable { get; set; } = string.Empty;
-    public string ResultVariable { get; set; } = string.Empty;
+    /// <summary>
+    /// Either a literal value or a variable reference starting with '$'.
+    /// </summary>
+    public string First { get; set; } = string.Empty;
+    /// <summary>
+    /// Either a literal value or a variable reference starting with '$'.
+    /// </summary>
+    public string Second { get; set; } = string.Empty;
+    /// <summary>
+    /// Destination variable name prefixed with '$'. If empty, the first value's
+    /// variable reference will be used when available.
+    /// </summary>
+    public string Result { get; set; } = string.Empty;
 }

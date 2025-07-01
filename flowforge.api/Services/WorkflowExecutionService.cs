@@ -78,11 +78,24 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                 .Deserialize<CalculationConfig>(current.JsonConfig!);
             if (config != null)
             {
-                var first = variables.ContainsKey(config.FirstVariable) ? variables[config.FirstVariable] : string.Empty;
-                var second = variables.ContainsKey(config.SecondVariable) ? variables[config.SecondVariable] : string.Empty;
-                var destination = string.IsNullOrEmpty(config.ResultVariable)
-                    ? config.FirstVariable
-                    : config.ResultVariable;
+                string GetValue(string val)
+                {
+                    if (val.StartsWith("$"))
+                    {
+                        var key = val.Substring(1);
+                        return variables.ContainsKey(key) ? variables[key] : string.Empty;
+                    }
+                    return val;
+                }
+
+                string GetKey(string val)
+                    => val.StartsWith("$") ? val.Substring(1) : val;
+
+                var first = GetValue(config.First);
+                var second = GetValue(config.Second);
+                var destination = !string.IsNullOrEmpty(config.Result)
+                    ? GetKey(config.Result)
+                    : (config.First.StartsWith("$") ? GetKey(config.First) : string.Empty);
                 var symbol = config.Operation switch
                 {
                     CalculationOperation.Add => "+",
@@ -92,26 +105,29 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                     CalculationOperation.Concat => "+",
                     _ => ""
                 };
-                switch (config.Operation)
+                if (!string.IsNullOrEmpty(destination))
                 {
-                    case CalculationOperation.Concat:
-                        variables[destination] = first + second;
-                        description = $"{destination} = {first} + {second}";
-                        break;
-                    default:
-                        double.TryParse(first, out var a);
-                        double.TryParse(second, out var b);
-                        var result = config.Operation switch
-                        {
-                            CalculationOperation.Add => a + b,
-                            CalculationOperation.Subtract => a - b,
-                            CalculationOperation.Multiply => a * b,
-                            CalculationOperation.Divide => b == 0 ? a : a / b,
-                            _ => a
-                        };
-                        variables[destination] = result.ToString();
-                        description = $"{destination} = {a} {symbol} {b} => {result}";
-                        break;
+                    switch (config.Operation)
+                    {
+                        case CalculationOperation.Concat:
+                            variables[destination] = first + second;
+                            description = $"{destination} = {first} + {second}";
+                            break;
+                        default:
+                            double.TryParse(first, out var a);
+                            double.TryParse(second, out var b);
+                            var result = config.Operation switch
+                            {
+                                CalculationOperation.Add => a + b,
+                                CalculationOperation.Subtract => a - b,
+                                CalculationOperation.Multiply => a * b,
+                                CalculationOperation.Divide => b == 0 ? a : a / b,
+                                _ => a
+                            };
+                            variables[destination] = result.ToString();
+                            description = $"{destination} = {a} {symbol} {b} => {result}";
+                            break;
+                    }
                 }
             }
         }

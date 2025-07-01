@@ -11,8 +11,8 @@ public class CalculationConfigTests
         var config = new CalculationConfig();
 
         Assert.That(config.Operation, Is.EqualTo(CalculationOperation.Add));
-        Assert.That(config.FirstVariable, Is.EqualTo(string.Empty));
-        Assert.That(config.SecondVariable, Is.EqualTo(string.Empty));
-        Assert.That(config.ResultVariable, Is.EqualTo(string.Empty));
+        Assert.That(config.First, Is.EqualTo(string.Empty));
+        Assert.That(config.Second, Is.EqualTo(string.Empty));
+        Assert.That(config.Result, Is.EqualTo(string.Empty));
     }
 }
