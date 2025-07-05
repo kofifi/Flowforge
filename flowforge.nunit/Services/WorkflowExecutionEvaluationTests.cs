@@ -22,7 +22,13 @@ public class WorkflowExecutionEvaluationTests
         _repoMock = new Mock<IWorkflowExecutionRepository>();
         _repoMock.Setup(r => r.AddAsync(It.IsAny<WorkflowExecution>()))
             .ReturnsAsync((WorkflowExecution e) => e);
-        _service = new WorkflowExecutionService(_repoMock.Object);
+        var executors = new IBlockExecutor[]
+        {
+            new CalculationBlockExecutor(),
+            new ConditionBlockExecutor(),
+            new DefaultBlockExecutor()
+        };
+        _service = new WorkflowExecutionService(_repoMock.Object, executors);
     }
 
     [Test]
