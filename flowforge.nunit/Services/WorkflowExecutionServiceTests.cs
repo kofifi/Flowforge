@@ -19,7 +19,13 @@ public class WorkflowExecutionServiceTests
     public void Setup()
     {
         _repoMock = new Mock<IWorkflowExecutionRepository>();
-        _service = new WorkflowExecutionService(_repoMock.Object);
+        var executors = new IBlockExecutor[]
+        {
+            new CalculationBlockExecutor(),
+            new ConditionBlockExecutor(),
+            new DefaultBlockExecutor()
+        };
+        _service = new WorkflowExecutionService(_repoMock.Object, executors);
     }
 
     [Test]

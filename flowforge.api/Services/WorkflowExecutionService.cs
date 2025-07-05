@@ -8,10 +8,12 @@ namespace Flowforge.Services;
 public class WorkflowExecutionService : IWorkflowExecutionService
 {
     private readonly IWorkflowExecutionRepository _repository;
+    private readonly IList<IBlockExecutor> _executors;
 
-    public WorkflowExecutionService(IWorkflowExecutionRepository repository)
+    public WorkflowExecutionService(IWorkflowExecutionRepository repository, IEnumerable<IBlockExecutor> executors)
     {
         _repository = repository;
+        _executors = executors.ToList();
     }
 
     public async Task<IEnumerable<WorkflowExecution>> GetAllAsync()
@@ -68,90 +70,11 @@ public class WorkflowExecutionService : IWorkflowExecutionService
             ? current.SystemBlock?.Type ?? current.Id.ToString()
             : current.Name;
         path.Add(name);
-        string description = current.SystemBlock?.Description ?? $"Executed block {name}";
-
-
-        if (current.SystemBlock?.Type == "Calculation" &&
-            !string.IsNullOrEmpty(current.JsonConfig))
-        {
-            var config = System.Text.Json.JsonSerializer
-                .Deserialize<CalculationConfig>(current.JsonConfig!);
-            if (config != null)
-            {
-                var first = variables.ContainsKey(config.FirstVariable) ? variables[config.FirstVariable] : string.Empty;
-                var second = variables.ContainsKey(config.SecondVariable) ? variables[config.SecondVariable] : string.Empty;
-                var destination = string.IsNullOrEmpty(config.ResultVariable)
-                    ? config.FirstVariable
-                    : config.ResultVariable;
-                var symbol = config.Operation switch
-                {
-                    CalculationOperation.Add => "+",
-                    CalculationOperation.Subtract => "-",
-                    CalculationOperation.Multiply => "*",
-                    CalculationOperation.Divide => "/",
-                    CalculationOperation.Concat => "+",
-                    _ => ""
-                };
-                switch (config.Operation)
-                {
-                    case CalculationOperation.Concat:
-                        variables[destination] = first + second;
-                        description = $"{destination} = {first} + {second}";
-                        break;
-                    default:
-                        double.TryParse(first, out var a);
-                        double.TryParse(second, out var b);
-                        var result = config.Operation switch
-                        {
-                            CalculationOperation.Add => a + b,
-                            CalculationOperation.Subtract => a - b,
-                            CalculationOperation.Multiply => a * b,
-                            CalculationOperation.Divide => b == 0 ? a : a / b,
-                            _ => a
-                        };
-                        variables[destination] = result.ToString();
-                        description = $"{destination} = {a} {symbol} {b} => {result}";
-                        break;
-                }
-            }
-        }
-        else if (current.SystemBlock?.Type == "If" &&
-            !string.IsNullOrEmpty(current.JsonConfig))
-        {
-            var config = System.Text.Json.JsonSerializer
-                .Deserialize<ConditionConfig>(current.JsonConfig!);
-            if (config != null)
-            {
-                string GetValue(string val)
-                {
-                    if (val.StartsWith("$"))
-                    {
-                        var key = val.Substring(1);
-                        return variables.ContainsKey(key) ? variables[key] : string.Empty;
-                    }
-                    return val;
-                }
-
-                var first = GetValue(config.First);
-                var second = GetValue(config.Second);
-                bool condition = false;
-
-                if (config.DataType == ConditionDataType.Number)
-                {
-                    double.TryParse(first, out var a);
-                    double.TryParse(second, out var b);
-                    condition = a == b;
-                }
-                else
-                {
-                    condition = first == second;
-                }
-
-                description = $"IF {first} == {second}";
-                error = !condition;
-            }
-        }
-        actions.Add(description);
+        var executor = _executors.FirstOrDefault(e => e.CanExecute(current));
+        executor ??= new DefaultBlockExecutor();
+        var result = executor.Execute(current, variables);
+        error = result.Error;
+        actions.Add(result.Description);
 
         // Wybierz połączenia w zależności od błędu
         var nextConnections = current.SourceConnections
