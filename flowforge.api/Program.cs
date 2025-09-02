@@ -3,6 +3,7 @@ using Flowforge.Data;
 using Flowforge.Models;
 using Flowforge.Repositories;
 using Flowforge.Services;
+using Flowforge.Services.Executors;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,6 +43,9 @@ builder.Services.AddScoped<ISystemBlockService, SystemBlockService>();
 
 builder.Services.AddScoped<IWorkflowExecutionRepository, WorkflowExecutionRepository>();
 builder.Services.AddScoped<IWorkflowExecutionService, WorkflowExecutionService>();
+
+builder.Services.AddSingleton<IBlockExecutor, CalculationBlockExecutor>();
+builder.Services.AddSingleton<IBlockExecutor, ConditionBlockExecutor>();
 
 builder.Services.AddScoped<IWorkflowRevisionRepository, WorkflowRevisionRepository>();
 builder.Services.AddScoped<IWorkflowRevisionService, WorkflowRevisionService>();
