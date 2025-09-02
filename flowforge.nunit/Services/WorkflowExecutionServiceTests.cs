@@ -1,6 +1,7 @@
 ﻿using Flowforge.Models;
 using Flowforge.Repositories;
 using Flowforge.Services;
+using Flowforge.Services.Executors;
 using Moq;
 using NUnit.Framework;
 using System.Collections.Generic;
@@ -19,7 +20,12 @@ public class WorkflowExecutionServiceTests
     public void Setup()
     {
         _repoMock = new Mock<IWorkflowExecutionRepository>();
-        _service = new WorkflowExecutionService(_repoMock.Object);
+        var executors = new IBlockExecutor[]
+        {
+            new CalculationBlockExecutor(),
+            new ConditionBlockExecutor()
+        };
+        _service = new WorkflowExecutionService(_repoMock.Object, executors);
     }
 
     [Test]
