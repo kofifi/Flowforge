@@ -1,6 +1,9 @@
-﻿using Flowforge.Models;
+﻿using Flowforge.Data;
+using Flowforge.DTOs;
+using Flowforge.Models;
 using Flowforge.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Flowforge.Controllers;
 
@@ -9,10 +12,12 @@ namespace Flowforge.Controllers;
 public class WorkflowController : ControllerBase
 {
     private readonly IWorkflowService _service;
+    private readonly FlowforgeDbContext _context;
 
-    public WorkflowController(IWorkflowService service)
+    public WorkflowController(IWorkflowService service, FlowforgeDbContext context)
     {
         _service = service;
+        _context = context;
     }
 
     [HttpGet]
@@ -26,6 +31,50 @@ public class WorkflowController : ControllerBase
         if (workflow == null)
             return NotFound();
         return workflow;
+    }
+
+    [HttpGet("{id}/graph")]
+    public async Task<ActionResult<WorkflowGraphDto>> GetWorkflowGraph(int id)
+    {
+        var workflow = await _context.Workflows.FirstOrDefaultAsync(w => w.Id == id);
+        if (workflow == null)
+            return NotFound();
+
+        var blocks = await _context.Blocks
+            .Include(b => b.SystemBlock)
+            .Where(b => b.WorkflowId == id)
+            .ToListAsync();
+
+        var blockIds = blocks.Select(b => b.Id).ToList();
+
+        var connections = await _context.BlockConnections
+            .Where(c => blockIds.Contains(c.SourceBlockId) && blockIds.Contains(c.TargetBlockId))
+            .ToListAsync();
+
+        var dto = new WorkflowGraphDto
+        {
+            WorkflowId = workflow.Id,
+            Name = workflow.Name,
+            Blocks = blocks.Select(b => new BlockGraphDto
+            {
+                Id = b.Id,
+                Name = b.Name,
+                SystemBlockId = b.SystemBlockId,
+                SystemBlockType = b.SystemBlock?.Type ?? string.Empty,
+                JsonConfig = b.JsonConfig,
+                PositionX = b.PositionX,
+                PositionY = b.PositionY
+            }).ToList(),
+            Connections = connections.Select(c => new BlockConnectionDto
+            {
+                Id = c.Id,
+                SourceBlockId = c.SourceBlockId,
+                TargetBlockId = c.TargetBlockId,
+                ConnectionType = c.ConnectionType.ToString()
+            }).ToList()
+        };
+
+        return Ok(dto);
     }
 
     [HttpPost]

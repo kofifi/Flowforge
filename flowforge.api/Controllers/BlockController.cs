@@ -36,8 +36,15 @@ public class BlocksController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Block>> Create(Block block)
     {
-        var created = await _service.CreateAsync(block);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        try
+        {
+            var created = await _service.CreateAsync(block);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
@@ -46,7 +53,15 @@ public class BlocksController : ControllerBase
         if (id != block.Id)
             return BadRequest();
 
-        var updated = await _service.UpdateAsync(id, block);
+        bool updated;
+        try
+        {
+            updated = await _service.UpdateAsync(id, block);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         if (!updated)
             return NotFound();
 

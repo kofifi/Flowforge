@@ -1,4 +1,5 @@
-﻿using Flowforge.Models;
+﻿using Flowforge.DTOs;
+using Flowforge.Models;
 using Flowforge.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
@@ -34,19 +35,44 @@ public class BlockConnectionController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<BlockConnection>> Create(BlockConnection connection)
+    public async Task<ActionResult<BlockConnection>> Create(BlockConnectionDto connection)
     {
-        var created = await _service.CreateAsync(connection);
+        var entity = new BlockConnection
+        {
+            SourceBlockId = connection.SourceBlockId,
+            TargetBlockId = connection.TargetBlockId,
+            ConnectionType = Enum.TryParse<ConnectionType>(
+                connection.ConnectionType,
+                true,
+                out var parsed)
+                ? parsed
+                : ConnectionType.Success
+        };
+
+        var created = await _service.CreateAsync(entity);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, BlockConnection connection)
+    public async Task<IActionResult> Update(int id, BlockConnectionDto connection)
     {
         if (id != connection.Id)
             return BadRequest();
 
-        var updated = await _service.UpdateAsync(id, connection);
+        var entity = new BlockConnection
+        {
+            Id = connection.Id,
+            SourceBlockId = connection.SourceBlockId,
+            TargetBlockId = connection.TargetBlockId,
+            ConnectionType = Enum.TryParse<ConnectionType>(
+                connection.ConnectionType,
+                true,
+                out var parsed)
+                ? parsed
+                : ConnectionType.Success
+        };
+
+        var updated = await _service.UpdateAsync(id, entity);
         if (!updated)
             return NotFound();
 

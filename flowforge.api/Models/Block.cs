@@ -10,6 +10,8 @@ public class Block
     public SystemBlock? SystemBlock { get; set; }
 
     public string? JsonConfig { get; set; }
+    public double? PositionX { get; set; }
+    public double? PositionY { get; set; }
 
     public ICollection<BlockConnection> SourceConnections { get; set; } = new List<BlockConnection>();
     public ICollection<BlockConnection> TargetConnections { get; set; } = new List<BlockConnection>();

@@ -30,6 +30,12 @@ namespace Flowforge.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("PositionX")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("PositionY")
+                        .HasColumnType("REAL");
+
                     b.Property<int>("SystemBlockId")
                         .HasColumnType("INTEGER");
 
@@ -51,15 +57,15 @@ namespace Flowforge.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ConnectionType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("SourceBlockId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("TargetBlockId")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("ConnectionType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -188,10 +194,6 @@ namespace Flowforge.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("TEXT");
 

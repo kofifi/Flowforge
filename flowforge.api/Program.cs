@@ -52,6 +52,28 @@ builder.Services.AddScoped<IWorkflowRevisionService, WorkflowRevisionService>();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<FlowforgeDbContext>();
+    var requiredBlocks = new[]
+    {
+        new SystemBlock { Type = "Start", Description = "Blok początkowy" },
+        new SystemBlock { Type = "End", Description = "Blok końcowy" },
+        new SystemBlock { Type = "Calculation", Description = "Blok kalkulacji" },
+        new SystemBlock { Type = "If", Description = "Blok warunkowy" }
+    };
+
+    foreach (var block in requiredBlocks)
+    {
+        if (!context.SystemBlocks.Any(sb => sb.Type == block.Type))
+        {
+            context.SystemBlocks.Add(block);
+        }
+    }
+
+    context.SaveChanges();
+}
+
 // Konfiguracja pipeline
 if (!app.Environment.IsDevelopment())
 {

@@ -1,68 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap');
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  line-height: 1.6;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: #1d1f1c;
+  background-color: #f4f5f1;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --muted: #6b6f64;
+  --card: #ffffff;
+  --panel: #f9faf7;
+  --primary: #2e3b37;
+  --primary-strong: #1d2724;
+  --danger: #a2261e;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(149, 168, 158, 0.28), transparent 40%),
+    radial-gradient(circle at 15% 20%, rgba(206, 216, 207, 0.5), transparent 50%),
+    #f4f5f1;
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--primary-strong);
 }
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  font-size: clamp(2.4rem, 4vw, 3.25rem);
+  line-height: 1.05;
+}
+
+h2 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+input {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(33, 33, 28, 0.12);
+  padding: 0.65rem 0.85rem;
+  background: #fffefc;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: rgba(50, 64, 59, 0.6);
+  box-shadow: 0 0 0 3px rgba(50, 64, 59, 0.12);
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  border-radius: 14px;
+  border: 1px solid rgba(33, 33, 28, 0.12);
+  padding: 0.6rem 1.25rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: #f7f1e6;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(31, 43, 39, 0.18);
 }
