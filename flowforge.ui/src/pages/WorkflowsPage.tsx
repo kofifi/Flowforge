@@ -29,6 +29,10 @@ export default function WorkflowsPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light'
+    return localStorage.getItem('flowforge-theme') === 'dark' ? 'dark' : 'light'
+  })
   const navigate = useNavigate()
 
   const hasWorkflows = workflows.length > 0
@@ -39,6 +43,16 @@ export default function WorkflowsPage() {
     if (!hasWorkflows) return 'No workflows yet. Create your first project.'
     return ''
   }, [error, hasWorkflows, loading])
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'dark') {
+      root.classList.add('theme-dark')
+    } else {
+      root.classList.remove('theme-dark')
+    }
+    localStorage.setItem('flowforge-theme', theme)
+  }, [theme])
 
   useEffect(() => {
     let cancelled = false
@@ -97,6 +111,10 @@ export default function WorkflowsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const toggleTheme = () => {
+    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
   }
 
   function startEditing(workflow: Workflow) {
@@ -199,6 +217,35 @@ export default function WorkflowsPage() {
             </p>
           </div>
           <div className="topbar-meta">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </button>
             <span className="count">{workflows.length} total</span>
             <span className="pill">CRUD ready</span>
           </div>

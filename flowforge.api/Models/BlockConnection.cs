@@ -13,4 +13,9 @@ public class BlockConnection
     public Block TargetBlock { get; set; } = null!;
 
     public ConnectionType ConnectionType { get; set; } = ConnectionType.Success;
+
+    /// <summary>
+    /// Optional label used by multi-branch blocks (e.g., Switch) to route by case.
+    /// </summary>
+    public string? Label { get; set; }
 }

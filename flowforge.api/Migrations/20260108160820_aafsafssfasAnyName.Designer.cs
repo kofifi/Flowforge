@@ -3,6 +3,7 @@ using System;
 using Flowforge.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Flowforge.Migrations
 {
     [DbContext(typeof(FlowforgeDbContext))]
-    partial class FlowforgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260108160820_aafsafssfasAnyName")]
+    partial class aafsafssfasAnyName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.5");
@@ -59,10 +62,6 @@ namespace Flowforge.Migrations
 
                     b.Property<string>("ConnectionType")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Label")
-                        .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("SourceBlockId")
@@ -122,12 +121,6 @@ namespace Flowforge.Migrations
                             Id = 4,
                             Description = "Blok warunkowy",
                             Type = "If"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Description = "Blok wielościeżkowy (case)",
-                            Type = "Switch"
                         });
                 });
 

@@ -41,6 +41,7 @@ public class BlockConnectionController : ControllerBase
         {
             SourceBlockId = connection.SourceBlockId,
             TargetBlockId = connection.TargetBlockId,
+            Label = connection.Label,
             ConnectionType = Enum.TryParse<ConnectionType>(
                 connection.ConnectionType,
                 true,
@@ -64,6 +65,7 @@ public class BlockConnectionController : ControllerBase
             Id = connection.Id,
             SourceBlockId = connection.SourceBlockId,
             TargetBlockId = connection.TargetBlockId,
+            Label = connection.Label,
             ConnectionType = Enum.TryParse<ConnectionType>(
                 connection.ConnectionType,
                 true,

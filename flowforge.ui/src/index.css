@@ -4,19 +4,76 @@
   font-family: "Manrope", "Segoe UI", sans-serif;
   line-height: 1.6;
   font-weight: 400;
-  color: #1d1f1c;
-  background-color: #f4f5f1;
+  color: var(--text-color);
+  background-color: var(--page-base);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  --text-color: #1d1f1c;
+  --page-base: #f4f5f1;
+  --page-background:
+    radial-gradient(circle at top right, rgba(149, 168, 158, 0.28), transparent 40%),
+    radial-gradient(circle at 15% 20%, rgba(206, 216, 207, 0.5), transparent 50%),
+    #f4f5f1;
   --muted: #6b6f64;
   --card: #ffffff;
   --panel: #f9faf7;
   --primary: #2e3b37;
   --primary-strong: #1d2724;
   --danger: #a2261e;
+  --input-bg: #fffefc;
+  --input-border: rgba(33, 33, 28, 0.12);
+  --input-border-strong: rgba(50, 64, 59, 0.6);
+  --button-text: #f7f1e6;
+  --canvas-bg: #f7f8f4;
+  --surface-soft: #f4f6f2;
+  --surface-contrast: #eef0ea;
+  --chip-bg: #eef0ea;
+  --chip-active: #d8e8d0;
+  --border-soft: rgba(25, 25, 25, 0.08);
+  --border-strong: rgba(33, 33, 28, 0.18);
+  --edge-default: #2e3b37;
+  --edge-success: #0f9f6e;
+  --edge-error: #e11d48;
+  --handle-default-bg: #44505f;
+  --handle-default-border: #e8ecef;
+  --handle-success: #0f9f6e;
+  --handle-error: #e11d48;
+}
+
+.theme-dark {
+  --text-color: #f5f7fb;
+  --page-base: #0d1117;
+  --page-background:
+    radial-gradient(circle at 18% 20%, rgba(53, 140, 110, 0.16), transparent 40%),
+    radial-gradient(circle at 82% 12%, rgba(76, 110, 201, 0.18), transparent 46%),
+    #0d1117;
+  --muted: #9aa5b5;
+  --card: #0f141c;
+  --panel: #121924;
+  --primary: #2f9e68;
+  --primary-strong: #d1f5e4;
+  --danger: #ef4444;
+  --input-bg: #0f141c;
+  --input-border: rgba(255, 255, 255, 0.12);
+  --input-border-strong: rgba(76, 175, 130, 0.7);
+  --button-text: #f5f7fb;
+  --canvas-bg: #0f141c;
+  --surface-soft: #131b26;
+  --surface-contrast: #1a2230;
+  --chip-bg: #16202d;
+  --chip-active: #1f8a5b;
+  --border-soft: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --edge-default: #94a3b8;
+  --edge-success: #22c55e;
+  --edge-error: #f43f5e;
+  --handle-default-bg: #94a3b8;
+  --handle-default-border: #1f2937;
+  --handle-success: #22c55e;
+  --handle-error: #f43f5e;
 }
 
 *,
@@ -29,10 +86,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top right, rgba(149, 168, 158, 0.28), transparent 40%),
-    radial-gradient(circle at 15% 20%, rgba(206, 216, 207, 0.5), transparent 50%),
-    #f4f5f1;
+  background: var(--page-background);
   color: inherit;
 }
 
@@ -69,25 +123,25 @@ input {
 input {
   width: 100%;
   border-radius: 14px;
-  border: 1px solid rgba(33, 33, 28, 0.12);
+  border: 1px solid var(--input-border);
   padding: 0.65rem 0.85rem;
-  background: #fffefc;
+  background: var(--input-bg);
   transition: border 0.2s ease, box-shadow 0.2s ease;
 }
 
 input:focus {
   outline: none;
-  border-color: rgba(50, 64, 59, 0.6);
+  border-color: var(--input-border-strong);
   box-shadow: 0 0 0 3px rgba(50, 64, 59, 0.12);
 }
 
 button {
   border-radius: 14px;
-  border: 1px solid rgba(33, 33, 28, 0.12);
+  border: 1px solid var(--border-soft);
   padding: 0.6rem 1.25rem;
   font-weight: 600;
   background: var(--primary);
-  color: #f7f1e6;
+  color: var(--button-text);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.2s ease;
 }

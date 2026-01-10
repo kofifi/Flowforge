@@ -42,6 +42,7 @@ builder.Services.AddScoped<ISystemBlockService, SystemBlockService>();
 
 builder.Services.AddScoped<IBlockExecutor, CalculationBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, ConditionBlockExecutor>();
+builder.Services.AddScoped<IBlockExecutor, SwitchBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, DefaultBlockExecutor>();
 
 builder.Services.AddScoped<IWorkflowExecutionRepository, WorkflowExecutionRepository>();

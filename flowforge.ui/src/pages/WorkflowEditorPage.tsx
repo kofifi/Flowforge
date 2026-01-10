@@ -1,27 +1,29 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ReactFlow, {
   addEdge,
   Background,
-  Controls,
   Handle,
+  MarkerType,
   MiniMap,
   Position,
   applyEdgeChanges,
   useEdgesState,
   useNodesState,
+  ReactFlowProvider,
+  useReactFlow,
+  useViewport,
   type Connection,
   type Edge,
   type EdgeChange,
   type Node,
   type NodeProps,
+  type NodeChange,
+  type OnSelectionChangeParams,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-
-type Workflow = {
-  id: number
-  name: string
-}
+import { normalizeValues } from '../utils/dataTransforms'
+import { useWorkflowStore } from '../state/workflowStore'
 
 type WorkflowVariable = {
   id: number
@@ -43,22 +45,6 @@ type SystemBlock = {
   id: number
   type: string
   description: string
-}
-
-type BlockResponse = {
-  id: number
-  name: string
-  workflowId: number
-  systemBlockId: number
-  systemBlock?: SystemBlock | null
-  jsonConfig?: string | null
-}
-
-type BlockConnectionResponse = {
-  id: number
-  sourceBlockId: number
-  targetBlockId: number
-  connectionType: 'Success' | 'Error'
 }
 
 type WorkflowGraphResponse = {
@@ -85,6 +71,7 @@ type BlockTemplate = {
   type: string
   label: string
   description: string
+  category: 'Flow' | 'Logic' | 'Action'
 }
 
 type NodeData = {
@@ -92,6 +79,8 @@ type NodeData = {
   label: string
   description: string
   onOpenConfig?: (payload: { id: string; blockType: string; label: string }) => void
+  allowErrorOutput?: boolean
+  switchCases?: string[]
 }
 
 type StartConfig = {
@@ -107,35 +96,98 @@ type CalculationConfig = {
   resultVariable: string
 }
 
+type IfConfig = {
+  first: string
+  second: string
+  dataType: 'String' | 'Number'
+}
+
+type SwitchConfig = {
+  expression: string
+  cases: string[]
+}
+
+function normalizeSwitchCases(values: unknown): string[] {
+  if (!Array.isArray(values)) return ['']
+  const cleaned = values.map((value) => (typeof value === 'string' ? value : '')).filter((_, idx) => idx >= 0)
+  return cleaned.length === 0 ? [''] : cleaned
+}
+
+type ToastMessage = {
+  id: number
+  message: string
+}
+
+function formatSwitchEdgeLabel(index: number, caseValue: string | undefined): string {
+  const num = index + 1
+  return caseValue && caseValue.length > 0 ? `#${num} · ${caseValue}` : `#${num}`
+}
+
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
 const templates: BlockTemplate[] = [
-  { type: 'Start', label: 'Start', description: 'Entry point for the workflow.' },
-  { type: 'Calculation', label: 'Calculation', description: 'Compute variables.' },
-  { type: 'If', label: 'If', description: 'Route based on a condition.' },
-  { type: 'End', label: 'End', description: 'Finish the workflow.' },
+  { type: 'Start', label: 'Start', description: 'Entry point for the workflow.', category: 'Flow' },
+  { type: 'End', label: 'End', description: 'Finish the workflow.', category: 'Flow' },
+  { type: 'If', label: 'If', description: 'Route based on a condition.', category: 'Logic' },
+  { type: 'Switch', label: 'Switch', description: 'Multi-branch on cases', category: 'Logic' },
+  { type: 'Calculation', label: 'Calculation', description: 'Compute variables.', category: 'Logic' },
 ]
-
-function normalizeValues<T>(data: unknown): T[] {
-  if (Array.isArray(data)) {
-    return data as T[]
-  }
-
-  if (data && typeof data === 'object' && '$values' in data) {
-    const values = (data as { $values?: unknown }).$values
-    return Array.isArray(values) ? (values as T[]) : []
-  }
-
-  return []
-}
 
 function FlowNode({ data, id }: NodeProps<NodeData>) {
   const isStart = data.blockType === 'Start'
   const isEnd = data.blockType === 'End'
+  const isIf = data.blockType === 'If'
+  const isSwitch = data.blockType === 'Switch'
+  const displayDescription = isSwitch ? 'Route by case labels.' : data.description
+  const switchCases = data.switchCases ?? ['']
+  const switchHandleCount = switchCases.length
+  const switchHandleStartPx = 80
+  const switchHandleSpacingPx = 22
+  const switchHeight = isSwitch
+    ? Math.max(120, switchHandleStartPx + (switchHandleCount - 1) * switchHandleSpacingPx + 32)
+    : undefined
+  const handleBaseStyle = {
+    width: 12,
+    height: 12,
+    borderRadius: '50%',
+    background: 'var(--handle-default-bg)',
+    border: '2px solid var(--handle-default-border)',
+  }
+  const handleSuccessStyle = {
+    width: 12,
+    height: 12,
+    borderRadius: '50%',
+    background: 'var(--handle-success)',
+    border: '2px solid var(--handle-success)',
+  }
+  const handleErrorStyle = {
+    width: 12,
+    height: 12,
+    borderRadius: '50%',
+    background: 'var(--handle-error)',
+    border: '2px solid var(--handle-error)',
+  }
 
   return (
-    <div className="node-card">
-      {!isStart && <Handle type="target" position={Position.Left} />}
+    <div
+      className="node-card"
+      style={{
+        position: 'relative',
+        height: switchHeight ? `${switchHeight}px` : undefined,
+        padding: '6px 14px',
+        paddingRight: isSwitch ? 46 : 14,
+      }}
+    >
+      {!isStart && (
+        <Handle
+          type="target"
+          position={Position.Left}
+          style={{
+            left: -8,
+            ...handleBaseStyle,
+          }}
+        />
+      )}
       <div className="node-header">
         <span className="node-chip">{data.label}</span>
         <span className="node-status">Ready</span>
@@ -156,9 +208,79 @@ function FlowNode({ data, id }: NodeProps<NodeData>) {
           </svg>
         </button>
       </div>
-      <p className="node-title">{data.label} block</p>
-      <p className="node-meta">{data.description}</p>
-      {!isEnd && <Handle type="source" position={Position.Right} />}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, margin: '4px 0 6px' }}>
+        <p className="node-title" style={{ margin: 0 }}>{data.label} block</p>
+        <p className="node-meta" style={{ margin: 0, lineHeight: 1.3 }}>{displayDescription}</p>
+      </div>
+      {!isEnd && (
+        <>
+          {isSwitch ? (
+            Array.from({ length: switchHandleCount }).map((_, index) => {
+              const topPx = switchHandleStartPx + switchHandleSpacingPx * index
+              return (
+                <Fragment key={`switch-case-${index}`}>
+                  <span
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      top: `${topPx}px`,
+                      transform: 'translateY(-50%)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: 'var(--text-muted, #7b8794)',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {index + 1}
+                  </span>
+                  <Handle
+                    type="source"
+                    position={Position.Right}
+                    id={`case-${index + 1}`}
+                    style={{
+                      top: `${topPx}px`,
+                      right: -6,
+                      ...handleBaseStyle,
+                    }}
+                  />
+                </Fragment>
+              )
+            })
+          ) : (
+            <>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={isIf ? 'success' : undefined}
+                style={
+                  isIf
+                    ? {
+                        top: '45%',
+                        right: -8,
+                        ...handleSuccessStyle,
+                      }
+                    : {
+                        right: -8,
+                        ...handleBaseStyle,
+                      }
+                }
+              />
+              {isIf && data.allowErrorOutput && (
+                <Handle
+                  type="source"
+                  position={Position.Right}
+                  id="error"
+                  style={{
+                    top: '75%',
+                    right: -8,
+                    ...handleErrorStyle,
+                  }}
+                />
+              )}
+            </>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -178,32 +300,100 @@ function createNode(
       blockType: template.type,
       label: template.label,
       description: template.description,
+      allowErrorOutput: template.type === 'If',
+      switchCases: template.type === 'Switch' ? [''] : undefined,
     },
     className: 'flow-node',
     style: { width: 220 },
   }
 }
 
-function NodeCreator({ onCreate }: { onCreate: (template: BlockTemplate) => void }) {
+function NodeCreator({
+  onCreate,
+  search,
+  onSearchChange,
+  category,
+  onCategoryChange,
+  availableTemplates,
+}: {
+  onCreate: (template: BlockTemplate) => void
+  search: string
+  onSearchChange: (next: string) => void
+  category: 'All' | BlockTemplate['category']
+  onCategoryChange: (next: 'All' | BlockTemplate['category']) => void
+  availableTemplates: BlockTemplate[]
+}) {
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return availableTemplates.filter((template) => {
+      const matchesCategory = category === 'All' || template.category === category
+      const matchesQuery =
+        !query ||
+        template.label.toLowerCase().includes(query) ||
+        template.description.toLowerCase().includes(query)
+      return matchesCategory && matchesQuery
+    })
+  }, [availableTemplates, category, search])
+
+  const byCategory = useMemo(() => {
+    const map = new Map<string, BlockTemplate[]>()
+    filtered.forEach((template) => {
+      if (!map.has(template.category)) {
+        map.set(template.category, [])
+      }
+      map.get(template.category)!.push(template)
+    })
+    return Array.from(map.entries())
+  }, [filtered])
+
   return (
-    <div className="palette">
+    <div className="block-panel">
       <div className="palette-header">
         <p className="palette-title">Add block</p>
-        <span className="palette-subtitle">Drop into the canvas</span>
+        <span className="palette-subtitle">Search or browse by type.</span>
       </div>
-      <div className="palette-grid">
-        {templates.map((template) => (
-          <button
-            key={template.type}
-            type="button"
-            className="palette-item"
-            onClick={() => onCreate(template)}
-          >
-            <span>{template.label}</span>
-            <small>{template.description}</small>
-          </button>
-        ))}
+      <div className="palette-search">
+        <input
+          type="text"
+          placeholder="Search blocks..."
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+        <div className="palette-filters">
+          {['All', 'Flow', 'Logic', 'Action'].map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={`chip ${category === value ? 'chip--active' : ''}`}
+              onClick={() => onCategoryChange(value as 'All' | BlockTemplate['category'])}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
       </div>
+      {byCategory.map(([group, items]) => (
+        <div key={group} className="palette-section">
+          <div className="section-header">
+            <p className="section-title">{group}</p>
+            <span className="section-subtitle">{items.length} blocks</span>
+          </div>
+          <div className="palette-grid cards">
+            {items.map((template) => (
+              <button
+                key={template.type}
+                type="button"
+                className="palette-item block-card"
+                onClick={() => onCreate(template)}
+              >
+                <div className="block-card__title">{template.label}</div>
+                <div className="block-card__desc">{template.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      {filtered.length === 0 && <p className="muted">No blocks match your filters.</p>}
     </div>
   )
 }
@@ -305,12 +495,23 @@ function VariableSelect({
   )
 }
 
-export default function WorkflowEditorPage() {
+function WorkflowEditorInner() {
   const { id } = useParams()
   const workflowId = Number(id)
   const navigate = useNavigate()
-  const [workflow, setWorkflow] = useState<Workflow | null>(null)
-  const [loading, setLoading] = useState(true)
+  const {
+    workflow,
+    workflowLoading,
+    workflowError,
+    loadWorkflow,
+    variables,
+    variablesLoading,
+    variablesError,
+    loadVariables,
+    createVariable: createVariableAction,
+    updateVariable: updateVariableAction,
+    deleteVariable: deleteVariableAction,
+  } = useWorkflowStore()
   const [error, setError] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -319,10 +520,16 @@ export default function WorkflowEditorPage() {
   const [runResult, setRunResult] = useState<WorkflowExecution | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
+  const [showRunSnippet, setShowRunSnippet] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
+  const [paletteSearch, setPaletteSearch] = useState('')
+  const [paletteCategory, setPaletteCategory] = useState<'All' | BlockTemplate['category']>('All')
   const [showVariables, setShowVariables] = useState(false)
   const [edgeMenu, setEdgeMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [nodeMenu, setNodeMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number } | null>(null)
+  const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [pendingSelection, setPendingSelection] = useState<{
     id: string
     role: 'source' | 'target' | 'either'
@@ -334,19 +541,69 @@ export default function WorkflowEditorPage() {
   } | null>(null)
   const [startConfigs, setStartConfigs] = useState<Record<string, StartConfig>>({})
   const [calculationConfigs, setCalculationConfigs] = useState<Record<string, CalculationConfig>>({})
-  const [variables, setVariables] = useState<WorkflowVariable[]>([])
-  const [variablesLoading, setVariablesLoading] = useState(true)
-  const [variablesError, setVariablesError] = useState<string | null>(null)
+  const [ifConfigs, setIfConfigs] = useState<Record<string, IfConfig>>({})
+  const [switchConfigs, setSwitchConfigs] = useState<Record<string, SwitchConfig>>({})
   const [newVariableName, setNewVariableName] = useState('')
   const [newVariableDefault, setNewVariableDefault] = useState('')
   const [editingVariableId, setEditingVariableId] = useState<number | null>(null)
   const [editingVariableName, setEditingVariableName] = useState('')
   const [editingVariableDefault, setEditingVariableDefault] = useState('')
   const [variablesSaving, setVariablesSaving] = useState(false)
+  const [variablesLocalError, setVariablesLocalError] = useState<string | null>(null)
   const [systemBlocks, setSystemBlocks] = useState<SystemBlock[]>([])
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [showRunInputs, setShowRunInputs] = useState(false)
+  const [snapToGrid, setSnapToGrid] = useState(true)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light'
+    return localStorage.getItem('flowforge-theme') === 'dark' ? 'dark' : 'light'
+  })
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([])
+  const [nodes, setNodes, internalOnNodesChange] = useNodesState<Node<NodeData>>([])
   const [edges, setEdges] = useEdgesState<Edge>([])
+  const { fitView, zoomIn, zoomOut } = useReactFlow()
+  const { zoom } = useViewport()
+
+  useEffect(() => {
+    setNodes((current) =>
+      current.map((node) => {
+        if (node.data.blockType !== 'Switch') return node
+        const config = switchConfigs[node.id]
+        const cases = config ? normalizeSwitchCases(config.cases) : ['']
+        const existing = node.data.switchCases ?? []
+        const sameLength = existing.length === cases.length
+        const sameValues = sameLength && existing.every((value, idx) => value === cases[idx])
+        if (sameValues) return node
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            switchCases: cases,
+          },
+        }
+      }),
+    )
+  }, [setNodes, switchConfigs])
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'dark') {
+      root.classList.add('theme-dark')
+    } else {
+      root.classList.remove('theme-dark')
+    }
+    localStorage.setItem('flowforge-theme', theme)
+  }, [theme])
+
+  const markDirty = useCallback(() => {
+    setHasUnsavedChanges(true)
+    setSaveStatus('Unsaved changes')
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
+  }, [])
 
   const openConfig = useCallback((payload: { id: string; blockType: string; label: string }) => {
     setConfigPanel(payload)
@@ -358,42 +615,13 @@ export default function WorkflowEditorPage() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-
-    async function loadWorkflow() {
-      if (!Number.isFinite(workflowId)) {
-        setError('Invalid workflow id.')
-        setLoading(false)
-        return
-      }
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(`${apiBase}/api/Workflow/${workflowId}`)
-        if (!response.ok) {
-          throw new Error(`Failed to load workflow (${response.status})`)
-        }
-        const data = (await response.json()) as Workflow
-        if (!cancelled) {
-          setWorkflow(data)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Unable to load workflow')
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
-        }
-      }
+    if (!Number.isFinite(workflowId)) {
+      setError('Invalid workflow id.')
+      return
     }
-
-    loadWorkflow()
-
-    return () => {
-      cancelled = true
-    }
-  }, [workflowId])
+    setError(null)
+    loadWorkflow(workflowId)
+  }, [loadWorkflow, workflowId])
 
   useEffect(() => {
     let cancelled = false
@@ -413,11 +641,14 @@ export default function WorkflowEditorPage() {
           graph.blocks as unknown,
         )
         const blockIdMap = new Map<number, string>()
+        const blockTypeById = new Map<number, string>()
         const loadedNodes: Node<NodeData>[] = workflowBlocks.map((block, index) => {
           const blockType = block.systemBlockType || 'Default'
           const label = block.name || blockType
           const nodeId = `block-${block.id}`
+          let switchCasesForNode: string[] | undefined
           blockIdMap.set(block.id, nodeId)
+          blockTypeById.set(block.id, blockType)
 
           if (blockType === 'Calculation' && block.jsonConfig) {
             try {
@@ -441,6 +672,46 @@ export default function WorkflowEditorPage() {
             }
           }
 
+          if (blockType === 'If' && block.jsonConfig) {
+            try {
+              const parsed = JSON.parse(block.jsonConfig) as {
+                DataType?: IfConfig['dataType']
+                First?: string
+                Second?: string
+              }
+              setIfConfigs((current) => ({
+                ...current,
+                [nodeId]: {
+                  dataType: parsed.DataType ?? 'String',
+                  first: parsed.First ?? '',
+                  second: parsed.Second ?? '',
+                },
+              }))
+            } catch {
+              // ignore parse errors
+            }
+          }
+
+          if (blockType === 'Switch' && block.jsonConfig) {
+            try {
+              const parsed = JSON.parse(block.jsonConfig) as {
+                Expression?: string
+                Cases?: string[]
+              }
+              const cases = normalizeSwitchCases(parsed.Cases)
+              switchCasesForNode = cases
+              setSwitchConfigs((current) => ({
+                ...current,
+                [nodeId]: {
+                  expression: parsed.Expression ?? '',
+                  cases,
+                },
+              }))
+            } catch {
+              // ignore parse errors
+            }
+          }
+
           return {
             id: nodeId,
             type: 'flowNode',
@@ -455,6 +726,8 @@ export default function WorkflowEditorPage() {
                 systemBlocks.find((sb) => sb.type === blockType)?.description ??
                 'Workflow block',
               onOpenConfig: openConfig,
+              allowErrorOutput: blockType === 'If',
+              switchCases: blockType === 'Switch' ? switchCasesForNode ?? [''] : undefined,
             },
             className: 'flow-node',
             style: { width: 220 },
@@ -469,16 +742,37 @@ export default function WorkflowEditorPage() {
         )
         console.debug('[Flowforge] Filtered connections', workflowConnections)
 
-        const loadedEdges: Edge[] = workflowConnections.map((connection) => ({
-          id: `edge-${connection.id}`,
-          source: blockIdMap.get(connection.sourceBlockId)!,
-          target: blockIdMap.get(connection.targetBlockId)!,
-          animated: true,
-        }))
+        const loadedEdges: Edge[] = workflowConnections.map((connection) => {
+          const sourceType = blockTypeById.get(connection.sourceBlockId)
+          const isIf = sourceType === 'If'
+      const baseColor =
+        isIf && connection.connectionType === 'Error'
+          ? 'var(--edge-error)'
+            : isIf && connection.connectionType === 'Success'
+              ? 'var(--edge-success)'
+                : 'var(--edge-default)'
+          const sourceHandle = isIf
+            ? connection.connectionType === 'Error'
+              ? 'error'
+              : 'success'
+            : undefined
+          return {
+            id: `edge-${connection.id}`,
+            source: blockIdMap.get(connection.sourceBlockId)!,
+            target: blockIdMap.get(connection.targetBlockId)!,
+            sourceHandle,
+            animated: true,
+            markerEnd: { type: MarkerType.ArrowClosed, color: isIf ? baseColor : undefined },
+            style: { stroke: baseColor, strokeWidth: 2.5 },
+            data: connection.Label ? { label: connection.Label } : undefined,
+            label: connection.Label ?? undefined,
+          }
+        })
 
         if (!cancelled) {
           setNodes(loadedNodes)
           setEdges(loadedEdges)
+          setHasUnsavedChanges(false)
           console.debug('[Flowforge] Loaded nodes/edges', {
             nodes: loadedNodes,
             edges: loadedEdges,
@@ -526,48 +820,36 @@ export default function WorkflowEditorPage() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-
-    async function loadVariables() {
-      if (!Number.isFinite(workflowId)) {
-        setVariablesLoading(false)
-        return
-      }
-      setVariablesLoading(true)
-      setVariablesError(null)
-      try {
-        const response = await fetch(`${apiBase}/api/WorkflowVariable`)
-        if (!response.ok) {
-          throw new Error(`Failed to load variables (${response.status})`)
-        }
-        const data = (await response.json()) as unknown
-        if (!cancelled) {
-          const all = normalizeValues<WorkflowVariable>(data)
-          setVariables(all.filter((item) => item.workflowId === workflowId))
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setVariablesError(err instanceof Error ? err.message : 'Unable to load variables')
-        }
-      } finally {
-        if (!cancelled) {
-          setVariablesLoading(false)
-        }
-      }
+    if (Number.isFinite(workflowId)) {
+      loadVariables(workflowId)
     }
+  }, [loadVariables, workflowId])
 
-    loadVariables()
-
-    return () => {
-      cancelled = true
-    }
-  }, [workflowId])
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const shouldMark = changes.some((change) => {
+        if (change.type === 'position') {
+          return change.dragging === true
+        }
+        return change.type !== 'select' && change.type !== 'dimensions'
+      })
+      if (shouldMark) {
+        markDirty()
+      }
+      internalOnNodesChange(changes)
+    },
+    [internalOnNodesChange, markDirty],
+  )
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
+      const shouldMark = changes.some((change) => change.type !== 'select')
+      if (shouldMark) {
+        markDirty()
+      }
       setEdges((current) => applyEdgeChanges(changes, current))
     },
-    [setEdges],
+    [markDirty, setEdges],
   )
 
   const getBlockType = useCallback(
@@ -650,18 +932,62 @@ export default function WorkflowEditorPage() {
             current,
           ),
         )
+        markDirty()
       }
 
       setPendingSelection(null)
     },
-    [canBeSource, canBeTarget, getBlockType, pendingSelection, setEdges],
+    [canBeSource, canBeTarget, getBlockType, markDirty, pendingSelection, setEdges],
   )
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      setEdges((current) => addEdge({ ...connection, animated: true }, current))
+      const connectionKey = `${connection.source ?? ''}-${connection.sourceHandle ?? ''}-${connection.target ?? ''}-${connection.targetHandle ?? ''}`
+      const sourceNode = nodes.find((node) => node.id === connection.source)
+      const isIf = sourceNode?.data.blockType === 'If'
+      const isSwitch = sourceNode?.data.blockType === 'Switch'
+      const baseColor =
+        isIf && connection.sourceHandle === 'error'
+          ? 'var(--edge-error)'
+          : isIf && connection.sourceHandle === 'success'
+            ? 'var(--edge-success)'
+            : 'var(--edge-default)'
+      let label: string | undefined
+      let caseValue: string | undefined
+      if (isSwitch) {
+        const handleId = connection.sourceHandle ?? ''
+        const cases = switchConfigs[sourceNode?.id ?? '']?.cases ?? []
+        if (handleId.startsWith('case-')) {
+          const parts = handleId.split('-')
+          const index = Number(parts[1]) - 1
+          const value = index >= 0 ? cases[index] ?? '' : ''
+          caseValue = value.trim()
+          label = caseValue
+          const display = index >= 0 ? formatSwitchEdgeLabel(index, caseValue) : caseValue
+          const displayLabel = (display ?? caseValue) || undefined
+          connection = { ...connection, label: displayLabel }
+        }
+      }
+      setEdges((current) =>
+        addEdge(
+          {
+            ...connection,
+            id: `${connectionKey}-${Date.now()}`,
+            animated: true,
+            style: { stroke: baseColor, strokeWidth: 2.5 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: isIf || isSwitch ? baseColor : undefined },
+            data:
+              label !== undefined
+                ? { label, caseValue }
+                : undefined,
+            label: connection.label ?? (label && label.length > 0 ? label : undefined),
+          },
+          current,
+        ),
+      )
+      markDirty()
     },
-    [setEdges],
+    [markDirty, nodes, setEdges, switchConfigs],
   )
 
   const onEdgeClick = useCallback(
@@ -689,9 +1015,32 @@ export default function WorkflowEditorPage() {
     [],
   )
 
+  const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
+    const ids = params.nodes.map((node) => node.id)
+    setSelectedNodeIds(ids)
+  }, [])
+
+  const onSelectionContextMenu = useCallback(
+    (event: React.MouseEvent, nodes: Node[]) => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (nodes.length < 2) return
+      setSelectionMenu({ x: event.clientX, y: event.clientY })
+      setSelectedNodeIds(nodes.map((node) => node.id))
+    },
+    [],
+  )
+
+  const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+    event.preventDefault()
+    setCanvasMenu({ x: event.clientX, y: event.clientY })
+  }, [])
+
   const closeEdgeMenu = useCallback(() => {
     setEdgeMenu(null)
     setNodeMenu(null)
+    setSelectionMenu(null)
+    setCanvasMenu(null)
     setPendingSelection(null)
     setShowVariables(false)
   }, [])
@@ -700,13 +1049,16 @@ export default function WorkflowEditorPage() {
     setShowVariables((open) => !open)
     setShowPalette(false)
     setRunOpen(false)
+    setPaletteSearch('')
+    setPaletteCategory('All')
   }, [])
 
   const deleteEdge = useCallback(() => {
     if (!edgeMenu) return
     setEdges((current) => current.filter((item) => item.id !== edgeMenu.id))
     setEdgeMenu(null)
-  }, [edgeMenu, setEdges])
+    markDirty()
+  }, [edgeMenu, markDirty, setEdges])
 
   const deleteNode = useCallback(() => {
     if (!nodeMenu) return
@@ -715,12 +1067,123 @@ export default function WorkflowEditorPage() {
       current.filter((edge) => edge.source !== nodeMenu.id && edge.target !== nodeMenu.id),
     )
     setNodeMenu(null)
-  }, [nodeMenu, setEdges, setNodes])
+    markDirty()
+  }, [markDirty, nodeMenu, setEdges, setNodes])
+
+  const deleteSelection = useCallback(() => {
+    if (selectedNodeIds.length === 0) return
+    setNodes((current) => current.filter((node) => !selectedNodeIds.includes(node.id)))
+    setEdges((current) =>
+      current.filter(
+        (edge) =>
+          !selectedNodeIds.includes(edge.source) && !selectedNodeIds.includes(edge.target),
+      ),
+    )
+    setSelectionMenu(null)
+    setSelectedNodeIds([])
+    markDirty()
+  }, [markDirty, selectedNodeIds, setEdges, setNodes])
+
+  const selectAllNodes = useCallback(() => {
+    setSelectedNodeIds(nodes.map((node) => node.id))
+    setCanvasMenu(null)
+  }, [nodes])
+
+  const distributeSelection = useCallback(() => {
+    if (selectedNodeIds.length < 2) return
+    setNodes((current) => {
+      const selected = current.filter((node) => selectedNodeIds.includes(node.id))
+      if (selected.length < 2) return current
+
+      const minX = Math.min(...selected.map((node) => node.position.x))
+      const minY = Math.min(...selected.map((node) => node.position.y))
+      const columns = Math.ceil(Math.sqrt(selected.length))
+      const xGap = 240
+      const yGap = 160
+
+      const ordered = [...selected].sort(
+        (a, b) => a.position.y - b.position.y || a.position.x - b.position.x,
+      )
+
+      const updated = new Map<string, { x: number; y: number }>()
+      ordered.forEach((node, index) => {
+        const row = Math.floor(index / columns)
+        const col = index % columns
+        updated.set(node.id, {
+          x: minX + col * xGap,
+          y: minY + row * yGap,
+        })
+      })
+
+      return current.map((node) =>
+        updated.has(node.id)
+          ? { ...node, position: updated.get(node.id)! }
+          : node,
+      )
+    })
+    setSelectionMenu(null)
+    markDirty()
+  }, [markDirty, selectedNodeIds, setNodes])
+
+  const duplicateSelection = useCallback(() => {
+    if (selectedNodeIds.length === 0) return
+    const timestamp = Date.now()
+    const idMap = new Map<string, string>()
+
+    setNodes((current) => {
+      const selected = current.filter((node) => selectedNodeIds.includes(node.id))
+      const duplicates = selected.map((node, index) => {
+        const newId = `dup-${node.id}-${timestamp}-${index}`
+        idMap.set(node.id, newId)
+        return {
+          ...node,
+          id: newId,
+          position: {
+            x: node.position.x + 40,
+            y: node.position.y + 40,
+          },
+        }
+      })
+      return [...current, ...duplicates]
+    })
+
+    setEdges((current) => {
+      const duplicatedEdges = current
+        .filter(
+          (edge) =>
+            selectedNodeIds.includes(edge.source) && selectedNodeIds.includes(edge.target),
+        )
+        .map((edge, index) => ({
+          ...edge,
+          id: `dup-edge-${edge.id}-${timestamp}-${index}`,
+          source: idMap.get(edge.source) ?? edge.source,
+          target: idMap.get(edge.target) ?? edge.target,
+        }))
+      return [...current, ...duplicatedEdges]
+    })
+
+    setSelectionMenu(null)
+    markDirty()
+  }, [markDirty, selectedNodeIds, setEdges, setNodes])
 
   const nodeTypes = useMemo(() => ({ flowNode: FlowNode }), [])
 
+  const pushToast = useCallback((message: string) => {
+    const id = Date.now() + Math.random()
+    setToasts((current) => [...current, { id, message }])
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, 3500)
+  }, [])
+
   const addNode = useCallback(
     (template: BlockTemplate & { position?: { x: number; y: number } }) => {
+      const apiHasBlockType =
+        systemBlocks.length === 0 || systemBlocks.some((block) => block.type === template.type)
+      if (!apiHasBlockType) {
+        setSaveStatus(`${template.label} block is not available on this server.`)
+        return
+      }
       if (template.type === 'Start' || template.type === 'End') {
         const exists = nodes.some((node) => node.data.blockType === template.type)
         if (exists) {
@@ -731,29 +1194,45 @@ export default function WorkflowEditorPage() {
       const position = template.position ?? { x: 80 + nodes.length * 40, y: 80 }
       const node = createNode(`${template.type}-${Date.now()}`, template, position, openConfig)
       setNodes((current) => [...current, node])
+      if (template.type === 'Switch') {
+        setSwitchConfigs((current) => ({
+          ...current,
+          [node.id]: { expression: '', cases: [''] },
+        }))
+      }
       setShowPalette(false)
+      setPaletteSearch('')
+      setPaletteCategory('All')
+      markDirty()
     },
-    [nodes, openConfig, setNodes, setSaveStatus],
+    [markDirty, nodes, openConfig, setNodes, setSaveStatus, setSwitchConfigs, systemBlocks],
   )
 
   const status = useMemo(() => {
-    if (loading) return 'Loading workflow...'
-    if (error) return error
+    if (workflowLoading) return 'Loading workflow...'
+    if (error || workflowError) return error ?? workflowError
     if (!workflow) return 'Workflow not found.'
     return ''
-  }, [error, loading, workflow])
+  }, [error, workflow, workflowError, workflowLoading])
 
   const variablesStatus = useMemo(() => {
+    const message = variablesError ?? variablesLocalError
     if (variablesLoading) return 'Loading variables...'
-    if (variablesError) return variablesError
+    if (message) return message
     if (variables.length === 0) return 'No variables yet.'
     return ''
-  }, [variables, variablesError, variablesLoading])
+  }, [variables, variablesError, variablesLocalError, variablesLoading])
 
   const systemBlockMap = useMemo(() => {
     const map = new Map<string, SystemBlock>()
     systemBlocks.forEach((block) => map.set(block.type, block))
     return map
+  }, [systemBlocks])
+
+  const availableTemplates = useMemo(() => {
+    if (systemBlocks.length === 0) return templates
+    const allowed = new Set(systemBlocks.map((block) => block.type))
+    return templates.filter((template) => allowed.has(template.type))
   }, [systemBlocks])
 
   const runDefaults = useMemo(() => {
@@ -768,27 +1247,21 @@ export default function WorkflowEditorPage() {
     event.preventDefault()
     if (!newVariableName.trim() || variablesSaving || !workflow) return
     setVariablesSaving(true)
-    setVariablesError(null)
+    markDirty()
+    setVariablesLocalError(null)
 
     try {
-      const response = await fetch(`${apiBase}/api/WorkflowVariable`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newVariableName.trim(),
-          defaultValue: newVariableDefault.trim() || null,
-          workflowId: workflow.id,
-        }),
+      await createVariableAction({
+        name: newVariableName.trim(),
+        defaultValue: newVariableDefault.trim() || null,
+        workflowId: workflow.id,
       })
-      if (!response.ok) {
-        throw new Error(`Failed to create variable (${response.status})`)
-      }
-      const created = (await response.json()) as WorkflowVariable
-      setVariables((current) => [created, ...current])
       setNewVariableName('')
       setNewVariableDefault('')
     } catch (err) {
-      setVariablesError(err instanceof Error ? err.message : 'Unable to create variable')
+      const message = err instanceof Error ? err.message : 'Unable to create variable'
+      setVariablesLocalError(message)
+      pushToast(message)
     } finally {
       setVariablesSaving(false)
     }
@@ -806,42 +1279,58 @@ export default function WorkflowEditorPage() {
     setEditingVariableDefault('')
   }
 
+  async function persistVariableDrafts() {
+    if (!workflow) return
+
+    // Save in-progress edits
+    if (editingVariableId !== null) {
+      const trimmedName = editingVariableName.trim()
+      if (!trimmedName) {
+        throw new Error('Variable name cannot be empty.')
+      }
+
+      await updateVariableAction({
+        id: editingVariableId,
+        name: trimmedName,
+        defaultValue: editingVariableDefault.trim() || null,
+        workflowId: workflow.id,
+      })
+      cancelVariableEdit()
+    }
+
+    // Save pending new variable
+    if (newVariableName.trim()) {
+      await createVariableAction({
+        name: newVariableName.trim(),
+        defaultValue: newVariableDefault.trim() || null,
+        workflowId: workflow.id,
+      })
+      setNewVariableName('')
+      setNewVariableDefault('')
+    }
+  }
+
   async function updateVariable(event: React.FormEvent) {
     event.preventDefault()
     if (editingVariableId === null || variablesSaving || !workflow) return
     const trimmedName = editingVariableName.trim()
     if (!trimmedName) return
     setVariablesSaving(true)
-    setVariablesError(null)
+    markDirty()
+    setVariablesLocalError(null)
 
     try {
-      const response = await fetch(`${apiBase}/api/WorkflowVariable/${editingVariableId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editingVariableId,
-          name: trimmedName,
-          defaultValue: editingVariableDefault.trim() || null,
-          workflowId: workflow.id,
-        }),
+      await updateVariableAction({
+        id: editingVariableId,
+        name: trimmedName,
+        defaultValue: editingVariableDefault.trim() || null,
+        workflowId: workflow.id,
       })
-      if (!response.ok) {
-        throw new Error(`Failed to update variable (${response.status})`)
-      }
-      setVariables((current) =>
-        current.map((item) =>
-          item.id === editingVariableId
-            ? {
-                ...item,
-                name: trimmedName,
-                defaultValue: editingVariableDefault.trim() || null,
-              }
-            : item,
-        ),
-      )
       cancelVariableEdit()
     } catch (err) {
-      setVariablesError(err instanceof Error ? err.message : 'Unable to update variable')
+      const message = err instanceof Error ? err.message : 'Unable to update variable'
+      setVariablesLocalError(message)
+      pushToast(message)
     } finally {
       setVariablesSaving(false)
     }
@@ -850,21 +1339,18 @@ export default function WorkflowEditorPage() {
   async function deleteVariable(variableId: number) {
     if (variablesSaving) return
     setVariablesSaving(true)
-    setVariablesError(null)
+    markDirty()
+    setVariablesLocalError(null)
 
     try {
-      const response = await fetch(`${apiBase}/api/WorkflowVariable/${variableId}`, {
-        method: 'DELETE',
-      })
-      if (!response.ok) {
-        throw new Error(`Failed to delete variable (${response.status})`)
-      }
-      setVariables((current) => current.filter((item) => item.id !== variableId))
+      await deleteVariableAction(variableId, workflow?.id ?? 0)
       if (editingVariableId === variableId) {
         cancelVariableEdit()
       }
     } catch (err) {
-      setVariablesError(err instanceof Error ? err.message : 'Unable to delete variable')
+      const message = err instanceof Error ? err.message : 'Unable to delete variable'
+      setVariablesLocalError(message)
+      pushToast(message)
     } finally {
       setVariablesSaving(false)
     }
@@ -875,13 +1361,17 @@ export default function WorkflowEditorPage() {
     setShowPalette(false)
     setShowVariables(false)
     setConfigPanel(null)
-    setRunError(null)
+    setRunError(hasUnsavedChanges ? 'Save the workflow before running.' : null)
     setRunResult(null)
     setRunInputs(runDefaults)
   }
 
   async function runWorkflow() {
     if (!workflow || running) return
+    if (hasUnsavedChanges) {
+      setRunError('Save the workflow before running.')
+      return
+    }
     setRunning(true)
     setRunError(null)
     setRunResult(null)
@@ -903,7 +1393,9 @@ export default function WorkflowEditorPage() {
       }
       setRunResult(normalized)
     } catch (err) {
-      setRunError(err instanceof Error ? err.message : 'Unable to run workflow')
+      const message = err instanceof Error ? err.message : 'Unable to run workflow'
+      setRunError(message)
+      pushToast(message)
     } finally {
       setRunning(false)
     }
@@ -916,6 +1408,8 @@ export default function WorkflowEditorPage() {
     setError(null)
 
     try {
+      await persistVariableDrafts()
+
       console.debug('[Flowforge] Saving workflow', workflow.id)
       const graphResponse = await fetch(`${apiBase}/api/Workflow/${workflow.id}/graph`)
       if (!graphResponse.ok) {
@@ -982,6 +1476,19 @@ export default function WorkflowEditorPage() {
         setSaveStatus('Only one Start/End block is saved. Extra blocks were skipped.')
       }
 
+      // Ensure Switch blocks have at least one case value
+      for (const node of nodesToSave) {
+        if (node.data.blockType === 'Switch') {
+          const cases = normalizeSwitchCases(switchConfigs[node.id]?.cases)
+          const nonEmptyCases = cases.map((value) => value.trim()).filter((value) => value.length > 0)
+          if (nonEmptyCases.length === 0) {
+            setError(`Switch "${node.data.label}" requires at least one case value.`)
+            setSaving(false)
+            return
+          }
+        }
+      }
+
       let resolvedSystemBlocks = systemBlockMap
       const missingTypes = nodesToSave
         .map((node) => node.data.blockType)
@@ -1004,7 +1511,9 @@ export default function WorkflowEditorPage() {
         const blockType = node.data.blockType
         const systemBlock = resolvedSystemBlocks.get(blockType)
         if (!systemBlock) {
-          throw new Error(`Missing system block for type "${blockType}"`)
+          throw new Error(
+            `Missing system block for type "${blockType}". Ensure the API has this SystemBlock (run migrations/seed).`,
+          )
         }
 
         let jsonConfig: string | null = null
@@ -1016,6 +1525,29 @@ export default function WorkflowEditorPage() {
               FirstVariable: config.firstVariable,
               SecondVariable: config.secondVariable,
               ResultVariable: config.resultVariable,
+            })
+          }
+        }
+
+        if (blockType === 'If') {
+          const config = ifConfigs[node.id]
+          if (config) {
+            jsonConfig = JSON.stringify({
+              DataType: config.dataType,
+              First: config.first,
+              Second: config.second,
+            })
+          }
+        }
+
+        if (blockType === 'Switch') {
+          const config = switchConfigs[node.id]
+          if (config) {
+            const cases = normalizeSwitchCases(config.cases)
+            const trimmedCases = cases.map((value) => value.trim()).filter((value) => value.length > 0)
+            jsonConfig = JSON.stringify({
+              Expression: config.expression,
+              Cases: trimmedCases,
             })
           }
         }
@@ -1056,13 +1588,44 @@ export default function WorkflowEditorPage() {
         if (!sourceId || !targetId) {
           continue
         }
+        const sourceNode = nodesToSave.find((node) => nodeMap.get(node.id) === sourceId)
+        let connectionType: 'Success' | 'Error' = 'Success'
+        if (sourceNode?.data.blockType === 'If') {
+          if (edge.sourceHandle === 'error') {
+            connectionType = 'Error'
+          } else if (edge.sourceHandle === 'success') {
+            connectionType = 'Success'
+          } else {
+            // Fallback: order by appearance if handles missing
+            const outgoingEdges = edges.filter((item) => item.source === sourceNode.id)
+            const sorted = outgoingEdges
+              .map((item, index) => ({ item, index }))
+              .sort(
+                (a, b) =>
+                  (a.item.sourceHandle ?? '').localeCompare(b.item.sourceHandle ?? '') ||
+                  a.index - b.index,
+              )
+            const index = sorted.findIndex(
+              (entry) =>
+                entry.item.id === edge.id ||
+                (entry.item.source === edge.source && entry.item.target === edge.target),
+            )
+            connectionType = index === 1 ? 'Error' : 'Success'
+          }
+        }
         const response = await fetch(`${apiBase}/api/BlockConnection`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sourceBlockId: sourceId,
             targetBlockId: targetId,
-            connectionType: 'Success',
+            connectionType,
+            label:
+              edge.data && 'caseValue' in edge.data && edge.data.caseValue !== undefined
+                ? edge.data.caseValue
+                : edge.data && 'label' in edge.data
+                  ? edge.data.label
+                  : edge.label,
           }),
         })
         if (!response.ok) {
@@ -1080,9 +1643,13 @@ export default function WorkflowEditorPage() {
         console.debug('[Flowforge] Saved connection', { sourceId, targetId })
       }
 
+      await loadVariables(workflow.id)
+      setHasUnsavedChanges(false)
       setSaveStatus('Saved')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to save workflow')
+      const message = err instanceof Error ? err.message : 'Unable to save workflow'
+      setError(message)
+      pushToast(message)
     } finally {
       setSaving(false)
     }
@@ -1099,15 +1666,57 @@ export default function WorkflowEditorPage() {
           <p className="subtitle">Design blocks and connections with React Flow.</p>
         </div>
         <div className="editor-actions">
+          <button
+            type="button"
+            className="icon-button"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? (
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path
+                  d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path
+                  d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+          </button>
+          {/*
+            Run should only be available when the workflow is saved.
+            A title hint helps explain why it might be disabled.
+          */}
           <button type="button" className="ghost" onClick={() => setShowPalette((open) => !open)}>
             {showPalette ? 'Close palette' : 'Add block'}
           </button>
-          <button type="button" onClick={saveWorkflow} disabled={saving || loading}>
+          <button type="button" onClick={saveWorkflow} disabled={saving || workflowLoading}>
             {saving ? 'Saving...' : 'Save'}
           </button>
-          <button type="button" className="pill" onClick={openRunPanel} disabled={loading}>
-            Run
-          </button>
+          <span
+            style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+          >
+            <button
+              type="button"
+              className="pill"
+              onClick={openRunPanel}
+              disabled={workflowLoading || saving}
+            >
+              Run
+            </button>
+          </span>
           {saveStatus && <span className="hint">{saveStatus}</span>}
         </div>
       </header>
@@ -1126,14 +1735,87 @@ export default function WorkflowEditorPage() {
               onEdgeClick={onEdgeClick}
               onNodeClick={onNodeClick}
               onNodeContextMenu={onNodeContextMenu}
+              onSelectionChange={onSelectionChange}
+              onSelectionContextMenu={onSelectionContextMenu}
               onPaneClick={closeEdgeMenu}
+              onPaneContextMenu={onPaneContextMenu}
               nodeTypes={nodeTypes}
+              snapToGrid={snapToGrid}
+              snapGrid={[16, 16]}
               fitView
+              proOptions={{ hideAttribution: true }}
             >
               <Background gap={18} color="#d9ddd3" />
-              <Controls position="bottom-right" />
-              <MiniMap position="bottom-left" />
+              <MiniMap
+                position="bottom-left"
+                style={{ background: 'var(--canvas-bg)' }}
+                nodeColor={() => 'var(--card)'}
+                nodeStrokeColor={() => 'var(--border-soft)'}
+                maskColor={theme === 'dark' ? 'rgba(13, 17, 23, 0.65)' : 'rgba(255, 255, 255, 0.6)'}
+              />
             </ReactFlow>
+            <div className="canvas-controls">
+              <div className="control-group">
+                <span className="control-label">Zoom</span>
+                <span className="control-chip">{Math.round(zoom * 100)}%</span>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => zoomOut({ duration: 200 })}
+                  aria-label="Zoom out"
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                    <path
+                      d="M6 12h12"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => zoomIn({ duration: 200 })}
+                  aria-label="Zoom in"
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                    <path
+                      d="M12 6v12M6 12h12"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => fitView({ padding: 0.2, duration: 220 })}
+                  aria-label="Fit to view"
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                    <path
+                      d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="control-group">
+                <span className="control-label">Grid</span>
+                <button
+                  type="button"
+                  className={`control-chip control-chip--toggle ${snapToGrid ? 'active' : ''}`}
+                  onClick={() => setSnapToGrid((enabled) => !enabled)}
+                >
+                  {snapToGrid ? 'Snap on' : 'Snap off'}
+                </button>
+              </div>
+            </div>
             <div className="canvas-toolbar">
               <button type="button" onClick={() => setShowPalette((open) => !open)}>
                 {showPalette ? 'Hide blocks' : 'Add block'}
@@ -1141,8 +1823,13 @@ export default function WorkflowEditorPage() {
               <button type="button" className="ghost" onClick={toggleVariables}>
                 {showVariables ? 'Hide variables' : 'Variables'}
               </button>
-              <button type="button" className="ghost">
-                Clear
+              <button
+                type="button"
+                className="ghost"
+                onClick={distributeSelection}
+                disabled={selectedNodeIds.length < 2}
+              >
+                Distribute
               </button>
               {pendingSelection && (
                 <span className="hint">Select another node to connect...</span>
@@ -1151,9 +1838,43 @@ export default function WorkflowEditorPage() {
           </div>
 
           {showPalette && (
-            <div className="palette-tooltip">
-              <NodeCreator onCreate={addNode} />
-            </div>
+            <>
+              <div
+                className="drawer-backdrop"
+                onClick={() => {
+                  setShowPalette(false)
+                  setPaletteSearch('')
+                  setPaletteCategory('All')
+                }}
+              />
+              <aside className="variables-drawer blocks-drawer">
+                <div className="palette-header">
+                  <div>
+                    <p className="palette-title">Blocks</p>
+                    <span className="palette-subtitle">Add blocks anywhere on the canvas.</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      setShowPalette(false)
+                      setPaletteSearch('')
+                      setPaletteCategory('All')
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+                <NodeCreator
+                  onCreate={addNode}
+                  search={paletteSearch}
+                  onSearchChange={setPaletteSearch}
+                  category={paletteCategory}
+                  onCategoryChange={setPaletteCategory}
+                  availableTemplates={availableTemplates}
+                />
+              </aside>
+            </>
           )}
 
           {showVariables && (
@@ -1194,7 +1915,10 @@ export default function WorkflowEditorPage() {
                       type="text"
                       placeholder="e.g. total"
                       value={newVariableName}
-                      onChange={(event) => setNewVariableName(event.target.value)}
+                      onChange={(event) => {
+                        setNewVariableName(event.target.value)
+                        markDirty()
+                      }}
                     />
                     <label className="drawer-label" htmlFor="var-default">
                       <span className="label-icon">
@@ -1214,7 +1938,10 @@ export default function WorkflowEditorPage() {
                       type="text"
                       placeholder="Optional"
                       value={newVariableDefault}
-                      onChange={(event) => setNewVariableDefault(event.target.value)}
+                      onChange={(event) => {
+                        setNewVariableDefault(event.target.value)
+                        markDirty()
+                      }}
                     />
                     <button type="submit" disabled={!newVariableName.trim() || variablesSaving}>
                       Add variable
@@ -1248,11 +1975,14 @@ export default function WorkflowEditorPage() {
                               </span>
                               Name
                             </label>
-                            <input
+                              <input
                               id={`edit-name-${variable.id}`}
                               type="text"
                               value={editingVariableName}
-                              onChange={(event) => setEditingVariableName(event.target.value)}
+                              onChange={(event) => {
+                                setEditingVariableName(event.target.value)
+                                markDirty()
+                              }}
                             />
                             <label className="drawer-label" htmlFor={`edit-default-${variable.id}`}>
                               <span className="label-icon">
@@ -1271,7 +2001,10 @@ export default function WorkflowEditorPage() {
                               id={`edit-default-${variable.id}`}
                               type="text"
                               value={editingVariableDefault}
-                              onChange={(event) => setEditingVariableDefault(event.target.value)}
+                              onChange={(event) => {
+                                setEditingVariableDefault(event.target.value)
+                                markDirty()
+                              }}
                               placeholder="Optional"
                             />
                               <div className="card-actions">
@@ -1337,6 +2070,53 @@ export default function WorkflowEditorPage() {
               <p className="edge-menu-title">Block</p>
               <button type="button" className="danger" onClick={deleteNode}>
                 Delete block
+              </button>
+              <button type="button" className="ghost" onClick={closeEdgeMenu}>
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {selectionMenu && (
+            <div
+              className="edge-menu"
+              style={{ left: selectionMenu.x, top: selectionMenu.y }}
+            >
+              <p className="edge-menu-title">
+                Selection ({selectedNodeIds.length})
+              </p>
+              <button type="button" onClick={distributeSelection}>
+                Distribute
+              </button>
+              <button type="button" onClick={duplicateSelection}>
+                Duplicate selected
+              </button>
+              <button type="button" className="danger" onClick={deleteSelection}>
+                Delete selected
+              </button>
+              <button type="button" className="ghost" onClick={closeEdgeMenu}>
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {canvasMenu && (
+            <div
+              className="edge-menu"
+              style={{ left: canvasMenu.x, top: canvasMenu.y }}
+            >
+              <p className="edge-menu-title">Canvas</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPalette(true)
+                  setCanvasMenu(null)
+                }}
+              >
+                Add block
+              </button>
+              <button type="button" onClick={selectAllNodes}>
+                Select all
               </button>
               <button type="button" className="ghost" onClick={closeEdgeMenu}>
                 Cancel
@@ -1413,6 +2193,7 @@ export default function WorkflowEditorPage() {
                           }
                         : current,
                     )
+                    markDirty()
                   }}
                 />
 
@@ -1445,6 +2226,7 @@ export default function WorkflowEditorPage() {
                         variables: current[configPanel.id]?.variables ?? '',
                       },
                     }))
+                    markDirty()
                   }}
                 >
                   <option value="manual">Manual</option>
@@ -1483,10 +2265,226 @@ export default function WorkflowEditorPage() {
                         variables: value,
                       },
                     }))
+                    markDirty()
                   }}
                 />
                 <p className="muted">
                   This configuration is local-only for now.
+                </p>
+              </form>
+            ) : configPanel.blockType === 'If' ? (
+              <form className="drawer-form">
+                <label htmlFor="if-first" className="drawer-label">
+                  <span className="label-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M5 7h14M5 12h14M5 17h10"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </span>
+                  First value
+                </label>
+                <VariableSelect
+                  id="if-first"
+                  label=""
+                  placeholder="Variable (e.g. amount) or literal"
+                  value={ifConfigs[configPanel.id]?.first ?? ''}
+                  options={variables.map((variable) => `$${variable.name}`)}
+                  onValueChange={(value) => {
+                    setIfConfigs((current) => ({
+                      ...current,
+                      [configPanel.id]: {
+                        dataType: current[configPanel.id]?.dataType ?? 'String',
+                        first: value,
+                        second: current[configPanel.id]?.second ?? '',
+                      },
+                    }))
+                    markDirty()
+                  }}
+                />
+
+                <label htmlFor="if-second" className="drawer-label">
+                  <span className="label-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M5 7h14M5 12h14M5 17h10"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </span>
+                  Second value
+                </label>
+                <VariableSelect
+                  id="if-second"
+                  label=""
+                  placeholder="Variable (e.g. total) or literal"
+                  value={ifConfigs[configPanel.id]?.second ?? ''}
+                  options={variables.map((variable) => `$${variable.name}`)}
+                  onValueChange={(value) => {
+                    setIfConfigs((current) => ({
+                      ...current,
+                      [configPanel.id]: {
+                        dataType: current[configPanel.id]?.dataType ?? 'String',
+                        first: current[configPanel.id]?.first ?? '',
+                        second: value,
+                      },
+                    }))
+                    markDirty()
+                  }}
+                />
+
+                <label htmlFor="if-type" className="drawer-label">
+                  <span className="label-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M12 4v16M4 12h16"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </span>
+                  Compare as
+                </label>
+                <select
+                  id="if-type"
+                  value={ifConfigs[configPanel.id]?.dataType ?? 'String'}
+                  onChange={(event) => {
+                    const value = event.target.value as IfConfig['dataType']
+                    setIfConfigs((current) => ({
+                      ...current,
+                      [configPanel.id]: {
+                        dataType: value,
+                        first: current[configPanel.id]?.first ?? '',
+                        second: current[configPanel.id]?.second ?? '',
+                      },
+                    }))
+                    markDirty()
+                  }}
+                >
+                  <option value="String">String</option>
+                  <option value="Number">Number</option>
+                </select>
+                <p className="muted">
+                  If evaluates to true, the first outgoing edge is taken; otherwise the second (error) edge.
+                </p>
+              </form>
+            ) : configPanel.blockType === 'Switch' ? (
+              <form className="drawer-form">
+                {/*
+                  Show at least one empty row for quick entry; state keeps [] until user types.
+                */}
+                <VariableSelect
+                  id="switch-expression"
+                  label="Expression / variable"
+                  placeholder="$variable or literal"
+                  value={switchConfigs[configPanel.id]?.expression ?? ''}
+                  options={variables.map((variable) => `$${variable.name}`)}
+                  onValueChange={(value) => {
+                    setSwitchConfigs((current) => ({
+                      ...current,
+                      [configPanel.id]: {
+                        expression: value,
+                        cases: normalizeSwitchCases(current[configPanel.id]?.cases),
+                      },
+                    }))
+                    markDirty()
+                  }}
+                />
+
+                <label className="drawer-label">
+                  <span className="label-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M7 7h10M7 12h10M7 17h6"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </span>
+                  Cases
+                </label>
+                {(switchConfigs[configPanel.id]?.cases ?? ['']).map((caseValue, idx) => (
+                  <div key={idx} className="combo">
+                    <div className="combo-input">
+                      <input
+                        type="text"
+                        placeholder="Value (e.g. pending)"
+                        value={caseValue}
+                        onChange={(event) => {
+                          const value = event.target.value
+                          setSwitchConfigs((current) => {
+                            const currentCases = normalizeSwitchCases(
+                              current[configPanel.id]?.cases,
+                            )
+                            const nextCases = [...currentCases]
+                            nextCases[idx] = value
+                            return {
+                              ...current,
+                              [configPanel.id]: {
+                                expression: current[configPanel.id]?.expression ?? '',
+                                cases: nextCases,
+                              },
+                            }
+                          })
+                          markDirty()
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => {
+                          setSwitchConfigs((current) => {
+                            const currentCases = normalizeSwitchCases(
+                              current[configPanel.id]?.cases,
+                            )
+                            const nextCases =
+                              currentCases.length <= 1
+                                ? ['']
+                                : currentCases.filter((_, i) => i !== idx)
+                            return {
+                              ...current,
+                              [configPanel.id]: {
+                                expression: current[configPanel.id]?.expression ?? '',
+                                cases: nextCases,
+                              },
+                            }
+                          })
+                          markDirty()
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    setSwitchConfigs((current) => {
+                      const nextCases = [...normalizeSwitchCases(current[configPanel.id]?.cases), '']
+                      return {
+                        ...current,
+                        [configPanel.id]: {
+                          expression: current[configPanel.id]?.expression ?? '',
+                          cases: nextCases,
+                        },
+                      }
+                    })
+                    markDirty()
+                  }}
+                >
+                  Add case
+                </button>
+                <p className="muted">
+                  Switch routes by matching case values to connection labels. Leave a connection label empty to use it as default.
                 </p>
               </form>
             ) : configPanel.blockType === 'Calculation' ? (
@@ -1518,6 +2516,7 @@ export default function WorkflowEditorPage() {
                         resultVariable: current[configPanel.id]?.resultVariable ?? '',
                       },
                     }))
+                    markDirty()
                   }}
                 >
                   <option value="Add">Add</option>
@@ -1543,6 +2542,7 @@ export default function WorkflowEditorPage() {
                         resultVariable: current[configPanel.id]?.resultVariable ?? '',
                       },
                     }))
+                    markDirty()
                   }}
                 />
 
@@ -1562,6 +2562,7 @@ export default function WorkflowEditorPage() {
                         resultVariable: current[configPanel.id]?.resultVariable ?? '',
                       },
                     }))
+                    markDirty()
                   }}
                 />
 
@@ -1581,6 +2582,7 @@ export default function WorkflowEditorPage() {
                         resultVariable: value,
                       },
                     }))
+                    markDirty()
                   }}
                 />
                 <p className="muted">
@@ -1608,53 +2610,152 @@ export default function WorkflowEditorPage() {
               <button type="button" className="ghost" onClick={() => setRunOpen(false)}>
                 Close
               </button>
-            </div>
+              </div>
 
             <section className="variables-section">
-              <div className="section-header">
-                <p className="section-title">Inputs</p>
-                <span className="section-subtitle">{variables.length} variables</span>
-              </div>
-              <form className="drawer-form" onSubmit={(event) => {
-                event.preventDefault()
-                runWorkflow()
-              }}>
-                {variables.length === 0 && (
-                  <p className="muted">No workflow variables defined.</p>
-                )}
-                {variables.map((variable) => (
-                  <div key={variable.id} className="combo">
-                    <label className="drawer-label" htmlFor={`run-${variable.id}`}>
-                      <span className="label-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M5 7h14M5 12h9M5 17h11"
-                            stroke="currentColor"
-                            strokeWidth="1.6"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </span>
-                      {variable.name}
-                    </label>
-                    <input
-                      id={`run-${variable.id}`}
-                      type="text"
-                      value={runInputs[variable.name] ?? ''}
-                      onChange={(event) => {
-                        const value = event.target.value
-                        setRunInputs((current) => ({
-                          ...current,
-                          [variable.name]: value,
-                        }))
-                      }}
+              <div className="section-toggle" style={{ marginBottom: showRunSnippet ? 8 : 0 }}>
+                <div className="section-toggle__meta">
+                  <span className="section-title">API snippet</span>
+                  <span className="section-subtitle">HTTP call template</span>
+                </div>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setShowRunSnippet((open) => !open)}
+                  aria-label={showRunSnippet ? 'Collapse snippet' : 'Expand snippet'}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="18"
+                    height="18"
+                    style={{
+                      transform: showRunSnippet ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.15s ease',
+                    }}
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     />
-                  </div>
-                ))}
-                <button type="submit" disabled={running}>
-                  {running ? 'Running...' : 'Run workflow'}
+                  </svg>
                 </button>
-              </form>
+              </div>
+              {showRunSnippet && (
+                <div className="variables-section" style={{ gap: 8 }}>
+                  <p className="muted">
+                    1) Replace <code>&lt;API_BASE&gt;</code> with your backend URL.<br />
+                    2) Fill variable values in the JSON body.<br />
+                    3) Run in terminal (curl) or any HTTP client (Postman).
+                  </p>
+                  <div className="code-card">
+                    <div className="code-card__header">
+                      <span>curl</span>
+                      <span className="muted">HTTP POST</span>
+                    </div>
+<pre className="code-block">{`curl -X POST \\
+  "<API_BASE>/api/Workflow/${workflow?.id ?? 'ID'}/run" \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(
+    variables.reduce<Record<string, string>>((acc, variable) => {
+      acc[variable.name] = variable.defaultValue ?? ''
+      return acc
+    }, {}),
+    null,
+    2,
+  )}'`}</pre>
+                  </div>
+                  <p className="muted">
+                    Response returns execution id, path, actions, and output variables as JSON.
+                  </p>
+                </div>
+              )}
+
+              <div className="section-header">
+                <div className="section-toggle">
+                  <div className="section-toggle__meta">
+                    <span className="section-title">Inputs</span>
+                    <span className="section-subtitle">{variables.length} variables</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => setShowRunInputs((open) => !open)}
+                    aria-label={showRunInputs ? 'Collapse inputs' : 'Expand inputs'}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      style={{
+                        transform: showRunInputs ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.15s ease',
+                      }}
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              {showRunInputs && (
+                <form className="drawer-form" onSubmit={(event) => {
+                  event.preventDefault()
+                  runWorkflow()
+                }}>
+                  {variables.length === 0 && (
+                    <p className="muted">No workflow variables defined.</p>
+                  )}
+                  {variables.map((variable) => (
+                    <div key={variable.id} className="combo">
+                      <label className="drawer-label" htmlFor={`run-${variable.id}`}>
+                        <span className="label-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                              d="M5 7h14M5 12h9M5 17h11"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        {variable.name}
+                      </label>
+                      <input
+                        id={`run-${variable.id}`}
+                        type="text"
+                        value={runInputs[variable.name] ?? ''}
+                        onChange={(event) => {
+                          const value = event.target.value
+                          setRunInputs((current) => ({
+                            ...current,
+                            [variable.name]: value,
+                          }))
+                        }}
+                      />
+                    </div>
+                  ))}
+                </form>
+              )}
+              <button
+                type="button"
+                disabled={running}
+                onClick={runWorkflow}
+                style={{ marginTop: 10 }}
+              >
+                {running ? 'Running...' : 'Run workflow'}
+              </button>
               {runError && <p className="muted">{runError}</p>}
             </section>
 
@@ -1693,6 +2794,45 @@ export default function WorkflowEditorPage() {
           </aside>
         </>
       )}
+      {toasts.length > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            right: 16,
+            bottom: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            zIndex: 9999,
+          }}
+          aria-live="polite"
+        >
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              style={{
+                background: '#2d2f36',
+                color: '#fff',
+                padding: '10px 12px',
+                borderRadius: 6,
+                boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                fontSize: 14,
+                maxWidth: 320,
+              }}
+            >
+              {toast.message}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
+  )
+}
+
+export default function WorkflowEditorPage() {
+  return (
+    <ReactFlowProvider>
+      <WorkflowEditorInner />
+    </ReactFlowProvider>
   )
 }

@@ -53,6 +53,9 @@ public class FlowforgeDbContext : DbContext
         modelBuilder.Entity<BlockConnection>()
             .Property(bc => bc.ConnectionType)
             .HasConversion<string>();
+        modelBuilder.Entity<BlockConnection>()
+            .Property(bc => bc.Label)
+            .HasMaxLength(120);
 
         // Workflow 1:N WorkflowVariable
         modelBuilder.Entity<WorkflowVariable>()
@@ -80,7 +83,8 @@ public class FlowforgeDbContext : DbContext
             new SystemBlock { Id = 1, Type = "Start", Description = "Blok początkowy" },
             new SystemBlock { Id = 2, Type = "End", Description = "Blok końcowy" },
             new SystemBlock { Id = 3, Type = "Calculation", Description = "Blok kalkulacji" },
-            new SystemBlock { Id = 4, Type = "If", Description = "Blok warunkowy" }
+            new SystemBlock { Id = 4, Type = "If", Description = "Blok warunkowy" },
+            new SystemBlock { Id = 5, Type = "Switch", Description = "Blok wielościeżkowy (case)" }
         );
     }
 }

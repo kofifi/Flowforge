@@ -1,5 +1,6 @@
 using Flowforge.Models;
 using Flowforge.Repositories;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -37,8 +38,10 @@ public class WorkflowExecutionService : IWorkflowExecutionService
 
     public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null)
     {
+    // Handle duplicate variable names by grouping and taking the last defined value (case-insensitive).
     var variables = workflow.WorkflowVariables
-        .ToDictionary(v => v.Name, v => v.DefaultValue ?? string.Empty);
+        .GroupBy(v => v.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(g => g.Key, g => g.Last().DefaultValue ?? string.Empty, StringComparer.OrdinalIgnoreCase);
     var path = new List<string>();
     var actions = new List<string>();
 
@@ -78,9 +81,35 @@ public class WorkflowExecutionService : IWorkflowExecutionService
 
         // Wybierz połączenia w zależności od błędu
         var nextConnections = current.SourceConnections
-            ?.Where(c => c.ConnectionType == (error ? ConnectionType.Error : ConnectionType.Success));
+            ?.Where(c => c.ConnectionType == (error ? ConnectionType.Error : ConnectionType.Success))
+            .ToList();
 
-        if (nextConnections != null)
+        if (current.SystemBlock?.Type == "Switch" && nextConnections != null)
+        {
+            var config = string.IsNullOrEmpty(current.JsonConfig)
+                ? null
+                : System.Text.Json.JsonSerializer.Deserialize<SwitchConfig>(current.JsonConfig);
+
+            var resolved = string.Empty;
+            if (config != null && !string.IsNullOrWhiteSpace(config.Expression))
+            {
+                resolved = config.Expression.StartsWith("$")
+                    ? variables.GetValueOrDefault(config.Expression.Substring(1), string.Empty)
+                    : config.Expression;
+            }
+
+            var matched = nextConnections.FirstOrDefault(c =>
+                !string.IsNullOrWhiteSpace(c.Label) &&
+                string.Equals(c.Label, resolved, System.StringComparison.OrdinalIgnoreCase));
+
+            var connectionToUse = matched ?? nextConnections.FirstOrDefault(c => string.IsNullOrWhiteSpace(c.Label));
+
+            if (connectionToUse?.TargetBlock != null)
+            {
+                queue.Enqueue((connectionToUse.TargetBlock, new HashSet<int>(pathVisited)));
+            }
+        }
+        else if (nextConnections != null)
         {
             foreach (var conn in nextConnections)
             {

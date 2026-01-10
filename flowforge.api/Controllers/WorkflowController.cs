@@ -70,7 +70,8 @@ public class WorkflowController : ControllerBase
                 Id = c.Id,
                 SourceBlockId = c.SourceBlockId,
                 TargetBlockId = c.TargetBlockId,
-                ConnectionType = c.ConnectionType.ToString()
+                ConnectionType = c.ConnectionType.ToString(),
+                Label = c.Label
             }).ToList()
         };
 
