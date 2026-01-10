@@ -975,6 +975,17 @@
   padding-right: 2.2rem;
 }
 
+.combo-input--with-action input {
+  padding-right: 5.4rem;
+}
+
+.combo-action {
+  position: absolute;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .combo-icon {
   position: absolute;
   right: 0.8rem;

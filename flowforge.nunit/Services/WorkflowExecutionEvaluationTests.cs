@@ -26,6 +26,7 @@ public class WorkflowExecutionEvaluationTests
         {
             new CalculationBlockExecutor(),
             new ConditionBlockExecutor(),
+            new SwitchBlockExecutor(),
             new DefaultBlockExecutor()
         };
         _service = new WorkflowExecutionService(_repoMock.Object, executors);
@@ -125,6 +126,39 @@ public class WorkflowExecutionEvaluationTests
         Assert.That(result.Path!.Last(), Is.EqualTo("EndFalse"));
     }
 
+    [Test]
+    public async Task EvaluateAsync_SwitchRoutesByLabel()
+    {
+        var workflow = BuildSwitchWorkflow("2", "1", "2");
+
+        var result = await _service.EvaluateAsync(workflow);
+
+        Assert.That(result.Path, Is.Not.Null);
+        Assert.That(result.Path!.Last(), Is.EqualTo("EndTwo"));
+    }
+
+    [Test]
+    public async Task EvaluateAsync_SwitchRoutesWithDisplayLabel()
+    {
+        var workflow = BuildSwitchWorkflow("2", "1", "#1 · 2");
+
+        var result = await _service.EvaluateAsync(workflow);
+
+        Assert.That(result.Path, Is.Not.Null);
+        Assert.That(result.Path!.Last(), Is.EqualTo("EndTwo"));
+    }
+
+    [Test]
+    public async Task EvaluateAsync_SwitchRoutesWithVariableCaseLabel()
+    {
+        var workflow = BuildSwitchWorkflow("2", "$switchValue1", "3", switchValue1: "2");
+
+        var result = await _service.EvaluateAsync(workflow);
+
+        Assert.That(result.Path, Is.Not.Null);
+        Assert.That(result.Path!.Last(), Is.EqualTo("EndOne"));
+    }
+
     private static Workflow BuildWorkflow(
         CalculationOperation operation = CalculationOperation.Add,
         string firstDefault = "2",
@@ -210,6 +244,50 @@ public class WorkflowExecutionEvaluationTests
 
         workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 1, Name = "A", DefaultValue = "5", Workflow = workflow, WorkflowId = 1 });
         workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 2, Name = "B", DefaultValue = equal ? "5" : "3", Workflow = workflow, WorkflowId = 1 });
+
+        return workflow;
+    }
+
+    private static Workflow BuildSwitchWorkflow(string choice, string labelOne, string labelTwo, string? switchValue1 = null)
+    {
+        var startSb = new SystemBlock { Id = 1, Type = "Start" };
+        var switchSb = new SystemBlock { Id = 5, Type = "Switch" };
+        var endSb1 = new SystemBlock { Id = 2, Type = "End" };
+        var endSb2 = new SystemBlock { Id = 3, Type = "End" };
+
+        var workflow = new Workflow { Id = 1, Name = "wf" };
+
+        var start = new Block { Id = 1, Workflow = workflow, WorkflowId = 1, SystemBlock = startSb, SystemBlockId = 1 };
+        var switchBlock = new Block
+        {
+            Id = 2,
+            Workflow = workflow,
+            WorkflowId = 1,
+            SystemBlock = switchSb,
+            SystemBlockId = 5,
+            JsonConfig = JsonSerializer.Serialize(new SwitchConfig
+            {
+                Expression = "$choice",
+                Cases = new List<string> { "1", "2" }
+            })
+        };
+        var endOne = new Block { Id = 3, Workflow = workflow, WorkflowId = 1, SystemBlock = endSb1, SystemBlockId = 2, Name = "EndOne" };
+        var endTwo = new Block { Id = 4, Workflow = workflow, WorkflowId = 1, SystemBlock = endSb2, SystemBlockId = 3, Name = "EndTwo" };
+
+        start.SourceConnections.Add(new BlockConnection { SourceBlock = start, TargetBlock = switchBlock });
+        switchBlock.SourceConnections.Add(new BlockConnection { SourceBlock = switchBlock, TargetBlock = endOne, Label = labelOne });
+        switchBlock.SourceConnections.Add(new BlockConnection { SourceBlock = switchBlock, TargetBlock = endTwo, Label = labelTwo });
+
+        workflow.Blocks.Add(start);
+        workflow.Blocks.Add(switchBlock);
+        workflow.Blocks.Add(endOne);
+        workflow.Blocks.Add(endTwo);
+
+        workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 1, Name = "choice", DefaultValue = choice, Workflow = workflow, WorkflowId = 1 });
+        if (switchValue1 != null)
+        {
+            workflow.WorkflowVariables.Add(new WorkflowVariable { Id = 2, Name = "switchValue1", DefaultValue = switchValue1, Workflow = workflow, WorkflowId = 1 });
+        }
 
         return workflow;
     }

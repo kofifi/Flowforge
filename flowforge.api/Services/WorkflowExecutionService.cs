@@ -98,9 +98,45 @@ public class WorkflowExecutionService : IWorkflowExecutionService
                     : config.Expression;
             }
 
+            static string NormalizeSwitchLabel(string? value)
+            {
+                if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+                var trimmed = value.Trim();
+                if (trimmed.StartsWith("#", StringComparison.Ordinal))
+                {
+                    var index = 1;
+                    while (index < trimmed.Length && char.IsDigit(trimmed[index]))
+                    {
+                        index++;
+                    }
+                    if (index > 1)
+                    {
+                        if (index < trimmed.Length && trimmed[index] == '·')
+                        {
+                            index++;
+                        }
+                        trimmed = trimmed.Substring(index).TrimStart();
+                    }
+                }
+                return trimmed;
+            }
+
+            static string ResolveSwitchLabel(string? value, IDictionary<string, string> vars)
+            {
+                var normalized = NormalizeSwitchLabel(value);
+                if (normalized.StartsWith("$", StringComparison.Ordinal))
+                {
+                    var key = normalized.Substring(1);
+                    return vars.TryGetValue(key, out var v) ? v : string.Empty;
+                }
+                return normalized;
+            }
+
+            var resolvedNormalized = ResolveSwitchLabel(resolved, variables);
+
             var matched = nextConnections.FirstOrDefault(c =>
                 !string.IsNullOrWhiteSpace(c.Label) &&
-                string.Equals(c.Label, resolved, System.StringComparison.OrdinalIgnoreCase));
+                string.Equals(ResolveSwitchLabel(c.Label, variables), resolvedNormalized, System.StringComparison.OrdinalIgnoreCase));
 
             var connectionToUse = matched ?? nextConnections.FirstOrDefault(c => string.IsNullOrWhiteSpace(c.Label));
 

@@ -113,6 +113,17 @@ function normalizeSwitchCases(values: unknown): string[] {
   return cleaned.length === 0 ? [''] : cleaned
 }
 
+function normalizeVariableName(value: string): string {
+  const trimmed = value.trim()
+  return trimmed.startsWith('$') ? trimmed.slice(1) : trimmed
+}
+
+function formatVariableDisplay(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  return trimmed.startsWith('$') ? trimmed : `$${trimmed}`
+}
+
 type ToastMessage = {
   id: number
   message: string
@@ -140,7 +151,7 @@ function FlowNode({ data, id }: NodeProps<NodeData>) {
   const isSwitch = data.blockType === 'Switch'
   const displayDescription = isSwitch ? 'Route by case labels.' : data.description
   const switchCases = data.switchCases ?? ['']
-  const switchHandleCount = switchCases.length
+  const switchHandleCount = switchCases.length + 1
   const switchHandleStartPx = 80
   const switchHandleSpacingPx = 22
   const switchHeight = isSwitch
@@ -183,7 +194,7 @@ function FlowNode({ data, id }: NodeProps<NodeData>) {
           type="target"
           position={Position.Left}
           style={{
-            left: -8,
+            left: -14,
             ...handleBaseStyle,
           }}
         />
@@ -216,6 +227,7 @@ function FlowNode({ data, id }: NodeProps<NodeData>) {
         <>
           {isSwitch ? (
             Array.from({ length: switchHandleCount }).map((_, index) => {
+              const isDefault = index === switchHandleCount - 1
               const topPx = switchHandleStartPx + switchHandleSpacingPx * index
               return (
                 <Fragment key={`switch-case-${index}`}>
@@ -231,12 +243,12 @@ function FlowNode({ data, id }: NodeProps<NodeData>) {
                       pointerEvents: 'none',
                     }}
                   >
-                    {index + 1}
+                    {isDefault ? 'default' : index + 1}
                   </span>
                   <Handle
                     type="source"
                     position={Position.Right}
-                    id={`case-${index + 1}`}
+                    id={isDefault ? 'default' : `case-${index + 1}`}
                     style={{
                       top: `${topPx}px`,
                       right: -6,
@@ -405,6 +417,8 @@ function VariableSelect({
   options,
   placeholder,
   onValueChange,
+  trailingAction,
+  showHints = true,
 }: {
   id: string
   label: string
@@ -412,6 +426,8 @@ function VariableSelect({
   options: string[]
   placeholder?: string
   onValueChange: (next: string) => void
+  trailingAction?: React.ReactNode
+  showHints?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value)
@@ -425,7 +441,7 @@ function VariableSelect({
     [options, value],
   )
 
-  const showNotVariable = value.trim().length > 0 && !isKnown
+  const showNotVariable = showHints && value.trim().length > 0 && !isKnown
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -448,7 +464,11 @@ function VariableSelect({
         </span>
         {label}
       </label>
-      <div className={`combo-input ${isKnown ? 'combo-input--known' : ''}`}>
+      <div
+        className={`combo-input ${isKnown ? 'combo-input--known' : ''} ${
+          trailingAction ? 'combo-input--with-action' : ''
+        }`}
+      >
         <input
           id={id}
           type="text"
@@ -465,9 +485,10 @@ function VariableSelect({
             window.setTimeout(() => setOpen(false), 120)
           }}
         />
+        {trailingAction && <span className="combo-action">{trailingAction}</span>}
         <span className="combo-icon">⌄</span>
       </div>
-      {isKnown && <span className="combo-hint">Matched variable</span>}
+      {showHints && isKnown && <span className="combo-hint">Matched variable</span>}
       {showNotVariable && <span className="combo-warn">This is not a variable</span>}
       {open && (
         <div className="combo-menu">
@@ -587,6 +608,60 @@ function WorkflowEditorInner() {
   }, [setNodes, switchConfigs])
 
   useEffect(() => {
+    setEdges((current) => {
+      let changed = false
+      const updated = current.map((edge) => {
+        const sourceNode = nodes.find((node) => node.id === edge.source)
+        if (!sourceNode || sourceNode.data.blockType !== 'Switch') return edge
+
+        const handleId = edge.sourceHandle ?? ''
+        if (!handleId.startsWith('case-') && handleId !== 'default') return edge
+
+        if (handleId === 'default') {
+          const data = (edge.data ?? {}) as { label?: string; caseValue?: string }
+          const needsUpdate = data.caseValue !== '' || data.label !== '' || edge.label !== 'Default'
+          if (!needsUpdate) return edge
+          changed = true
+          return {
+            ...edge,
+            data: {
+              ...data,
+              label: '',
+              caseValue: '',
+            },
+            label: 'Default',
+          }
+        }
+
+        const parts = handleId.split('-')
+        const index = Number(parts[1]) - 1
+        if (!Number.isFinite(index) || index < 0) return edge
+
+        const cases = normalizeSwitchCases(switchConfigs[sourceNode.id]?.cases)
+        const caseValue = (cases[index] ?? '').trim()
+        const display = formatSwitchEdgeLabel(index, caseValue || undefined)
+        const displayLabel = display || undefined
+        const data = (edge.data ?? {}) as { label?: string; caseValue?: string }
+        const needsUpdate =
+          data.caseValue !== caseValue || data.label !== caseValue || edge.label !== displayLabel
+
+        if (!needsUpdate) return edge
+        changed = true
+        return {
+          ...edge,
+          data: {
+            ...data,
+            label: caseValue,
+            caseValue,
+          },
+          label: displayLabel,
+        }
+      })
+      return changed ? updated : current
+    })
+  }, [nodes, setEdges, switchConfigs])
+
+  useEffect(() => {
     const root = document.documentElement
     if (theme === 'dark') {
       root.classList.add('theme-dark')
@@ -595,6 +670,14 @@ function WorkflowEditorInner() {
     }
     localStorage.setItem('flowforge-theme', theme)
   }, [theme])
+
+  const pushToast = useCallback((message: string) => {
+    const id = Date.now() + Math.random()
+    setToasts((current) => [...current, { id, message }])
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, 3500)
+  }, [])
 
   const markDirty = useCallback(() => {
     setHasUnsavedChanges(true)
@@ -642,6 +725,7 @@ function WorkflowEditorInner() {
         )
         const blockIdMap = new Map<number, string>()
         const blockTypeById = new Map<number, string>()
+        const switchCasesByBlockId = new Map<number, string[]>()
         const loadedNodes: Node<NodeData>[] = workflowBlocks.map((block, index) => {
           const blockType = block.systemBlockType || 'Default'
           const label = block.name || blockType
@@ -662,9 +746,9 @@ function WorkflowEditorInner() {
                 ...current,
                 [nodeId]: {
                   operation: parsed.Operation ?? 'Add',
-                  firstVariable: parsed.FirstVariable ?? '',
-                  secondVariable: parsed.SecondVariable ?? '',
-                  resultVariable: parsed.ResultVariable ?? '',
+                  firstVariable: parsed.FirstVariable ? normalizeVariableName(parsed.FirstVariable) : '',
+                  secondVariable: parsed.SecondVariable ? normalizeVariableName(parsed.SecondVariable) : '',
+                  resultVariable: parsed.ResultVariable ? normalizeVariableName(parsed.ResultVariable) : '',
                 },
               }))
             } catch {
@@ -700,6 +784,7 @@ function WorkflowEditorInner() {
               }
               const cases = normalizeSwitchCases(parsed.Cases)
               switchCasesForNode = cases
+              switchCasesByBlockId.set(block.id, cases)
               setSwitchConfigs((current) => ({
                 ...current,
                 [nodeId]: {
@@ -742,30 +827,63 @@ function WorkflowEditorInner() {
         )
         console.debug('[Flowforge] Filtered connections', workflowConnections)
 
+        const switchUnlabeledCounts = new Map<number, number>()
         const loadedEdges: Edge[] = workflowConnections.map((connection) => {
           const sourceType = blockTypeById.get(connection.sourceBlockId)
           const isIf = sourceType === 'If'
-      const baseColor =
-        isIf && connection.connectionType === 'Error'
-          ? 'var(--edge-error)'
-            : isIf && connection.connectionType === 'Success'
-              ? 'var(--edge-success)'
+          const isSwitch = sourceType === 'Switch'
+          const baseColor =
+            isIf && connection.connectionType === 'Error'
+              ? 'var(--edge-error)'
+              : isIf && connection.connectionType === 'Success'
+                ? 'var(--edge-success)'
                 : 'var(--edge-default)'
           const sourceHandle = isIf
             ? connection.connectionType === 'Error'
               ? 'error'
               : 'success'
             : undefined
+          let edgeLabel = connection.Label ?? undefined
+          let edgeData: { label?: string; caseValue?: string } | undefined
+          let switchHandle: string | undefined
+          if (isSwitch) {
+            const trimmed = (connection.Label ?? '').trim()
+            const cases = switchCasesByBlockId.get(connection.sourceBlockId) ?? []
+            if (trimmed.length === 0) {
+              const currentCount = switchUnlabeledCounts.get(connection.sourceBlockId) ?? 0
+              switchUnlabeledCounts.set(connection.sourceBlockId, currentCount + 1)
+              if (currentCount < cases.length) {
+                const caseValue = (cases[currentCount] ?? '').trim()
+                edgeLabel = formatSwitchEdgeLabel(currentCount, caseValue)
+                edgeData = { label: caseValue, caseValue }
+                switchHandle = `case-${currentCount + 1}`
+              } else {
+                edgeLabel = 'Default'
+                edgeData = { label: '', caseValue: '' }
+                switchHandle = 'default'
+              }
+            } else {
+              const index = cases.findIndex((value) => value.trim() === trimmed)
+              if (index >= 0) {
+                edgeLabel = formatSwitchEdgeLabel(index, trimmed)
+                edgeData = { label: trimmed, caseValue: trimmed }
+                switchHandle = `case-${index + 1}`
+              } else {
+                edgeLabel = trimmed
+                edgeData = { label: trimmed, caseValue: trimmed }
+              }
+            }
+          }
           return {
             id: `edge-${connection.id}`,
             source: blockIdMap.get(connection.sourceBlockId)!,
             target: blockIdMap.get(connection.targetBlockId)!,
-            sourceHandle,
+            sourceHandle: switchHandle ?? sourceHandle,
             animated: true,
-            markerEnd: { type: MarkerType.ArrowClosed, color: isIf ? baseColor : undefined },
+            markerEnd: { type: MarkerType.ArrowClosed, color: baseColor },
             style: { stroke: baseColor, strokeWidth: 2.5 },
-            data: connection.Label ? { label: connection.Label } : undefined,
-            label: connection.Label ?? undefined,
+            data: edgeData ?? (connection.Label ? { label: connection.Label } : undefined),
+            label: edgeLabel,
           }
         })
 
@@ -861,6 +979,16 @@ function WorkflowEditorInner() {
   const canBeSource = useCallback((blockType?: string) => blockType !== 'End', [])
   const canBeTarget = useCallback((blockType?: string) => blockType !== 'Start', [])
 
+  const hasOutgoingForHandle = useCallback(
+    (sourceId: string, sourceHandle?: string) =>
+      edges.some(
+        (edge) =>
+          edge.source === sourceId &&
+          (edge.sourceHandle ?? '') === (sourceHandle ?? ''),
+      ),
+    [edges],
+  )
+
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       setEdgeMenu(null)
@@ -926,9 +1054,73 @@ function WorkflowEditorInner() {
       }
 
       if (sourceId && targetId) {
+        const sourceNode = nodes.find((node) => node.id === sourceId)
+        const sourceType = sourceNode?.data.blockType
+        const isSwitch = sourceType === 'Switch'
+        let sourceHandle: string | undefined
+        let label: string | undefined
+        let caseValue: string | undefined
+        if (isSwitch) {
+          const outgoing = edges.filter((edge) => edge.source === sourceId)
+          const existingCaseCount = outgoing.filter((edge) =>
+            (edge.sourceHandle ?? '').startsWith('case-'),
+          ).length
+          const cases = switchConfigs[sourceId]?.cases ?? []
+          if (existingCaseCount < cases.length) {
+            const index = existingCaseCount
+            const value = (cases[index] ?? '').trim()
+            caseValue = value
+            label = formatSwitchEdgeLabel(index, value)
+            sourceHandle = `case-${index + 1}`
+          } else {
+            caseValue = ''
+            label = ''
+            sourceHandle = 'default'
+          }
+        } else if (sourceType === 'If') {
+          if (!hasOutgoingForHandle(sourceId, 'success')) {
+            sourceHandle = 'success'
+          } else if (!hasOutgoingForHandle(sourceId, 'error')) {
+            sourceHandle = 'error'
+        } else {
+          pushToast('This output already has a connection.')
+          return
+        }
+      } else if (hasOutgoingForHandle(sourceId)) {
+        pushToast('This output already has a connection.')
+        return
+      }
+      if (sourceHandle && hasOutgoingForHandle(sourceId, sourceHandle)) {
+        pushToast('This output already has a connection.')
+        return
+      }
+        const baseColor =
+          sourceType === 'If' && sourceHandle === 'error'
+            ? 'var(--edge-error)'
+            : sourceType === 'If' && sourceHandle === 'success'
+              ? 'var(--edge-success)'
+              : 'var(--edge-default)'
         setEdges((current) =>
           addEdge(
-            { id: `${sourceId}-${targetId}-${Date.now()}`, source: sourceId, target: targetId, animated: true },
+            {
+              id: `${sourceId}-${targetId}-${Date.now()}`,
+              source: sourceId,
+              target: targetId,
+              sourceHandle,
+              animated: true,
+              style: { stroke: baseColor, strokeWidth: 2.5 },
+              markerEnd: { type: MarkerType.ArrowClosed, color: baseColor },
+              data:
+                label !== undefined
+                  ? { label: caseValue ?? label, caseValue }
+                  : undefined,
+              label:
+                sourceHandle === 'default'
+                  ? 'Default'
+                  : label && label.length > 0
+                    ? label
+                    : undefined,
+            },
             current,
           ),
         )
@@ -937,12 +1129,28 @@ function WorkflowEditorInner() {
 
       setPendingSelection(null)
     },
-    [canBeSource, canBeTarget, getBlockType, markDirty, pendingSelection, setEdges],
+    [
+      canBeSource,
+      canBeTarget,
+      edges,
+      getBlockType,
+      hasOutgoingForHandle,
+      markDirty,
+      nodes,
+      pendingSelection,
+      setEdges,
+      pushToast,
+      switchConfigs,
+    ],
   )
 
   const onConnect = useCallback(
     (connection: Connection) => {
       const connectionKey = `${connection.source ?? ''}-${connection.sourceHandle ?? ''}-${connection.target ?? ''}-${connection.targetHandle ?? ''}`
+      if (connection.source && hasOutgoingForHandle(connection.source, connection.sourceHandle)) {
+        pushToast('This output already has a connection.')
+        return
+      }
       const sourceNode = nodes.find((node) => node.id === connection.source)
       const isIf = sourceNode?.data.blockType === 'If'
       const isSwitch = sourceNode?.data.blockType === 'Switch'
@@ -966,6 +1174,10 @@ function WorkflowEditorInner() {
           const display = index >= 0 ? formatSwitchEdgeLabel(index, caseValue) : caseValue
           const displayLabel = (display ?? caseValue) || undefined
           connection = { ...connection, label: displayLabel }
+        } else if (handleId === 'default') {
+          caseValue = ''
+          label = ''
+          connection = { ...connection, label: 'Default' }
         }
       }
       setEdges((current) =>
@@ -975,7 +1187,7 @@ function WorkflowEditorInner() {
             id: `${connectionKey}-${Date.now()}`,
             animated: true,
             style: { stroke: baseColor, strokeWidth: 2.5 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: isIf || isSwitch ? baseColor : undefined },
+            markerEnd: { type: MarkerType.ArrowClosed, color: baseColor },
             data:
               label !== undefined
                 ? { label, caseValue }
@@ -987,7 +1199,7 @@ function WorkflowEditorInner() {
       )
       markDirty()
     },
-    [markDirty, nodes, setEdges, switchConfigs],
+    [hasOutgoingForHandle, markDirty, nodes, pushToast, setEdges, switchConfigs],
   )
 
   const onEdgeClick = useCallback(
@@ -1167,14 +1379,6 @@ function WorkflowEditorInner() {
   }, [markDirty, selectedNodeIds, setEdges, setNodes])
 
   const nodeTypes = useMemo(() => ({ flowNode: FlowNode }), [])
-
-  const pushToast = useCallback((message: string) => {
-    const id = Date.now() + Math.random()
-    setToasts((current) => [...current, { id, message }])
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id))
-    }, 3500)
-  }, [])
 
   const addNode = useCallback(
     (template: BlockTemplate & { position?: { x: number; y: number } }) => {
@@ -1476,18 +1680,7 @@ function WorkflowEditorInner() {
         setSaveStatus('Only one Start/End block is saved. Extra blocks were skipped.')
       }
 
-      // Ensure Switch blocks have at least one case value
-      for (const node of nodesToSave) {
-        if (node.data.blockType === 'Switch') {
-          const cases = normalizeSwitchCases(switchConfigs[node.id]?.cases)
-          const nonEmptyCases = cases.map((value) => value.trim()).filter((value) => value.length > 0)
-          if (nonEmptyCases.length === 0) {
-            setError(`Switch "${node.data.label}" requires at least one case value.`)
-            setSaving(false)
-            return
-          }
-        }
-      }
+      // Switch blocks can have empty case values; defaults still create routes.
 
       let resolvedSystemBlocks = systemBlockMap
       const missingTypes = nodesToSave
@@ -2411,31 +2604,32 @@ function WorkflowEditorInner() {
                   Cases
                 </label>
                 {(switchConfigs[configPanel.id]?.cases ?? ['']).map((caseValue, idx) => (
-                  <div key={idx} className="combo">
-                    <div className="combo-input">
-                      <input
-                        type="text"
-                        placeholder="Value (e.g. pending)"
-                        value={caseValue}
-                        onChange={(event) => {
-                          const value = event.target.value
-                          setSwitchConfigs((current) => {
-                            const currentCases = normalizeSwitchCases(
-                              current[configPanel.id]?.cases,
-                            )
-                            const nextCases = [...currentCases]
-                            nextCases[idx] = value
-                            return {
-                              ...current,
-                              [configPanel.id]: {
-                                expression: current[configPanel.id]?.expression ?? '',
-                                cases: nextCases,
-                              },
-                            }
-                          })
-                          markDirty()
-                        }}
-                      />
+                  <VariableSelect
+                    key={`switch-case-${idx}`}
+                    id={`switch-case-${configPanel.id}-${idx}`}
+                    label={`Case ${idx + 1}`}
+                    placeholder="Value (e.g. pending)"
+                    value={caseValue}
+                    options={variables.map((variable) => `$${variable.name}`)}
+                    showHints={false}
+                    onValueChange={(value) => {
+                      setSwitchConfigs((current) => {
+                        const currentCases = normalizeSwitchCases(
+                          current[configPanel.id]?.cases,
+                        )
+                        const nextCases = [...currentCases]
+                        nextCases[idx] = value
+                        return {
+                          ...current,
+                          [configPanel.id]: {
+                            expression: current[configPanel.id]?.expression ?? '',
+                            cases: nextCases,
+                          },
+                        }
+                      })
+                      markDirty()
+                    }}
+                    trailingAction={
                       <button
                         type="button"
                         className="ghost"
@@ -2461,8 +2655,8 @@ function WorkflowEditorInner() {
                       >
                         Remove
                       </button>
-                    </div>
-                  </div>
+                    }
+                  />
                 ))}
                 <button
                   type="button"
@@ -2484,7 +2678,7 @@ function WorkflowEditorInner() {
                   Add case
                 </button>
                 <p className="muted">
-                  Switch routes by matching case values to connection labels. Leave a connection label empty to use it as default.
+                  Switch routes by matching case values to connection labels. Use the default handle for unmatched values.
                 </p>
               </form>
             ) : configPanel.blockType === 'Calculation' ? (
@@ -2530,14 +2724,15 @@ function WorkflowEditorInner() {
                   id="calc-first"
                   label="First variable"
                   placeholder="e.g. amount"
-                  value={calculationConfigs[configPanel.id]?.firstVariable ?? ''}
-                  options={variables.map((variable) => variable.name)}
+                  value={formatVariableDisplay(calculationConfigs[configPanel.id]?.firstVariable ?? '')}
+                  options={variables.map((variable) => `$${variable.name}`)}
                   onValueChange={(value) => {
+                    const normalized = normalizeVariableName(value)
                     setCalculationConfigs((current) => ({
                       ...current,
                       [configPanel.id]: {
                         operation: current[configPanel.id]?.operation ?? 'Add',
-                        firstVariable: value,
+                        firstVariable: normalized,
                         secondVariable: current[configPanel.id]?.secondVariable ?? '',
                         resultVariable: current[configPanel.id]?.resultVariable ?? '',
                       },
@@ -2550,15 +2745,16 @@ function WorkflowEditorInner() {
                   id="calc-second"
                   label="Second variable"
                   placeholder="e.g. tax"
-                  value={calculationConfigs[configPanel.id]?.secondVariable ?? ''}
-                  options={variables.map((variable) => variable.name)}
+                  value={formatVariableDisplay(calculationConfigs[configPanel.id]?.secondVariable ?? '')}
+                  options={variables.map((variable) => `$${variable.name}`)}
                   onValueChange={(value) => {
+                    const normalized = normalizeVariableName(value)
                     setCalculationConfigs((current) => ({
                       ...current,
                       [configPanel.id]: {
                         operation: current[configPanel.id]?.operation ?? 'Add',
                         firstVariable: current[configPanel.id]?.firstVariable ?? '',
-                        secondVariable: value,
+                        secondVariable: normalized,
                         resultVariable: current[configPanel.id]?.resultVariable ?? '',
                       },
                     }))
@@ -2570,16 +2766,17 @@ function WorkflowEditorInner() {
                   id="calc-result"
                   label="Result variable"
                   placeholder="e.g. total"
-                  value={calculationConfigs[configPanel.id]?.resultVariable ?? ''}
-                  options={variables.map((variable) => variable.name)}
+                  value={formatVariableDisplay(calculationConfigs[configPanel.id]?.resultVariable ?? '')}
+                  options={variables.map((variable) => `$${variable.name}`)}
                   onValueChange={(value) => {
+                    const normalized = normalizeVariableName(value)
                     setCalculationConfigs((current) => ({
                       ...current,
                       [configPanel.id]: {
                         operation: current[configPanel.id]?.operation ?? 'Add',
                         firstVariable: current[configPanel.id]?.firstVariable ?? '',
                         secondVariable: current[configPanel.id]?.secondVariable ?? '',
-                        resultVariable: value,
+                        resultVariable: normalized,
                       },
                     }))
                     markDirty()
