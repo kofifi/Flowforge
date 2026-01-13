@@ -1,12 +1,10 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ReactFlow, {
   addEdge,
   Background,
-  Handle,
   MarkerType,
   MiniMap,
-  Position,
   applyEdgeChanges,
   useEdgesState,
   useNodesState,
@@ -17,7 +15,6 @@ import ReactFlow, {
   type Edge,
   type EdgeChange,
   type Node,
-  type NodeProps,
   type NodeChange,
   type OnSelectionChangeParams,
 } from 'reactflow'
@@ -25,6 +22,10 @@ import 'reactflow/dist/style.css'
 import { normalizeValues } from '../utils/dataTransforms'
 import { useBodyClass } from '../hooks/useBodyClass'
 import { useWorkflowStore } from '../state/workflowStore'
+import FlowNode from '../components/editor/FlowNode'
+import CanvasSidebar from '../components/editor/CanvasSidebar'
+import CanvasControls from '../components/editor/CanvasControls'
+import type { BlockTemplate, NodeData } from '../components/editor/types'
 
 type WorkflowVariable = {
   id: number
@@ -66,22 +67,6 @@ type WorkflowGraphResponse = {
     targetBlockId: number
     connectionType: 'Success' | 'Error' | string
   }>
-}
-
-type BlockTemplate = {
-  type: string
-  label: string
-  description: string
-  category: 'Flow' | 'Logic' | 'Action'
-}
-
-type NodeData = {
-  blockType: string
-  label: string
-  description: string
-  onOpenConfig?: (payload: { id: string; blockType: string; label: string }) => void
-  allowErrorOutput?: boolean
-  switchCases?: string[]
 }
 
 type StartConfig = {
@@ -160,165 +145,12 @@ const templates: BlockTemplate[] = [
   { type: 'Calculation', label: 'Calculation', description: 'Compute variables.', category: 'Logic' },
 ]
 
-function FlowNode({ data, id }: NodeProps<NodeData>) {
-  const isStart = data.blockType === 'Start'
-  const isEnd = data.blockType === 'End'
-  const isIf = data.blockType === 'If'
-  const isSwitch = data.blockType === 'Switch'
-  const displayDescription = isSwitch ? 'Route by case labels.' : data.description
-  const switchCases = data.switchCases ?? ['']
-  const switchHandleCount = switchCases.length + 1
-  const switchHandleStartPx = 80
-  const switchHandleSpacingPx = 22
-  const switchHeight = isSwitch
-    ? Math.max(120, switchHandleStartPx + (switchHandleCount - 1) * switchHandleSpacingPx + 32)
-    : undefined
-  const handleBaseStyle = {
-    width: 12,
-    height: 12,
-    borderRadius: '50%',
-    background: 'var(--handle-default-bg)',
-    border: '2px solid var(--handle-default-border)',
-  }
-  const handleSuccessStyle = {
-    width: 12,
-    height: 12,
-    borderRadius: '50%',
-    background: 'var(--handle-success)',
-    border: '2px solid var(--handle-success)',
-  }
-  const handleErrorStyle = {
-    width: 12,
-    height: 12,
-    borderRadius: '50%',
-    background: 'var(--handle-error)',
-    border: '2px solid var(--handle-error)',
-  }
-
-  return (
-    <div
-      className="node-card"
-      style={{
-        position: 'relative',
-        height: switchHeight ? `${switchHeight}px` : undefined,
-        padding: '6px 14px',
-        paddingRight: isSwitch ? 46 : 14,
-      }}
-    >
-      {!isStart && (
-        <Handle
-          type="target"
-          position={Position.Left}
-          style={{
-            left: -14,
-            ...handleBaseStyle,
-          }}
-        />
-      )}
-      <div className="node-header">
-        <span className="node-chip">{data.label}</span>
-        <span className="node-status">Ready</span>
-        <button
-          type="button"
-          className="node-gear"
-          onClick={(event) => {
-            event.stopPropagation()
-            data.onOpenConfig?.({ id, blockType: data.blockType, label: data.label })
-          }}
-          aria-label="Open block settings"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.28 7.28 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.22-1.13.52-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.8 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.92 14.5a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.42 1.05.72 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.58-.22 1.13-.52 1.63-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, margin: '4px 0 6px' }}>
-        <p className="node-title" style={{ margin: 0 }}>{data.label} block</p>
-        <p className="node-meta" style={{ margin: 0, lineHeight: 1.3 }}>{displayDescription}</p>
-      </div>
-      {!isEnd && (
-        <>
-          {isSwitch ? (
-            Array.from({ length: switchHandleCount }).map((_, index) => {
-              const isDefault = index === switchHandleCount - 1
-              const topPx = switchHandleStartPx + switchHandleSpacingPx * index
-              return (
-                <Fragment key={`switch-case-${index}`}>
-                  <span
-                    style={{
-                      position: 'absolute',
-                      right: 8,
-                      top: `${topPx}px`,
-                      transform: 'translateY(-50%)',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: 'var(--text-muted, #7b8794)',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    {isDefault ? 'default' : index + 1}
-                  </span>
-                  <Handle
-                    type="source"
-                    position={Position.Right}
-                    id={isDefault ? 'default' : `case-${index + 1}`}
-                    style={{
-                      top: `${topPx}px`,
-                      right: -6,
-                      ...handleBaseStyle,
-                    }}
-                  />
-                </Fragment>
-              )
-            })
-          ) : (
-            <>
-              <Handle
-                type="source"
-                position={Position.Right}
-                id={isIf ? 'success' : undefined}
-                style={
-                  isIf
-                    ? {
-                        top: '45%',
-                        right: -8,
-                        ...handleSuccessStyle,
-                      }
-                    : {
-                        right: -8,
-                        ...handleBaseStyle,
-                      }
-                }
-              />
-              {isIf && data.allowErrorOutput && (
-                <Handle
-                  type="source"
-                  position={Position.Right}
-                  id="error"
-                  style={{
-                    top: '75%',
-                    right: -8,
-                    ...handleErrorStyle,
-                  }}
-                />
-              )}
-            </>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
 function createNode(
   id: string,
   template: BlockTemplate,
   position: { x: number; y: number },
   onOpenConfig: NodeData['onOpenConfig'],
-): Node {
+): Node<NodeData> {
   return {
     id,
     type: 'flowNode',
@@ -2137,46 +1969,12 @@ function WorkflowEditorInner() {
             </div>
           </header>
           <div className="editor-main">
-            <aside className="editor-sidebar">
-              <p className="sidebar-label">Canvas</p>
-              <div className="sidebar-group">
-                <button
-                  type="button"
-                  className="sidebar-button"
-                  onClick={() => setShowPalette((open) => !open)}
-                >
-                  <span className="sidebar-button__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                    </svg>
-                  </span>
-                  <span className="sidebar-button__label">
-                    {showPalette ? 'Close palette' : 'Add block'}
-                  </span>
-                </button>
-                <button type="button" className="sidebar-button" onClick={toggleVariables}>
-                  <span className="sidebar-button__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path
-                        d="M6.5 6.5h11M6.5 12h11M6.5 17.5h11M6.5 6.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S4.17 5 5 5s1.5.67 1.5 1.5ZM6.5 12c0 .83-.67 1.5-1.5 1.5S3.5 12.83 3.5 12 4.17 10.5 5 10.5s1.5.67 1.5 1.5Zm0 5.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S4.17 16.5 5 16.5s1.5.67 1.5 1.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        fill="none"
-                      />
-                    </svg>
-                  </span>
-                  <span className="sidebar-button__label">
-                    {showVariables ? 'Hide variables' : 'Variables'}
-                  </span>
-                </button>
-              </div>
-              <p className="sidebar-label">Context</p>
-              <div className="sidebar-group subtle">
-                <p className="sidebar-hint">Right-click canvas or elements for quick actions.</p>
-              </div>
-            </aside>
+            <CanvasSidebar
+              showPalette={showPalette}
+              showVariables={showVariables}
+              onTogglePalette={() => setShowPalette((open) => !open)}
+              onToggleVariables={toggleVariables}
+            />
 
             <div className={`canvas-wrapper ${isDragging ? 'is-dragging' : ''}`}>
               <div className="canvas">
@@ -2211,76 +2009,22 @@ function WorkflowEditorInner() {
                   proOptions={{ hideAttribution: true }}
                 >
                   <Background gap={18} color="#d9ddd3" />
-                  <MiniMap
-                    position="bottom-left"
-                    style={{ background: 'var(--canvas-bg)' }}
-                    nodeColor={() => 'var(--card)'}
-                    nodeStrokeColor={() => 'var(--border-soft)'}
-                    maskColor={theme === 'dark' ? 'rgba(13, 17, 23, 0.65)' : 'rgba(255, 255, 255, 0.6)'}
-                  />
-                </ReactFlow>
-                <div className="canvas-controls">
-                  <div className="control-group">
-                    <span className="control-label">Zoom</span>
-                    <span className="control-chip">{Math.round(zoom * 100)}%</span>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      onClick={() => zoomOut({ duration: 200 })}
-                      aria-label="Zoom out"
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                        <path
-                          d="M6 12h12"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      onClick={() => zoomIn({ duration: 200 })}
-                      aria-label="Zoom in"
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                        <path
-                          d="M12 6v12M6 12h12"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      onClick={() => fitView({ padding: 0.2, duration: 220 })}
-                      aria-label="Fit to view"
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                        <path
-                          d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="control-group">
-                    <span className="control-label">Grid</span>
-                    <button
-                      type="button"
-                      className={`control-chip control-chip--toggle ${snapToGrid ? 'active' : ''}`}
-                      onClick={() => setSnapToGrid((enabled) => !enabled)}
-                    >
-                      {snapToGrid ? 'Snap on' : 'Snap off'}
-                    </button>
-                  </div>
-                </div>
+                <MiniMap
+                  position="bottom-left"
+                  style={{ background: 'var(--canvas-bg)' }}
+                  nodeColor={() => 'var(--card)'}
+                  nodeStrokeColor={() => 'var(--border-soft)'}
+                  maskColor={theme === 'dark' ? 'rgba(13, 17, 23, 0.65)' : 'rgba(255, 255, 255, 0.6)'}
+                />
+              </ReactFlow>
+                <CanvasControls
+                  zoomPercent={Math.round(zoom * 100)}
+                  snapToGrid={snapToGrid}
+                  onZoomIn={() => zoomIn({ duration: 200 })}
+                  onZoomOut={() => zoomOut({ duration: 200 })}
+                  onFitView={() => fitView({ padding: 0.2, duration: 220 })}
+                  onToggleSnap={() => setSnapToGrid((enabled) => !enabled)}
+                />
               </div>
             </div>
           </div>

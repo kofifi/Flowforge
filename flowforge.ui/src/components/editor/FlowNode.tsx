@@ -59,8 +59,8 @@ const FlowNode = memo(function FlowNode({ data, id }: NodeProps<NodeData>) {
       )}
 
       <div className="node-header">
-        <span className="node-chip">{data.blockType}</span>
-        <span className="node-status">{isStart ? 'Ready' : 'Ready'}</span>
+        <span className="node-chip">{data.label}</span>
+        <span className="node-status">Ready</span>
         <button
           type="button"
           className="node-gear"
@@ -78,7 +78,7 @@ const FlowNode = memo(function FlowNode({ data, id }: NodeProps<NodeData>) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', margin: '4px 0 6px' }}>
         <p className="node-title" style={{ margin: 0 }}>
-          {data.label}
+          {data.label} block
         </p>
         <p className="node-meta" style={{ margin: 0, lineHeight: 1.3 }}>
           {displayDescription}
