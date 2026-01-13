@@ -115,7 +115,9 @@ a {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font-family: inherit;
   font-size: 1rem;
 }
@@ -127,12 +129,26 @@ input {
   padding: 0.65rem 0.85rem;
   background: var(--input-bg);
   transition: border 0.2s ease, box-shadow 0.2s ease;
+  color: var(--text-color);
 }
 
 input:focus {
   outline: none;
   border-color: var(--input-border-strong);
   box-shadow: 0 0 0 3px rgba(50, 64, 59, 0.12);
+}
+
+textarea,
+select {
+  color: var(--text-color);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 button {
