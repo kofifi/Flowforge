@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace Flowforge.Controllers;
 
@@ -23,19 +24,20 @@ public class WorkflowExecutionController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<WorkflowExecution>>> GetAll()
+    public async Task<ActionResult<IEnumerable<WorkflowExecutionDto>>> GetAll()
     {
         var executions = await _service.GetAllAsync();
-        return Ok(executions);
+        var dto = executions.Select(MapToDto).ToList();
+        return Ok(dto);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<WorkflowExecution>> GetById(int id)
+    public async Task<ActionResult<WorkflowExecutionDto>> GetById(int id)
     {
         var execution = await _service.GetByIdAsync(id);
         if (execution == null)
             return NotFound();
-        return Ok(execution);
+        return Ok(MapToDto(execution));
     }
 
     [HttpPost]
@@ -84,17 +86,21 @@ public class WorkflowExecutionController : ControllerBase
 
         var execution = await _service.EvaluateAsync(workflow, inputs);
 
-        var dto = new WorkflowExecutionDto
-        {
-            Id = execution.Id,
-            ExecutedAt = execution.ExecutedAt,
-            InputData = execution.Input,
-            ResultData = execution.Result,
-            Path = execution.Path,
-            Actions = execution.Actions
-
-        };
+        var dto = MapToDto(execution);
 
         return CreatedAtAction(nameof(GetById), new { id = execution.Id }, dto);
     }
+
+    private static WorkflowExecutionDto MapToDto(WorkflowExecution execution) =>
+        new()
+        {
+            Id = execution.Id,
+            ExecutedAt = execution.ExecutedAt,
+            WorkflowId = execution.WorkflowId,
+            WorkflowName = execution.Workflow?.Name ?? $"Workflow #{execution.WorkflowId}",
+            InputData = execution.Input,
+            ResultData = execution.Result,
+            Path = execution.Path ?? execution.SerializedPath,
+            Actions = execution.Actions ?? execution.SerializedActions
+        };
 }

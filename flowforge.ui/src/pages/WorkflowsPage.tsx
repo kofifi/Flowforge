@@ -7,6 +7,25 @@ type Workflow = {
   name: string
 }
 
+type WorkflowExport = {
+  name: string
+  blocks: Array<{
+    id: number
+    name: string
+    systemBlockType: string
+    jsonConfig?: string | null
+    positionX?: number | null
+    positionY?: number | null
+  }>
+  connections: Array<{
+    sourceBlockId: number
+    targetBlockId: number
+    connectionType: string
+    label?: string | null
+  }>
+  variables: Array<{ name: string; defaultValue?: string | null }>
+}
+
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
 function normalizeWorkflows(data: unknown): Workflow[] {
@@ -30,6 +49,8 @@ export default function WorkflowsPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importStatus, setImportStatus] = useState<string | null>(null)
   const { theme, toggleTheme } = useThemePreference()
   const navigate = useNavigate()
 
@@ -165,6 +186,50 @@ export default function WorkflowsPage() {
     }
   }
 
+  async function exportWorkflow(workflowId: number, name: string) {
+    try {
+      const response = await fetch(`${apiBase}/api/Workflow/${workflowId}/export`)
+      if (!response.ok) {
+        throw new Error(`Export failed (${response.status})`)
+      }
+      const data = (await response.json()) as WorkflowExport
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${name || 'workflow'}-${workflowId}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to export workflow')
+    }
+  }
+
+  async function importWorkflow(file: File) {
+    setImporting(true)
+    setImportStatus(null)
+    setError(null)
+    try {
+      const text = await file.text()
+      const payload = JSON.parse(text) as unknown
+      const response = await fetch(`${apiBase}/api/Workflow/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!response.ok) {
+        throw new Error(`Import failed (${response.status})`)
+      }
+      const created = (await response.json()) as Workflow
+      setImportStatus(`Imported as "${created.name}" (id ${created.id}).`)
+      setWorkflows((current) => [created, ...current])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to import workflow')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -260,6 +325,41 @@ export default function WorkflowsPage() {
 
         <section className="panel">
           <div className="panel-header">
+            <h2>Import / Export</h2>
+            <p className="muted">Download a workflow JSON or import one as a new project.</p>
+          </div>
+          <div className="import-export">
+            <div className="upload-card">
+              <div>
+                <p className="label">Import workflow JSON</p>
+                <p className="muted">Select a .json file to create a new workflow.</p>
+              </div>
+              <label className={`upload-pill ${importing ? 'disabled' : ''}`}>
+                <input
+                  type="file"
+                  accept="application/json"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) {
+                      importWorkflow(file)
+                      event.target.value = ''
+                    }
+                  }}
+                  disabled={importing}
+                />
+                <span>{importing ? 'Importing…' : 'Choose file'}</span>
+              </label>
+              {importStatus && <p className="meta">{importStatus}</p>}
+            </div>
+            <div className="export-hint">
+              <p className="label">Export</p>
+              <p className="muted">Use the Export button next to a workflow below.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-header">
             <h2>Existing workflows</h2>
             <p className="muted">Rename or delete projects before building flows.</p>
           </div>
@@ -301,6 +401,9 @@ export default function WorkflowsPage() {
                     <div className="card-actions">
                       <button type="button" onClick={() => navigate(`/workflows/${workflow.id}`)}>
                         Open
+                      </button>
+                      <button type="button" onClick={() => exportWorkflow(workflow.id, workflow.name)}>
+                        Export
                       </button>
                       <button type="button" onClick={() => startEditing(workflow)}>
                         Rename

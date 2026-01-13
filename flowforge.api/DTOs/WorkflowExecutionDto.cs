@@ -8,6 +8,8 @@ public class WorkflowExecutionDto
 {
     public int Id { get; set; }
     public DateTime ExecutedAt { get; set; }
+    public int WorkflowId { get; set; }
+    public string WorkflowName { get; set; } = string.Empty;
 
     [JsonPropertyName("inputData")]
     public Dictionary<string, string>? InputData { get; set; }

@@ -164,10 +164,16 @@ namespace Flowforge.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ActionsData")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("ExecutedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("InputData")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PathData")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ResultData")

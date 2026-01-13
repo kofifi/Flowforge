@@ -59,6 +59,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<FlowforgeDbContext>();
+    context.Database.Migrate();
     var requiredBlocks = new[]
     {
         new SystemBlock { Type = "Start", Description = "Blok początkowy" },

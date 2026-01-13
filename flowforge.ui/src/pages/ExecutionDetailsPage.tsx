@@ -9,13 +9,15 @@ type Execution = {
   path?: string[] | null
   actions?: string[] | null
   workflowId: number
-  workflow?: {
-    id: number
-    name: string
-  }
+  workflowName?: string
 }
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+
+function formatDateTime(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
+}
 
 export default function ExecutionDetailsPage() {
   const { id } = useParams()
@@ -105,7 +107,7 @@ export default function ExecutionDetailsPage() {
           </div>
           <div className="topbar-meta">
             <span className="count">
-              {execution ? new Date(execution.executedAt).toLocaleString() : '—'}
+              {execution ? formatDateTime(execution.executedAt) : '—'}
             </span>
             <span className="pill">Run</span>
           </div>
@@ -124,13 +126,13 @@ export default function ExecutionDetailsPage() {
                 <div className="execution-card">
                   <p className="label">Workflow</p>
                   <p className="meta">
-                    {execution?.workflow?.name ?? `Workflow #${execution?.workflowId}`}
+                    {execution?.workflowName ?? `Workflow #${execution?.workflowId}`}
                   </p>
                 </div>
                 <div className="execution-card">
                   <p className="label">Executed at</p>
                   <p className="meta">
-                    {execution ? new Date(execution.executedAt).toLocaleString() : '—'}
+                    {execution ? formatDateTime(execution.executedAt) : '—'}
                   </p>
                 </div>
                 <div className="execution-card">

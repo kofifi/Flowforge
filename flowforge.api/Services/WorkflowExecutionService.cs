@@ -162,7 +162,9 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         InputData = inputs == null ? null : System.Text.Json.JsonSerializer.Serialize(inputs),
         ResultData = System.Text.Json.JsonSerializer.Serialize(variables),
         Path = path,
-        Actions = actions
+        Actions = actions,
+        PathData = System.Text.Json.JsonSerializer.Serialize(path),
+        ActionsData = System.Text.Json.JsonSerializer.Serialize(actions)
 
     };
 

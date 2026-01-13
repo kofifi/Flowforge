@@ -1,3 +1,5 @@
+using Flowforge.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Flowforge.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(FlowforgeDbContext))]
+    [Migration("20270112120001_EnsureSwitchSystemBlock")]
     public partial class EnsureSwitchSystemBlock : Migration
     {
         /// <inheritdoc />

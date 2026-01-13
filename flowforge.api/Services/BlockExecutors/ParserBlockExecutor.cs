@@ -59,7 +59,7 @@ public class ParserBlockExecutor : IBlockExecutor
                     var variableName = mapping.Variable.TrimStart('$');
                     var value = ResolveJsonPath(doc.RootElement, mapping.Path);
                     variables[variableName] = value ?? string.Empty;
-                    assigned.Add($"{mapping.Path} -> {variableName}");
+                    assigned.Add($"{mapping.Path} -> {variableName} = {TruncateValue(value)}");
                 }
             }
             catch (Exception ex)
@@ -81,7 +81,7 @@ public class ParserBlockExecutor : IBlockExecutor
                     var variableName = mapping.Variable.TrimStart('$');
                     var node = nav.SelectSingleNode(mapping.Path, ns);
                     variables[variableName] = node?.Value ?? string.Empty;
-                    assigned.Add($"{mapping.Path} -> {variableName}");
+                    assigned.Add($"{mapping.Path} -> {variableName} = {TruncateValue(node?.Value)}");
                 }
             }
             catch (Exception ex)
@@ -90,7 +90,15 @@ public class ParserBlockExecutor : IBlockExecutor
             }
         }
 
-        var description = $"Parsed {assigned.Count} value(s) from {config.Format.ToString().ToUpperInvariant()}.";
+        var summary = assigned.Count == 0
+            ? "No mappings applied."
+            : string.Join(", ", assigned.Take(3));
+        if (assigned.Count > 3)
+        {
+            summary += $" … (+{assigned.Count - 3} more)";
+        }
+
+        var description = $"Parsed {assigned.Count} value(s) from {config.Format.ToString().ToUpperInvariant()}: {summary}";
         return new BlockExecutionResult(description, false);
     }
 
@@ -133,5 +141,11 @@ public class ParserBlockExecutor : IBlockExecutor
             JsonValueKind.Null => string.Empty,
             _ => current.GetRawText()
         };
+    }
+
+    private static string TruncateValue(string? value, int maxLength = 60)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        return value.Length <= maxLength ? value : value.Substring(0, maxLength) + "…";
     }
 }

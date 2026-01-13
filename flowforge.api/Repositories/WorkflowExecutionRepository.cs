@@ -18,16 +18,28 @@ public class WorkflowExecutionRepository : IWorkflowExecutionRepository
 
     public async Task<IEnumerable<WorkflowExecution>> GetAllAsync()
     {
-        return await _context.WorkflowExecutions
+        var executions = await _context.WorkflowExecutions
             .Include(e => e.Workflow)
             .ToListAsync();
+        foreach (var exec in executions)
+        {
+            exec.Path = exec.SerializedPath;
+            exec.Actions = exec.SerializedActions;
+        }
+        return executions;
     }
 
     public async Task<WorkflowExecution?> GetByIdAsync(int id)
     {
-        return await _context.WorkflowExecutions
+        var execution = await _context.WorkflowExecutions
             .Include(e => e.Workflow)
             .FirstOrDefaultAsync(e => e.Id == id);
+        if (execution != null)
+        {
+            execution.Path = execution.SerializedPath;
+            execution.Actions = execution.SerializedActions;
+        }
+        return execution;
     }
 
     public async Task<WorkflowExecution> AddAsync(WorkflowExecution execution)

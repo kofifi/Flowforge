@@ -15,6 +15,12 @@ public class WorkflowExecution
     [JsonIgnore]
     public string? ResultData { get; set; }
 
+    [JsonIgnore]
+    public string? PathData { get; set; }
+
+    [JsonIgnore]
+    public string? ActionsData { get; set; }
+
     [NotMapped]
     [JsonPropertyName("inputData")]
     public Dictionary<string, string>? Input
@@ -45,5 +51,23 @@ public class WorkflowExecution
     [NotMapped]
     [JsonPropertyName("actions")]
     public IList<string>? Actions { get; set; }
+
+    [NotMapped]
+    public IList<string>? SerializedPath
+    {
+        get => string.IsNullOrWhiteSpace(PathData)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<IList<string>>(PathData!);
+        set => PathData = value == null ? null : JsonSerializer.Serialize(value);
+    }
+
+    [NotMapped]
+    public IList<string>? SerializedActions
+    {
+        get => string.IsNullOrWhiteSpace(ActionsData)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<IList<string>>(ActionsData!);
+        set => ActionsData = value == null ? null : JsonSerializer.Serialize(value);
+    }
 
 }

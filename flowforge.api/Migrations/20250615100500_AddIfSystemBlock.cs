@@ -1,3 +1,5 @@
+using Flowforge.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,23 +7,25 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Flowforge.Migrations;
 
 /// <inheritdoc />
+[DbContext(typeof(FlowforgeDbContext))]
+[Migration("20250615100500_AddIfSystemBlock")]
 public partial class AddIfSystemBlock : Migration
 {
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.InsertData(
-            table: "SystemBlocks",
-            columns: new[] { "Id", "Description", "Type" },
-            values: new object[] { 4, "Blok warunkowy", "If" });
+        migrationBuilder.Sql("""
+            INSERT INTO SystemBlocks (Type, Description)
+            SELECT 'If', 'Blok warunkowy'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM SystemBlocks WHERE Type = 'If'
+            );
+        """);
     }
 
     /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DeleteData(
-            table: "SystemBlocks",
-            keyColumn: "Id",
-            keyValue: 4);
+        migrationBuilder.Sql("DELETE FROM SystemBlocks WHERE Type = 'If';");
     }
 }
