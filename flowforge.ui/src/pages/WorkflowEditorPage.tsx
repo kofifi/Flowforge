@@ -93,6 +93,35 @@ type SwitchConfig = {
   cases: string[]
 }
 
+type HttpRequestAuthType = 'none' | 'bearer' | 'basic' | 'apiKeyHeader' | 'apiKeyQuery'
+
+type HttpRequestConfig = {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  url: string
+  body?: string
+  headers: Array<{ name: string; value: string }>
+  authType: HttpRequestAuthType
+  bearerToken?: string
+  basicUsername?: string
+  basicPassword?: string
+  apiKeyName?: string
+  apiKeyValue?: string
+  responseVariable?: string
+}
+
+type ParserBlockFormat = 'json' | 'xml'
+
+type ParserBlockMapping = {
+  path: string
+  variable: string
+}
+
+type ParserConfig = {
+  format: ParserBlockFormat
+  sourceVariable: string
+  mappings: ParserBlockMapping[]
+}
+
 function normalizeSwitchCases(values: unknown): string[] {
   if (!Array.isArray(values)) return ['']
   const cleaned = values.map((value) => (typeof value === 'string' ? value : '')).filter((_, idx) => idx >= 0)
@@ -143,6 +172,8 @@ const templates: BlockTemplate[] = [
   { type: 'If', label: 'If', description: 'Route based on a condition.', category: 'Logic' },
   { type: 'Switch', label: 'Switch', description: 'Multi-branch on cases', category: 'Logic' },
   { type: 'Calculation', label: 'Calculation', description: 'Compute variables.', category: 'Logic' },
+  { type: 'HttpRequest', label: 'HTTP request', description: 'Call external HTTP APIs.', category: 'Action' },
+  { type: 'Parser', label: 'Parser', description: 'Extract values from JSON or XML.', category: 'Action' },
 ]
 
 function createNode(
@@ -414,6 +445,8 @@ function WorkflowEditorInner() {
   const [calculationConfigs, setCalculationConfigs] = useState<Record<string, CalculationConfig>>({})
   const [ifConfigs, setIfConfigs] = useState<Record<string, IfConfig>>({})
   const [switchConfigs, setSwitchConfigs] = useState<Record<string, SwitchConfig>>({})
+  const [httpConfigs, setHttpConfigs] = useState<Record<string, HttpRequestConfig>>({})
+  const [parserConfigs, setParserConfigs] = useState<Record<string, ParserConfig>>({})
   const [newVariableName, setNewVariableName] = useState('')
   const [newVariableDefault, setNewVariableDefault] = useState('')
   const [editingVariableId, setEditingVariableId] = useState<number | null>(null)
@@ -730,9 +763,9 @@ function WorkflowEditorInner() {
         }
         const graph = (await response.json()) as WorkflowGraphResponse
         console.debug('[Flowforge] Graph', graph)
-        const workflowBlocks = normalizeValues<WorkflowGraphResponse['blocks'][number]>(
-          graph.blocks as unknown,
-        )
+      const workflowBlocks = normalizeValues<WorkflowGraphResponse['blocks'][number]>(
+        graph.blocks as unknown,
+      )
         const blockIdMap = new Map<number, string>()
         const blockTypeById = new Map<number, string>()
         const switchCasesByBlockId = new Map<number, string[]>()
@@ -803,6 +836,74 @@ function WorkflowEditorInner() {
                 },
               }))
             } catch {
+              // ignore parse errors
+            }
+          }
+
+          if (blockType === 'HttpRequest' && block.jsonConfig) {
+            try {
+              const parsed = JSON.parse(block.jsonConfig) as {
+                Method?: HttpRequestConfig['method']
+                Url?: string
+                Body?: string
+                Headers?: Array<{ name?: string; value?: string }>
+                AuthType?: HttpRequestAuthType
+                BearerToken?: string
+                BasicUsername?: string
+                BasicPassword?: string
+                ApiKeyName?: string
+                ApiKeyValue?: string
+                ResponseVariable?: string
+              }
+              setHttpConfigs((current) => ({
+                ...current,
+                [nodeId]: {
+                  method: parsed.Method ?? 'GET',
+                  url: parsed.Url ?? '',
+                  body: parsed.Body ?? '',
+                  headers: (parsed.Headers ?? [])
+                    .map((item) => ({
+                      name: (item.name ?? '').trim(),
+                      value: (item.value ?? '').trim(),
+                    }))
+                    .filter((h) => h.name || h.value),
+                  authType: parsed.AuthType ?? 'none',
+                  bearerToken: parsed.BearerToken ?? '',
+                  basicUsername: parsed.BasicUsername ?? '',
+                  basicPassword: parsed.BasicPassword ?? '',
+                  apiKeyName: parsed.ApiKeyName ?? '',
+                  apiKeyValue: parsed.ApiKeyValue ?? '',
+                  responseVariable: parsed.ResponseVariable ?? '',
+                },
+              }))
+            } catch {
+              // ignore parse errors
+            }
+          }
+
+          if (blockType === 'Parser' && block.jsonConfig) {
+            try {
+              const parsed = JSON.parse(block.jsonConfig) as {
+                Format?: ParserBlockFormat
+                SourceVariable?: string
+                Mappings?: Array<{ path?: string; variable?: string }>
+              }
+              setParserConfigs((current) => ({
+                ...current,
+                [nodeId]: {
+                  format: parsed.Format ?? 'json',
+                  sourceVariable: parsed.SourceVariable ?? '',
+                  mappings:
+                    parsed.Mappings
+                      ?.map((item) => ({
+                        path: (item.path ?? '').trim(),
+                        variable: (item.variable ?? '').trim(),
+                      }))
+                      .filter((m) => m.path.length > 0 && m.variable.length > 0) ?? [],
+                },
+              }))
+            } catch
+            {
               // ignore parse errors
             }
           }
@@ -1452,6 +1553,35 @@ function WorkflowEditorInner() {
       const node = createNode(`${template.type}-${Date.now()}`, template, position, openConfig)
       pushHistory()
       setNodes((current) => [...current, node])
+      if (template.type === 'HttpRequest') {
+        setHttpConfigs((current) => ({
+          ...current,
+          [node.id]: {
+            method: 'GET',
+            url: '',
+            body: '',
+            headers: [],
+            authType: 'none',
+            bearerToken: '',
+            basicUsername: '',
+            basicPassword: '',
+            apiKeyName: '',
+            apiKeyValue: '',
+            responseVariable: '',
+          },
+        }))
+      }
+
+      if (template.type === 'Parser') {
+        setParserConfigs((current) => ({
+          ...current,
+          [node.id]: {
+            format: 'json',
+            sourceVariable: '',
+            mappings: [],
+          },
+        }))
+      }
       if (template.type === 'Switch') {
         setSwitchConfigs((current) => ({
           ...current,
@@ -1795,6 +1925,36 @@ function WorkflowEditorInner() {
             jsonConfig = JSON.stringify({
               Expression: config.expression,
               Cases: trimmedCases,
+            })
+          }
+        }
+
+        if (blockType === 'HttpRequest') {
+          const config = httpConfigs[node.id]
+          if (config) {
+            jsonConfig = JSON.stringify({
+              Method: config.method,
+              Url: config.url,
+              Body: config.body ?? '',
+              Headers: config.headers.filter((h) => h.name || h.value),
+              AuthType: config.authType,
+              BearerToken: config.bearerToken ?? '',
+              BasicUsername: config.basicUsername ?? '',
+              BasicPassword: config.basicPassword ?? '',
+              ApiKeyName: config.apiKeyName ?? '',
+              ApiKeyValue: config.apiKeyValue ?? '',
+              ResponseVariable: config.responseVariable ?? '',
+            })
+          }
+        }
+
+        if (blockType === 'Parser') {
+          const config = parserConfigs[node.id]
+          if (config) {
+            jsonConfig = JSON.stringify({
+              Format: config.format,
+              SourceVariable: config.sourceVariable,
+              Mappings: config.mappings,
             })
           }
         }
@@ -2793,6 +2953,429 @@ function WorkflowEditorInner() {
                 <p className="muted">
                   Saved as JSON config with CalculationOperation and variable names.
                 </p>
+              </form>
+            ) : configPanel.blockType === 'HttpRequest' ? (
+              <form className="drawer-form">
+                {(() => {
+                  const config = httpConfigs[configPanel.id] ?? {
+                    method: 'GET',
+                    url: '',
+                    body: '',
+                    headers: [],
+                    authType: 'none' as HttpRequestAuthType,
+                    bearerToken: '',
+                    basicUsername: '',
+                    basicPassword: '',
+                    apiKeyName: '',
+                    apiKeyValue: '',
+                    responseVariable: '',
+                  }
+                  const updateConfig = (partial: Partial<HttpRequestConfig>) => {
+                    setHttpConfigs((current) => ({
+                      ...current,
+                      [configPanel.id]: { ...config, ...partial },
+                    }))
+                    markDirty()
+                  }
+                  const updateHeader = (index: number, field: 'name' | 'value', value: string) => {
+                    const headers = [...config.headers]
+                    headers[index] = { ...headers[index], [field]: value }
+                    updateConfig({ headers })
+                  }
+                  const addHeader = () => updateConfig({ headers: [...config.headers, { name: '', value: '' }] })
+                  const removeHeader = (index: number) =>
+                    updateConfig({ headers: config.headers.filter((_, idx) => idx !== index) })
+
+                  return (
+                    <>
+                      <label className="drawer-label" htmlFor="http-method">
+                        <span className="label-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 12h14M5 7h9M5 17h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                          </svg>
+                        </span>
+                        Method
+                      </label>
+                      <select
+                        id="http-method"
+                        value={config.method}
+                        onChange={(event) => updateConfig({ method: event.target.value as HttpRequestConfig['method'] })}
+                      >
+                        {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((method) => (
+                          <option key={method} value={method}>
+                            {method}
+                          </option>
+                        ))}
+                      </select>
+
+                      <label className="drawer-label" htmlFor="http-url">
+                        <span className="label-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                              d="M9.5 6.5 6.5 9.5a4 4 0 1 0 5.66 5.66l1.34-1.34m-2-2 3-3a4 4 0 1 0-5.66-5.66L7.5 4.5"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              fill="none"
+                            />
+                          </svg>
+                        </span>
+                        URL
+                      </label>
+                      <input
+                        id="http-url"
+                        type="url"
+                        placeholder="https://api.example.com/resource"
+                        value={config.url}
+                        onChange={(event) => updateConfig({ url: event.target.value })}
+                      />
+
+                      <VariableSelect
+                        id="http-response-var"
+                        label="Response variable"
+                        placeholder="e.g. responseBody"
+                        value={formatVariableDisplay(config.responseVariable ?? '')}
+                        options={variables.map((variable) => `$${variable.name}`)}
+                        onValueChange={(value) => {
+                          const normalized = normalizeVariableName(value)
+                          updateConfig({ responseVariable: normalized })
+                        }}
+                      />
+
+                      <label className="drawer-label" htmlFor="http-auth">
+                        <span className="label-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                              d="M6 10v8h12v-8M9 10V7a3 3 0 1 1 6 0v3"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              fill="none"
+                            />
+                          </svg>
+                        </span>
+                        Authorization
+                      </label>
+                      <select
+                        id="http-auth"
+                        value={config.authType}
+                        onChange={(event) =>
+                          updateConfig({ authType: event.target.value as HttpRequestAuthType })
+                        }
+                      >
+                        <option value="none">None</option>
+                        <option value="bearer">Bearer token</option>
+                        <option value="basic">Basic auth</option>
+                        <option value="apiKeyHeader">API key (header)</option>
+                        <option value="apiKeyQuery">API key (query)</option>
+                      </select>
+
+                      {config.authType === 'bearer' && (
+                        <>
+                          <label className="drawer-label" htmlFor="http-bearer">
+                            <span className="label-icon">
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                  d="M12 4v16m-6-8h12"
+                                  stroke="currentColor"
+                                  strokeWidth="1.6"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            </span>
+                            Bearer token
+                          </label>
+                          <input
+                            id="http-bearer"
+                            type="text"
+                            value={config.bearerToken}
+                            onChange={(event) => updateConfig({ bearerToken: event.target.value })}
+                          />
+                        </>
+                      )}
+
+                      {config.authType === 'basic' && (
+                        <div className="two-col">
+                          <div>
+                            <label className="drawer-label" htmlFor="http-basic-user">
+                              <span className="label-icon">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path
+                                    d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-6 6a6 6 0 1 1 12 0"
+                                    stroke="currentColor"
+                                    strokeWidth="1.6"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    fill="none"
+                                  />
+                                </svg>
+                              </span>
+                              Username
+                            </label>
+                            <input
+                              id="http-basic-user"
+                              type="text"
+                              value={config.basicUsername}
+                              onChange={(event) => updateConfig({ basicUsername: event.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="drawer-label" htmlFor="http-basic-pass">
+                              <span className="label-icon">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path
+                                    d="M7 11V8a5 5 0 1 1 10 0v3"
+                                    stroke="currentColor"
+                                    strokeWidth="1.6"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    fill="none"
+                                  />
+                                  <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" fill="none" />
+                                  <path d="M12 14v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                                </svg>
+                              </span>
+                              Password
+                            </label>
+                            <input
+                              id="http-basic-pass"
+                              type="password"
+                              value={config.basicPassword}
+                              onChange={(event) => updateConfig({ basicPassword: event.target.value })}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {(config.authType === 'apiKeyHeader' || config.authType === 'apiKeyQuery') && (
+                        <div className="two-col">
+                          <div>
+                            <label className="drawer-label" htmlFor="http-api-name">
+                              <span className="label-icon">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path
+                                    d="M5 12h4l2-2 3 3 2-2 3 3"
+                                    stroke="currentColor"
+                                    strokeWidth="1.6"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    fill="none"
+                                  />
+                                </svg>
+                              </span>
+                              API key name
+                            </label>
+                            <input
+                              id="http-api-name"
+                              type="text"
+                              value={config.apiKeyName}
+                              onChange={(event) => updateConfig({ apiKeyName: event.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="drawer-label" htmlFor="http-api-value">
+                              <span className="label-icon">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path
+                                    d="M4 12h6l2-3 3 4 2-2 3 3"
+                                    stroke="currentColor"
+                                    strokeWidth="1.6"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    fill="none"
+                                  />
+                                </svg>
+                              </span>
+                              API key value
+                            </label>
+                            <input
+                              id="http-api-value"
+                              type="text"
+                              value={config.apiKeyValue}
+                              onChange={(event) => updateConfig({ apiKeyValue: event.target.value })}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <label className="drawer-label">
+                        <span className="label-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                              d="M5 7h14M5 12h11M5 17h9"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        Headers
+                      </label>
+                      <div className="stacked-list">
+                        {config.headers.map((header, index) => (
+                          <div key={`header-${index}`} className="header-row">
+                            <input
+                              type="text"
+                              placeholder="Header name"
+                              value={header.name}
+                              onChange={(event) => updateHeader(index, 'name', event.target.value)}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Value"
+                              value={header.value}
+                              onChange={(event) => updateHeader(index, 'value', event.target.value)}
+                            />
+                            <button type="button" className="ghost" onClick={() => removeHeader(index)}>
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <button type="button" className="ghost" onClick={addHeader}>
+                          Add header
+                        </button>
+                      </div>
+
+                      {config.method !== 'GET' && (
+                        <>
+                          <label className="drawer-label" htmlFor="http-body">
+                            <span className="label-icon">
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                  d="M5 5h14v14H5z"
+                                  stroke="currentColor"
+                                  strokeWidth="1.6"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  fill="none"
+                                />
+                                <path d="M9 9h6v6H9z" fill="currentColor" />
+                              </svg>
+                            </span>
+                            Body (JSON or form)
+                          </label>
+                          <textarea
+                            id="http-body"
+                            placeholder='e.g. {\"name\":\"value\"}'
+                            rows={4}
+                            value={config.body}
+                            onChange={(event) => updateConfig({ body: event.target.value })}
+                          />
+                        </>
+                      )}
+                    </>
+                  )
+                })()}
+              </form>
+            ) : configPanel.blockType === 'Parser' ? (
+              <form className="drawer-form">
+                {(() => {
+                  const config = parserConfigs[configPanel.id] ?? {
+                    format: 'json' as ParserBlockFormat,
+                    sourceVariable: '',
+                    mappings: [],
+                  }
+                  const updateConfig = (partial: Partial<ParserConfig>) => {
+                    setParserConfigs((current) => ({
+                      ...current,
+                      [configPanel.id]: { ...config, ...partial },
+                    }))
+                    markDirty()
+                  }
+
+                  const updateMapping = (index: number, key: 'path' | 'variable', value: string) => {
+                    const next = [...config.mappings]
+                    next[index] = { ...next[index], [key]: value }
+                    updateConfig({ mappings: next })
+                  }
+
+                  const addMapping = () =>
+                    updateConfig({ mappings: [...config.mappings, { path: '', variable: '' }] })
+
+                  const removeMapping = (index: number) =>
+                    updateConfig({ mappings: config.mappings.filter((_, i) => i !== index) })
+
+                  return (
+                    <>
+                      <label className="drawer-label" htmlFor="parser-format">
+                        <span className="label-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M5 6h14M5 12h14M5 18h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                          </svg>
+                        </span>
+                        Format
+                      </label>
+                      <select
+                        id="parser-format"
+                        value={config.format}
+                        onChange={(event) => updateConfig({ format: event.target.value as ParserBlockFormat })}
+                      >
+                        <option value="json">JSON</option>
+                        <option value="xml">XML</option>
+                      </select>
+
+                      <VariableSelect
+                        id="parser-source"
+                        label="Source variable"
+                        placeholder="e.g. responseBody"
+                        value={formatVariableDisplay(config.sourceVariable)}
+                        options={variables.map((variable) => `$${variable.name}`)}
+                        onValueChange={(value) => updateConfig({ sourceVariable: normalizeVariableName(value) })}
+                      />
+
+                      <label className="drawer-label">
+                        <span className="label-icon">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                              d="M5 7h14M5 12h14M5 17h10"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        Mappings (path → variable)
+                      </label>
+
+                      <div className="stacked-list">
+                        {(config.mappings.length ? config.mappings : [{ path: '', variable: '' }]).map(
+                          (mapping, index) => (
+                            <div key={`mapping-${index}`} className="mapping-row">
+                              <input
+                                type="text"
+                                placeholder={config.format === 'json' ? '$.payload.id' : '/root/item/id'}
+                                value={mapping.path}
+                                onChange={(event) => updateMapping(index, 'path', event.target.value)}
+                              />
+                              <VariableSelect
+                                id={`parser-var-${index}`}
+                                label=""
+                                placeholder="Variable (e.g. itemId)"
+                                value={formatVariableDisplay(mapping.variable)}
+                                options={variables.map((variable) => `$${variable.name}`)}
+                                onValueChange={(value) =>
+                                  updateMapping(index, 'variable', normalizeVariableName(value))
+                                }
+                              />
+                              <button type="button" className="ghost" onClick={() => removeMapping(index)}>
+                                Remove
+                              </button>
+                            </div>
+                          ),
+                        )}
+                        <button type="button" className="ghost" onClick={addMapping}>
+                          Add mapping
+                        </button>
+                      </div>
+                      <p className="muted">
+                        Paths: JSON uses dot/`$.field` style, XML uses XPath-like `/root/item/id`. Each mapping writes the
+                        matched value into the target variable.
+                      </p>
+                    </>
+                  )
+                })()}
               </form>
             ) : (
               <div className="drawer-empty">

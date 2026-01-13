@@ -128,6 +128,18 @@ namespace Flowforge.Migrations
                             Id = 5,
                             Description = "Blok wielościeżkowy (case)",
                             Type = "Switch"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Description = "Wywołanie HTTP (GET/POST itp.)",
+                            Type = "HttpRequest"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Description = "Parser JSON/XML",
+                            Type = "Parser"
                         });
                 });
 

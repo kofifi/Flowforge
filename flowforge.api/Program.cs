@@ -43,7 +43,10 @@ builder.Services.AddScoped<ISystemBlockService, SystemBlockService>();
 builder.Services.AddScoped<IBlockExecutor, CalculationBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, ConditionBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, SwitchBlockExecutor>();
+builder.Services.AddScoped<IBlockExecutor, HttpRequestBlockExecutor>();
+builder.Services.AddScoped<IBlockExecutor, ParserBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, DefaultBlockExecutor>();
+builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<IWorkflowExecutionRepository, WorkflowExecutionRepository>();
 builder.Services.AddScoped<IWorkflowExecutionService, WorkflowExecutionService>();
@@ -61,7 +64,10 @@ using (var scope = app.Services.CreateScope())
         new SystemBlock { Type = "Start", Description = "Blok początkowy" },
         new SystemBlock { Type = "End", Description = "Blok końcowy" },
         new SystemBlock { Type = "Calculation", Description = "Blok kalkulacji" },
-        new SystemBlock { Type = "If", Description = "Blok warunkowy" }
+        new SystemBlock { Type = "If", Description = "Blok warunkowy" },
+        new SystemBlock { Type = "Switch", Description = "Blok wielościeżkowy (case)" },
+        new SystemBlock { Type = "HttpRequest", Description = "Wywołanie HTTP (GET/POST itp.)" },
+        new SystemBlock { Type = "Parser", Description = "Parser JSON/XML" }
     };
 
     foreach (var block in requiredBlocks)
