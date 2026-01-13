@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useThemePreference } from '../hooks/useThemePreference'
+import { useLanguagePreference } from '../hooks/useLanguagePreference'
 
 type Execution = {
   id: number
@@ -37,6 +39,10 @@ export default function ExecutionsPage() {
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const { theme, toggleTheme } = useThemePreference()
+  const { language, toggleLanguage } = useLanguagePreference()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -108,13 +114,105 @@ export default function ExecutionsPage() {
     })
   }, [executions, fromDate, search, sortBy, toDate, workflowFilter])
 
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredExecutions.length / pageSize)), [filteredExecutions.length, pageSize])
+
+  useEffect(() => {
+    setPage((current) => {
+      const next = Math.min(Math.max(1, current), pageCount)
+      return next
+    })
+  }, [pageCount, filteredExecutions.length])
+
+  const paginatedExecutions = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filteredExecutions.slice(start, start + pageSize)
+  }, [filteredExecutions, page, pageSize])
+
+  function handlePageInput(value: string) {
+    const parsed = Number(value)
+    if (!Number.isFinite(parsed)) return
+    setPage(Math.min(pageCount, Math.max(1, parsed)))
+  }
+
+  const copy = language === 'pl'
+    ? {
+        navWorkflows: 'Workflowy',
+        navBlocks: 'Bloki',
+        navExecutions: 'Egzekucje',
+        title: 'Egzekucje',
+        subtitle: 'Ostatnie uruchomienia i znaczniki czasu.',
+        history: 'Historia',
+        sectionTitle: 'Historia egzekucji',
+        sectionSubtitle: 'Wyszukuj i filtruj uruchomienia po nazwie, dacie lub kolejności.',
+        searchLabel: 'Szukaj',
+        searchPlaceholder: 'Szukaj po nazwie workflow lub ID...',
+        workflowLabel: 'Workflow',
+        allWorkflows: 'Wszystkie workflowy',
+        between: 'Zakres dat',
+        sortLabel: 'Sortuj',
+        newest: 'Najnowsze',
+        oldest: 'Najstarsze',
+        last24h: 'Ostatnie 24h',
+        last7d: 'Ostatnie 7 dni',
+        last30d: 'Ostatnie 30 dni',
+        showing: 'Widoczne',
+        fromTotal: 'z',
+        totalRecords: 'wszystkich',
+        reset: 'Resetuj filtry',
+        prev: 'Poprzednia',
+        next: 'Następna',
+        page: 'Strona',
+        of: 'z',
+        rows: 'Wiersze',
+        loading: 'Ładowanie egzekucji...',
+        none: 'Brak egzekucji.',
+        noMatch: 'Brak wyników dla filtrów.',
+        viewDetails: 'Szczegóły',
+        openWorkflow: 'Otwórz workflow'
+      }
+    : {
+        navWorkflows: 'Workflows',
+        navBlocks: 'Blocks',
+        navExecutions: 'Executions',
+        title: 'Executions',
+        subtitle: 'Recent workflow runs and timestamps.',
+        history: 'History',
+        sectionTitle: 'Execution history',
+        sectionSubtitle: 'Search and filter workflow runs by name, date, or recency.',
+        searchLabel: 'Search',
+        searchPlaceholder: 'Search by workflow name or id...',
+        workflowLabel: 'Workflow',
+        allWorkflows: 'All workflows',
+        between: 'Executed between',
+        sortLabel: 'Sort',
+        newest: 'Newest first',
+        oldest: 'Oldest first',
+        last24h: 'Last 24h',
+        last7d: 'Last 7 days',
+        last30d: 'Last 30 days',
+        showing: 'Showing',
+        fromTotal: 'from',
+        totalRecords: 'total records',
+        reset: 'Reset filters',
+        prev: 'Prev',
+        next: 'Next',
+        page: 'Page',
+        of: 'of',
+        rows: 'Rows',
+        loading: 'Loading executions...',
+        none: 'No executions yet.',
+        noMatch: 'No matches for current filters.',
+        viewDetails: 'View details',
+        openWorkflow: 'Open workflow'
+      }
+
   const status = useMemo(() => {
-    if (loading) return 'Loading executions...'
+    if (loading) return copy.loading
     if (error) return error
-    if (executions.length === 0) return 'No executions yet.'
-    if (filteredExecutions.length === 0) return 'No matches for current filters.'
+    if (executions.length === 0) return copy.none
+    if (filteredExecutions.length === 0) return copy.noMatch
     return ''
-  }, [error, executions.length, filteredExecutions.length, loading])
+  }, [copy.loading, copy.noMatch, copy.none, error, executions.length, filteredExecutions.length, loading])
 
   function setQuickRange(days: number) {
     const now = new Date()
@@ -146,13 +244,13 @@ export default function ExecutionsPage() {
         </div>
         <nav className="nav">
           <button type="button" className="nav-item" onClick={() => navigate('/')}>
-            Workflows
+            {copy.navWorkflows}
           </button>
           <button type="button" className="nav-item" onClick={() => navigate('/blocks')}>
-            Blocks
+            {copy.navBlocks}
           </button>
           <button type="button" className="nav-item active">
-            Executions
+            {copy.navExecutions}
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -164,42 +262,77 @@ export default function ExecutionsPage() {
       <main className="main">
         <header className="topbar">
           <div>
-            <h1>Executions</h1>
-            <p className="subtitle">Recent workflow runs and timestamps.</p>
+            <h1>{copy.title}</h1>
+            <p className="subtitle">{copy.subtitle}</p>
           </div>
           <div className="topbar-meta">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={toggleLanguage}
+              aria-label={`Switch to ${language === 'pl' ? 'English' : 'Polish'}`}
+            >
+              {language === 'pl' ? 'PL' : 'EN'}
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </button>
             <span className="count">{executions.length} total</span>
-            <span className="pill">History</span>
+            <span className="pill">{copy.history}</span>
           </div>
         </header>
 
         <section className="panel">
           <div className="panel-header">
-            <h2>Execution history</h2>
-            <p className="muted">
-              Search and filter workflow runs by name, date, or recency.
-            </p>
+            <h2>{copy.sectionTitle}</h2>
+            <p className="muted">{copy.sectionSubtitle}</p>
           </div>
 
           <div className="filter-bar">
             <div className="filter-grid">
               <label className="filter-group">
-                <span>Search</span>
+                <span>{copy.searchLabel}</span>
                 <input
                   type="text"
-                  placeholder="Search by workflow name or id..."
+                  placeholder={copy.searchPlaceholder}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </label>
 
               <label className="filter-group">
-                <span>Workflow</span>
+                <span>{copy.workflowLabel}</span>
                 <select
                   value={workflowFilter}
                   onChange={(e) => setWorkflowFilter(e.target.value)}
                 >
-                  <option value="all">All workflows</option>
+                  <option value="all">{copy.allWorkflows}</option>
                   {workflowOptions.map(([id, label]) => (
                     <option key={id} value={String(id)}>
                       {label}
@@ -209,7 +342,7 @@ export default function ExecutionsPage() {
               </label>
 
               <div className="filter-group">
-                <span>Executed between</span>
+                <span>{copy.between}</span>
                 <div className="date-range">
                   <input
                     type="date"
@@ -217,7 +350,7 @@ export default function ExecutionsPage() {
                     onChange={(e) => setFromDate(e.target.value)}
                     aria-label="Executed from"
                   />
-                  <span className="date-separator">to</span>
+                  <span className="date-separator">{language === 'pl' ? 'do' : 'to'}</span>
                   <input
                     type="date"
                     value={toDate}
@@ -228,64 +361,125 @@ export default function ExecutionsPage() {
               </div>
 
               <label className="filter-group">
-                <span>Sort</span>
+                <span>{copy.sortLabel}</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
                 >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
+                  <option value="newest">{copy.newest}</option>
+                  <option value="oldest">{copy.oldest}</option>
                 </select>
               </label>
             </div>
 
-            <div className="filter-actions">
-              <div className="quick-filters">
-                <button
-                  type="button"
-                  className="ghost tiny"
-                  onClick={() => setQuickRange(1)}
-                >
-                  Last 24h
-                </button>
-                <button
-                  type="button"
-                  className="ghost tiny"
-                  onClick={() => setQuickRange(7)}
-                >
-                  Last 7 days
-                </button>
-                <button
-                  type="button"
-                  className="ghost tiny"
-                  onClick={() => setQuickRange(30)}
-                >
-                  Last 30 days
-                </button>
-              </div>
+              <div className="filter-actions">
+                <div className="quick-filters">
+                  <button
+                    type="button"
+                    className="ghost tiny"
+                    onClick={() => setQuickRange(1)}
+                  >
+                    {copy.last24h}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost tiny"
+                    onClick={() => setQuickRange(7)}
+                  >
+                    {copy.last7d}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost tiny"
+                    onClick={() => setQuickRange(30)}
+                  >
+                    {copy.last30d}
+                  </button>
+                </div>
 
-              <div className="filter-footer">
-                <div className="badges">
-                  <span className="chip">Showing {filteredExecutions.length}</span>
+                <div className="filter-footer">
+                  <div className="badges">
+                  <span className="chip">
+                    {copy.showing} {filteredExecutions.length}
+                  </span>
                   {filteredExecutions.length !== executions.length && (
                     <span className="chip ghost">
-                      from {executions.length} total records
+                      {copy.fromTotal} {executions.length} {copy.totalRecords}
                     </span>
                   )}
                   {workflowFilter !== 'all' && (
                     <span className="chip ghost">
-                      Workflow:{' '}
+                      {copy.workflowLabel}:{' '}
                       {workflowOptions.find(([id]) => String(id) === workflowFilter)?.[1]}
                     </span>
                   )}
-                  {search.trim() && <span className="chip ghost">Search: “{search.trim()}”</span>}
-                  {fromDate && <span className="chip ghost">From: {fromDate}</span>}
-                  {toDate && <span className="chip ghost">To: {toDate}</span>}
-                  {sortBy === 'oldest' && <span className="chip ghost">Sorted by oldest</span>}
+                  {search.trim() && (
+                    <span className="chip ghost">
+                      {copy.searchLabel}: “{search.trim()}”
+                    </span>
+                  )}
+                  {fromDate && (
+                    <span className="chip ghost">
+                      {language === 'pl' ? 'Od' : 'From'}: {fromDate}
+                    </span>
+                  )}
+                  {toDate && (
+                    <span className="chip ghost">
+                      {language === 'pl' ? 'Do' : 'To'}: {toDate}
+                    </span>
+                  )}
+                  {sortBy === 'oldest' && <span className="chip ghost">{copy.oldest}</span>}
                 </div>
                 <button type="button" className="ghost" onClick={resetFilters}>
-                  Reset filters
+                  {copy.reset}
                 </button>
+              </div>
+              <div className="pagination">
+                <div className="page-controls">
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  >
+                    {copy.prev}
+                  </button>
+                  <span className="page-info">
+                    {copy.page}{' '}
+                    <input
+                      type="number"
+                      min={1}
+                      max={pageCount}
+                      value={page}
+                      onChange={(e) => handlePageInput(e.target.value)}
+                      className="page-input"
+                    />{' '}
+                    {copy.of} {pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    disabled={page >= pageCount}
+                  >
+                    {copy.next}
+                  </button>
+                </div>
+                <label className="page-size">
+                  <span>{copy.rows}</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value))
+                      setPage(1)
+                    }}
+                  >
+                    {[5, 10, 20, 50].map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </div>
           </div>
@@ -294,14 +488,14 @@ export default function ExecutionsPage() {
             <div className="state">{status}</div>
           ) : (
             <ul className="executions-list">
-              {filteredExecutions.map((execution) => (
+              {paginatedExecutions.map((execution) => (
                 <li key={execution.id} className="execution-card">
                   <div>
                     <p className="label">
                       {execution.workflowName ?? `Workflow #${execution.workflowId}`}
                     </p>
                     <p className="meta">
-                      Executed: {formatDateTime(execution.executedAt)}
+                      {language === 'pl' ? 'Uruchomiono:' : 'Executed:'} {formatDateTime(execution.executedAt)}
                     </p>
                   </div>
                   <div className="card-actions">
@@ -309,14 +503,14 @@ export default function ExecutionsPage() {
                       type="button"
                       onClick={() => navigate(`/executions/${execution.id}`)}
                     >
-                      View details
+                      {copy.viewDetails}
                     </button>
                     <button
                       type="button"
                       className="ghost"
                       onClick={() => navigate(`/workflows/${execution.workflowId}`)}
                     >
-                      Open workflow
+                      {copy.openWorkflow}
                     </button>
                   </div>
                 </li>

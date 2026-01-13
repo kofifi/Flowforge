@@ -62,12 +62,12 @@ using (var scope = app.Services.CreateScope())
     context.Database.Migrate();
     var requiredBlocks = new[]
     {
-        new SystemBlock { Type = "Start", Description = "Blok początkowy" },
-        new SystemBlock { Type = "End", Description = "Blok końcowy" },
-        new SystemBlock { Type = "Calculation", Description = "Blok kalkulacji" },
-        new SystemBlock { Type = "If", Description = "Blok warunkowy" },
-        new SystemBlock { Type = "Switch", Description = "Blok wielościeżkowy (case)" },
-        new SystemBlock { Type = "HttpRequest", Description = "Wywołanie HTTP (GET/POST itp.)" },
+        new SystemBlock { Type = "Start", Description = "Start block" },
+        new SystemBlock { Type = "End", Description = "End block" },
+        new SystemBlock { Type = "Calculation", Description = "Calculation block" },
+        new SystemBlock { Type = "If", Description = "Conditional block" },
+        new SystemBlock { Type = "Switch", Description = "Switch (case) block" },
+        new SystemBlock { Type = "HttpRequest", Description = "HTTP request block" },
         new SystemBlock { Type = "Parser", Description = "Parser JSON/XML" }
     };
 
@@ -76,6 +76,11 @@ using (var scope = app.Services.CreateScope())
         if (!context.SystemBlocks.Any(sb => sb.Type == block.Type))
         {
             context.SystemBlocks.Add(block);
+        }
+        else
+        {
+            var existing = context.SystemBlocks.First(sb => sb.Type == block.Type);
+            existing.Description = block.Description;
         }
     }
 

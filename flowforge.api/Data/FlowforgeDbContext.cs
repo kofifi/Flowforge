@@ -80,12 +80,12 @@ public class FlowforgeDbContext : DbContext
 
         // Seed data for SystemBlocks
         modelBuilder.Entity<SystemBlock>().HasData(
-            new SystemBlock { Id = 1, Type = "Start", Description = "Blok początkowy" },
-            new SystemBlock { Id = 2, Type = "End", Description = "Blok końcowy" },
-            new SystemBlock { Id = 3, Type = "Calculation", Description = "Blok kalkulacji" },
-            new SystemBlock { Id = 4, Type = "If", Description = "Blok warunkowy" },
-            new SystemBlock { Id = 5, Type = "Switch", Description = "Blok wielościeżkowy (case)" },
-            new SystemBlock { Id = 6, Type = "HttpRequest", Description = "Wywołanie HTTP (GET/POST itp.)" },
+            new SystemBlock { Id = 1, Type = "Start", Description = "Start block" },
+            new SystemBlock { Id = 2, Type = "End", Description = "End block" },
+            new SystemBlock { Id = 3, Type = "Calculation", Description = "Calculation block" },
+            new SystemBlock { Id = 4, Type = "If", Description = "Conditional block" },
+            new SystemBlock { Id = 5, Type = "Switch", Description = "Switch (case) block" },
+            new SystemBlock { Id = 6, Type = "HttpRequest", Description = "HTTP request block" },
             new SystemBlock { Id = 7, Type = "Parser", Description = "Parser JSON/XML" }
         );
     }

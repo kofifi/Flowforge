@@ -21,6 +21,8 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import { normalizeValues } from '../utils/dataTransforms'
 import { useBodyClass } from '../hooks/useBodyClass'
+import { useThemePreference } from '../hooks/useThemePreference'
+import { useLanguagePreference } from '../hooks/useLanguagePreference'
 import { useWorkflowStore } from '../state/workflowStore'
 import FlowNode from '../components/editor/FlowNode'
 import CanvasSidebar from '../components/editor/CanvasSidebar'
@@ -165,6 +167,26 @@ function formatSwitchEdgeLabel(index: number, caseValue: string | undefined): st
 }
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+
+function parseJsonString(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return value
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return value
+  }
+}
+
+function normalizeDataMap(record: Record<string, string> | undefined) {
+  if (!record) return {}
+  return Object.fromEntries(
+    Object.entries(record).map(([key, val]) => {
+      if (typeof val === 'string') return [key, parseJsonString(val)]
+      return [key, val]
+    }),
+  )
+}
 
 const templates: BlockTemplate[] = [
   { type: 'Start', label: 'Start', description: 'Entry point for the workflow.', category: 'Flow' },
@@ -459,11 +481,20 @@ function WorkflowEditorInner() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [showRunInputs, setShowRunInputs] = useState(false)
   const [snapToGrid, setSnapToGrid] = useState(true)
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light'
-    return localStorage.getItem('flowforge-theme') === 'dark' ? 'dark' : 'light'
-  })
   const [isDragging, setIsDragging] = useState(false)
+  const { theme, toggleTheme } = useThemePreference()
+  const { language, toggleLanguage } = useLanguagePreference()
+  const editorCopy = language === 'pl'
+    ? {
+        back: 'Powrót do workflowów',
+        subtitle: 'Projektuj bloki i połączenia w React Flow.',
+        untitled: 'Workflow'
+      }
+    : {
+        back: 'Back to workflows',
+        subtitle: 'Design blocks and connections with React Flow.',
+        untitled: 'Workflow'
+      }
 
   const [nodes, setNodes, internalOnNodesChange] = useNodesState<Node<NodeData>>([])
   const [edges, setEdges] = useEdgesState<Edge>([])
@@ -613,16 +644,6 @@ function WorkflowEditorInner() {
     })
   }, [nodes, setEdges, switchConfigs])
 
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('theme-dark')
-    } else {
-      root.classList.remove('theme-dark')
-    }
-    localStorage.setItem('flowforge-theme', theme)
-  }, [theme])
-
   const pushToast = useCallback((message: string) => {
     const id = Date.now() + Math.random()
     setToasts((current) => [...current, { id, message }])
@@ -726,10 +747,6 @@ function WorkflowEditorInner() {
     historyRef.current = []
     initialSnapshotCaptured.current = false
   }, [workflowId])
-
-  const toggleTheme = useCallback(() => {
-    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
-  }, [])
 
   const openConfig = useCallback((payload: { id: string; blockType: string; label: string }) => {
     setConfigPanel(payload)
@@ -2067,16 +2084,24 @@ function WorkflowEditorInner() {
       {status ? (
         <div className="state">{status}</div>
       ) : (
-        <div className="editor-body">
+          <div className="editor-body">
           <header className="editor-topbar">
             <button type="button" className="ghost" onClick={() => navigate('/')}>
-              Back to workflows
+              {editorCopy.back}
             </button>
             <div className="editor-title">
-              <h1>{workflow?.name ?? 'Workflow'}</h1>
-              <p className="subtitle">Design blocks and connections with React Flow.</p>
+              <h1>{workflow?.name ?? editorCopy.untitled}</h1>
+              <p className="subtitle">{editorCopy.subtitle}</p>
             </div>
             <div className="editor-actions">
+              <button
+                type="button"
+                className="icon-button"
+                onClick={toggleLanguage}
+                aria-label={`Switch to ${language === 'pl' ? 'English' : 'Polish'}`}
+              >
+                {language === 'pl' ? 'PL' : 'EN'}
+              </button>
               <button
                 type="button"
                 className="icon-button"
@@ -3306,6 +3331,7 @@ function WorkflowEditorInner() {
                           </svg>
                         </span>
                         Format
+                        <p className="muted">JSON (e.g. HTTP response) or XML payload to parse.</p>
                       </label>
                       <select
                         id="parser-format"
@@ -3324,6 +3350,10 @@ function WorkflowEditorInner() {
                         options={variables.map((variable) => `$${variable.name}`)}
                         onValueChange={(value) => updateConfig({ sourceVariable: normalizeVariableName(value) })}
                       />
+                      <p className="muted">
+                        Point to the payload variable (e.g. <code>$http.body</code> or <code>$responseBody</code>).
+                        For JSON arrays, include the array name in the path (e.g. <code>$.responseBody[0].id</code>).
+                      </p>
 
                       <label className="drawer-label">
                         <span className="label-icon">
@@ -3338,6 +3368,10 @@ function WorkflowEditorInner() {
                         </span>
                         Mappings (path → variable)
                       </label>
+                      <p className="muted">
+                        JSON: <code>$.field</code>, <code>$.items[0].id</code>. XML: <code>/root/item/id</code>. Each mapping writes the
+                        matched value into the target variable.
+                      </p>
 
                       <div className="stacked-list">
                         {(config.mappings.length ? config.mappings : [{ path: '', variable: '' }]).map(
@@ -3553,30 +3587,36 @@ function WorkflowEditorInner() {
                   <p className="section-title">Result</p>
                   <span className="section-subtitle">Execution #{runResult.id}</span>
                 </div>
+              <div className="drawer-empty">
+                <p className="label">Flow</p>
+                {runResult.path && runResult.path.length > 0 ? (
+                  <div className="flow-lane">
+                    {runResult.path.map((step, idx) => (
+                        <div key={`${step}-${idx}`} className="flow-segment">
+                          <div className="flow-node">
+                            <div className="flow-node-top">
+                              <span className="flow-index">{idx + 1}</span>
+                              <span className="flow-badge">Executed</span>
+                            </div>
+                            <span className="flow-label">{step}</span>
+                            {runResult.actions && runResult.actions[idx] && (
+                              <span className="flow-note">{runResult.actions[idx]}</span>
+                            )}
+                          </div>
+                          {idx < runResult.path.length - 1 && <div className="flow-connector" />}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="meta">No path recorded.</p>
+                  )}
+                </div>
                 <div className="drawer-empty">
                   <p className="label">Output variables</p>
                   <pre className="meta">
-                    {JSON.stringify(runResult.resultData ?? {}, null, 2)}
+                    {JSON.stringify(normalizeDataMap(runResult.resultData), null, 2)}
                   </pre>
                 </div>
-                {runResult.path && runResult.path.length > 0 && (
-                  <div className="drawer-empty">
-                    <p className="label">Path</p>
-                    <p className="meta">{runResult.path.join(' → ')}</p>
-                  </div>
-                )}
-                {runResult.actions && runResult.actions.length > 0 && (
-                  <div className="drawer-empty">
-                    <p className="label">Actions</p>
-                    <ul className="variables-list">
-                      {runResult.actions.map((action, index) => (
-                        <li key={`${action}-${index}`} className="variable-card">
-                          <p className="meta">{action}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </section>
             )}
           </aside>

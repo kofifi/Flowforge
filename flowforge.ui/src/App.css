@@ -314,6 +314,51 @@ body.editor-wide .editor-body {
   color: var(--muted);
 }
 
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.page-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-info {
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+.page-input {
+  width: 70px;
+  border-radius: 10px;
+  border: 1px solid var(--input-border);
+  padding: 0.35rem 0.4rem;
+  margin: 0 0.35rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+.page-size select {
+  border-radius: 10px;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-color);
+}
+
 .count {
   font-size: 0.9rem;
   color: var(--muted);
@@ -399,6 +444,158 @@ body.editor-wide .editor-body {
   margin: 0.2rem 0 0;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.flow-lane {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  row-gap: 1rem;
+  width: 100%;
+  padding: 0.75rem 0.4rem;
+}
+
+.flow-segment {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+
+.flow-lane.flow-scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  row-gap: 0;
+  scrollbar-color: #2f9e68 rgba(46, 59, 55, 0.08);
+}
+
+.flow-lane.flow-scroll .flow-segment {
+  flex: 0 0 auto;
+  min-width: 180px;
+}
+
+.flow-lane.flow-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.flow-lane.flow-scroll::-webkit-scrollbar-track {
+  background: rgba(46, 59, 55, 0.06);
+  border-radius: 999px;
+}
+
+.flow-lane.flow-scroll::-webkit-scrollbar-thumb {
+  background: #2f9e68 !important;
+  border-radius: 999px;
+  border: none;
+}
+
+.flow-node {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.8rem 1rem;
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 70%, transparent) 0%, color-mix(in srgb, var(--surface-contrast) 50%, transparent) 100%);
+  border: 1px solid color-mix(in srgb, var(--border-soft) 80%, transparent);
+  box-shadow: 0 10px 24px rgba(24, 30, 28, 0.12);
+  min-width: 180px;
+}
+
+.flow-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: 0 6px 12px rgba(24, 30, 28, 0.18);
+}
+
+.flow-node-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.flow-badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 10px;
+  background: rgba(46, 59, 55, 0.12);
+  color: var(--primary-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.flow-label {
+  font-weight: 700;
+  color: var(--primary-strong);
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.flow-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.flow-connector {
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(46, 59, 55, 0.18), rgba(46, 59, 55, 0.6));
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Scrollbar styling for scrollable areas (horizontal or vertical) */
+.flow-lane,
+.drawer-empty pre,
+.code-block,
+.state {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(46, 59, 55, 0.45) rgba(46, 59, 55, 0.08);
+}
+
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(46, 59, 55, 0.06);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #2f9e68, #2f9e68);
+  border-radius: 999px;
+  border: none;
+}
+
+.flow-connector::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .execution-grid {

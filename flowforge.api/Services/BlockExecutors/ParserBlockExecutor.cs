@@ -57,7 +57,7 @@ public class ParserBlockExecutor : IBlockExecutor
                     if (string.IsNullOrWhiteSpace(mapping.Path) || string.IsNullOrWhiteSpace(mapping.Variable))
                         continue;
                     var variableName = mapping.Variable.TrimStart('$');
-                    var value = ResolveJsonPath(doc.RootElement, mapping.Path);
+                    var value = ResolveJsonPath(doc.RootElement, mapping.Path, sourceKey);
                     variables[variableName] = value ?? string.Empty;
                     assigned.Add($"{mapping.Path} -> {variableName} = {TruncateValue(value)}");
                 }
@@ -92,17 +92,17 @@ public class ParserBlockExecutor : IBlockExecutor
 
         var summary = assigned.Count == 0
             ? "No mappings applied."
-            : string.Join(", ", assigned.Take(3));
-        if (assigned.Count > 3)
+            : string.Join(" | ", assigned);
+        if (summary.Length > 220)
         {
-            summary += $" … (+{assigned.Count - 3} more)";
+            summary = summary.Substring(0, 220) + "…";
         }
 
         var description = $"Parsed {assigned.Count} value(s) from {config.Format.ToString().ToUpperInvariant()}: {summary}";
         return new BlockExecutionResult(description, false);
     }
 
-    private static string? ResolveJsonPath(JsonElement root, string path)
+    private static string? ResolveJsonPath(JsonElement root, string path, string sourceKey)
     {
         // very small path resolver: supports $.a.b or a.b and simple array indices [0]
         var cleaned = path.Trim();
@@ -111,9 +111,15 @@ public class ParserBlockExecutor : IBlockExecutor
             cleaned = cleaned.TrimStart('$').TrimStart('.');
         }
         var segments = cleaned.Split('.', StringSplitOptions.RemoveEmptyEntries);
-        JsonElement current = root;
-        foreach (var seg in segments)
+        var startIndex = 0;
+        if (segments.Length > 0 && string.Equals(segments[0], sourceKey, StringComparison.OrdinalIgnoreCase))
         {
+            startIndex = 1;
+        }
+        JsonElement current = root;
+        for (var i = startIndex; i < segments.Length; i++)
+        {
+            var seg = segments[i];
             if (seg.EndsWith("]") && seg.Contains("["))
             {
                 var name = seg[..seg.IndexOf('[')];
@@ -121,13 +127,23 @@ public class ParserBlockExecutor : IBlockExecutor
                 if (!int.TryParse(idxStr, out var idx)) return null;
                 if (!string.IsNullOrEmpty(name))
                 {
-                    if (!current.TryGetProperty(name, out current)) return null;
+                    var matchesSource = string.Equals(name, sourceKey, StringComparison.OrdinalIgnoreCase);
+                    if (matchesSource && current.ValueKind == JsonValueKind.Array)
+                    {
+                        // already at the array for the source variable; keep current
+                    }
+                    else
+                    {
+                        if (current.ValueKind != JsonValueKind.Object || !current.TryGetProperty(name, out current))
+                            return null;
+                    }
                 }
                 if (current.ValueKind != JsonValueKind.Array || current.GetArrayLength() <= idx) return null;
                 current = current[idx];
             }
             else
             {
+                if (current.ValueKind != JsonValueKind.Object) return null;
                 if (!current.TryGetProperty(seg, out current)) return null;
             }
         }

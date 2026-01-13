@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useThemePreference } from '../hooks/useThemePreference'
+import { useLanguagePreference } from '../hooks/useLanguagePreference'
 
 type Workflow = {
   id: number
@@ -52,9 +53,64 @@ export default function WorkflowsPage() {
   const [importing, setImporting] = useState(false)
   const [importStatus, setImportStatus] = useState<string | null>(null)
   const { theme, toggleTheme } = useThemePreference()
+  const { language, toggleLanguage } = useLanguagePreference()
   const navigate = useNavigate()
 
   const hasWorkflows = workflows.length > 0
+
+  const copy = language === 'pl'
+    ? {
+        navWorkflows: 'Workflowy',
+        navBlocks: 'Bloki',
+        navExecutions: 'Egzekucje',
+        title: 'Projekty workflow',
+        subtitle: 'Zarządzaj projektami przed łączeniem bloków i konektorów.',
+        createTitle: 'Utwórz nowy workflow',
+        createHint: 'Użyj krótkiej, opisowej nazwy.',
+        workflowLabel: 'Nazwa workflow',
+        workflowPlaceholder: 'np. Onboarding klienta',
+        createAction: 'Utwórz',
+        importTitle: 'Import / Eksport',
+        importHint: 'Pobierz workflow jako JSON lub zaimportuj jako nowy projekt.',
+        importLabel: 'Importuj workflow JSON',
+        importHelp: 'Wybierz plik .json, aby utworzyć nowy workflow.',
+        chooseFile: 'Wybierz plik',
+        exportHint: 'Użyj przycisku Export przy workflow poniżej.',
+        existingTitle: 'Istniejące workflowy',
+        existingHint: 'Zmień nazwę lub usuń projekty przed budowaniem flow.',
+        open: 'Otwórz',
+        export: 'Exportuj',
+        rename: 'Zmień nazwę',
+        delete: 'Usuń',
+        crudReady: 'CRUD gotowe',
+        countLabel: 'łącznie'
+      }
+    : {
+        navWorkflows: 'Workflows',
+        navBlocks: 'Blocks',
+        navExecutions: 'Executions',
+        title: 'Workflow projects',
+        subtitle: 'Manage projects before wiring blocks and connections in React Flow.',
+        createTitle: 'Create new workflow',
+        createHint: 'Use a short, descriptive name.',
+        workflowLabel: 'Workflow name',
+        workflowPlaceholder: 'e.g. Customer onboarding',
+        createAction: 'Create',
+        importTitle: 'Import / Export',
+        importHint: 'Download a workflow JSON or import one as a new project.',
+        importLabel: 'Import workflow JSON',
+        importHelp: 'Select a .json file to create a new workflow.',
+        chooseFile: 'Choose file',
+        exportHint: 'Use the Export button next to a workflow below.',
+        existingTitle: 'Existing workflows',
+        existingHint: 'Rename or delete projects before building flows.',
+        open: 'Open',
+        export: 'Export',
+        rename: 'Rename',
+        delete: 'Delete',
+        crudReady: 'CRUD ready',
+        countLabel: 'total'
+      }
 
   const statusLabel = useMemo(() => {
     if (loading) return 'Loading workflows...'
@@ -242,13 +298,13 @@ export default function WorkflowsPage() {
         </div>
         <nav className="nav">
           <button type="button" className="nav-item active">
-            Workflows
+            {copy.navWorkflows}
           </button>
           <button type="button" className="nav-item" onClick={() => navigate('/blocks')}>
-            Blocks
+            {copy.navBlocks}
           </button>
           <button type="button" className="nav-item" onClick={() => navigate('/executions')}>
-            Executions
+            {copy.navExecutions}
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -260,12 +316,18 @@ export default function WorkflowsPage() {
       <main className="main">
         <header className="topbar">
           <div>
-            <h1>Workflow projects</h1>
-            <p className="subtitle">
-              Manage projects before wiring blocks and connections in React Flow.
-            </p>
+            <h1>{copy.title}</h1>
+            <p className="subtitle">{copy.subtitle}</p>
           </div>
           <div className="topbar-meta">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={toggleLanguage}
+              aria-label={`Switch to ${language === 'pl' ? 'English' : 'Polish'}`}
+            >
+              {language === 'pl' ? 'PL' : 'EN'}
+            </button>
             <button
               type="button"
               className="icon-button"
@@ -302,8 +364,8 @@ export default function WorkflowsPage() {
 
         <section className="panel">
           <div className="panel-header">
-            <h2>Create new workflow</h2>
-            <p className="muted">Use a short, descriptive name.</p>
+            <h2>{copy.createTitle}</h2>
+            <p className="muted">{copy.createHint}</p>
           </div>
           <form className="create-form" onSubmit={createWorkflow}>
             <label htmlFor="workflow-name">Workflow name</label>
@@ -325,8 +387,8 @@ export default function WorkflowsPage() {
 
         <section className="panel">
           <div className="panel-header">
-            <h2>Import / Export</h2>
-            <p className="muted">Download a workflow JSON or import one as a new project.</p>
+            <h2>{copy.importTitle}</h2>
+            <p className="muted">{copy.importHint}</p>
           </div>
           <div className="import-export">
             <div className="upload-card">
@@ -400,20 +462,20 @@ export default function WorkflowsPage() {
                   {editingId !== workflow.id && (
                     <div className="card-actions">
                       <button type="button" onClick={() => navigate(`/workflows/${workflow.id}`)}>
-                        Open
+                        {copy.open}
                       </button>
                       <button type="button" onClick={() => exportWorkflow(workflow.id, workflow.name)}>
-                        Export
+                        {copy.export}
                       </button>
                       <button type="button" onClick={() => startEditing(workflow)}>
-                        Rename
+                        {copy.rename}
                       </button>
                       <button
                         type="button"
                         onClick={() => deleteWorkflow(workflow.id)}
                         className="danger"
                       >
-                        Delete
+                        {copy.delete}
                       </button>
                     </div>
                   )}
