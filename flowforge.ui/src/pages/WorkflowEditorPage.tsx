@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ReactFlow, {
   addEdge,
@@ -23,6 +23,7 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { normalizeValues } from '../utils/dataTransforms'
+import { useBodyClass } from '../hooks/useBodyClass'
 import { useWorkflowStore } from '../state/workflowStore'
 
 type WorkflowVariable = {
@@ -127,6 +128,21 @@ function formatVariableDisplay(value: string): string {
 type ToastMessage = {
   id: number
   message: string
+}
+
+function cloneNodes<T extends Node>(list: T[]): T[] {
+  return list.map((node) => ({
+    ...node,
+    data: { ...(node.data as Record<string, unknown>) },
+    position: { ...node.position },
+  }))
+}
+
+function cloneEdges<T extends Edge>(list: T[]): T[] {
+  return list.map((edge) => ({
+    ...edge,
+    data: edge.data ? { ...(edge.data as Record<string, unknown>) } : undefined,
+  }))
 }
 
 function formatSwitchEdgeLabel(index: number, caseValue: string | undefined): string {
@@ -520,6 +536,7 @@ function WorkflowEditorInner() {
   const { id } = useParams()
   const workflowId = Number(id)
   const navigate = useNavigate()
+  useBodyClass('editor-wide')
   const {
     workflow,
     workflowLoading,
@@ -550,6 +567,7 @@ function WorkflowEditorInner() {
   const [nodeMenu, setNodeMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number } | null>(null)
   const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null)
+  const [closingMenu, setClosingMenu] = useState<'edge' | 'node' | 'selection' | 'canvas' | null>(null)
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [pendingSelection, setPendingSelection] = useState<{
     id: string
@@ -580,11 +598,80 @@ function WorkflowEditorInner() {
     if (typeof window === 'undefined') return 'light'
     return localStorage.getItem('flowforge-theme') === 'dark' ? 'dark' : 'light'
   })
+  const [isDragging, setIsDragging] = useState(false)
 
   const [nodes, setNodes, internalOnNodesChange] = useNodesState<Node<NodeData>>([])
   const [edges, setEdges] = useEdgesState<Edge>([])
   const { fitView, zoomIn, zoomOut } = useReactFlow()
   const { zoom } = useViewport()
+  const dragFrame = useRef<number | null>(null)
+  const closeTimer = useRef<number | null>(null)
+  const lastEdgeMenu = useRef<typeof edgeMenu>(null)
+  const lastNodeMenu = useRef<typeof nodeMenu>(null)
+  const lastSelectionMenu = useRef<typeof selectionMenu>(null)
+  const lastCanvasMenu = useRef<typeof canvasMenu>(null)
+  const lastMenuType = useRef<'edge' | 'node' | 'selection' | 'canvas' | null>(null)
+  const historyRef = useRef<Array<{ nodes: Node<NodeData>[]; edges: Edge[] }>>([])
+  const clipboardRef = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] } | null>(null)
+  const initialSnapshotCaptured = useRef(false)
+  const renderedEdges = useMemo(
+    () => (isDragging ? edges.map((edge) => (edge.animated ? { ...edge, animated: false } : edge)) : edges),
+    [edges, isDragging],
+  )
+
+  useEffect(() => {
+    if (edgeMenu) {
+      lastEdgeMenu.current = edgeMenu
+      lastMenuType.current = 'edge'
+      setClosingMenu(null)
+    }
+  }, [edgeMenu])
+
+  useEffect(() => {
+    if (nodeMenu) {
+      lastNodeMenu.current = nodeMenu
+      lastMenuType.current = 'node'
+      setClosingMenu(null)
+    }
+  }, [nodeMenu])
+
+  useEffect(() => {
+    if (selectionMenu) {
+      lastSelectionMenu.current = selectionMenu
+      lastMenuType.current = 'selection'
+      setClosingMenu(null)
+    }
+  }, [selectionMenu])
+
+  useEffect(() => {
+    if (canvasMenu) {
+      lastCanvasMenu.current = canvasMenu
+      lastMenuType.current = 'canvas'
+      setClosingMenu(null)
+    }
+  }, [canvasMenu])
+
+  useEffect(() => {
+    if (edgeMenu || nodeMenu || selectionMenu || canvasMenu || closingMenu) return
+    if (!lastMenuType.current) return
+    setClosingMenu(lastMenuType.current)
+    closeTimer.current = window.setTimeout(() => {
+      setClosingMenu(null)
+      lastMenuType.current = null
+      closeTimer.current = null
+    }, 150)
+  }, [canvasMenu, closingMenu, edgeMenu, nodeMenu, selectionMenu])
+
+  useEffect(() => {
+    return () => {
+      if (dragFrame.current) {
+        cancelAnimationFrame(dragFrame.current)
+      }
+      if (closeTimer.current) {
+        window.clearTimeout(closeTimer.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     setNodes((current) =>
@@ -683,6 +770,97 @@ function WorkflowEditorInner() {
     setHasUnsavedChanges(true)
     setSaveStatus('Unsaved changes')
   }, [])
+
+  const pushHistory = useCallback(() => {
+    historyRef.current = [
+      ...historyRef.current.slice(-49),
+      {
+        nodes: cloneNodes(nodes),
+        edges: cloneEdges(edges),
+      },
+    ]
+  }, [edges, nodes])
+
+  const undoHistory = useCallback(() => {
+    const history = historyRef.current
+    if (!history.length) return
+    const previous = history[history.length - 1]
+    historyRef.current = history.slice(0, -1)
+    setNodes(cloneNodes(previous.nodes))
+    setEdges(cloneEdges(previous.edges))
+    setSelectedNodeIds([])
+    setEdgeMenu(null)
+    setNodeMenu(null)
+    setSelectionMenu(null)
+    setCanvasMenu(null)
+    setPendingSelection(null)
+    setShowPalette(false)
+    setShowVariables(false)
+    setConfigPanel(null)
+    markDirty()
+  }, [
+    markDirty,
+    setEdges,
+    setNodes,
+  ])
+
+  const copySelection = useCallback(() => {
+    if (selectedNodeIds.length === 0) return
+    const selected = nodes.filter((node) => selectedNodeIds.includes(node.id))
+    const selectedIds = new Set(selected.map((node) => node.id))
+    const scopedEdges = edges.filter(
+      (edge) => selectedIds.has(edge.source) && selectedIds.has(edge.target),
+    )
+    clipboardRef.current = {
+      nodes: cloneNodes(selected),
+      edges: cloneEdges(scopedEdges),
+    }
+  }, [edges, nodes, selectedNodeIds])
+
+  const pasteClipboard = useCallback(() => {
+    const clipboard = clipboardRef.current
+    if (!clipboard || clipboard.nodes.length === 0) return
+    pushHistory()
+    const timestamp = Date.now()
+    const idMap = new Map<string, string>()
+    const offset = 30
+    const newNodes = clipboard.nodes.map((node, index) => {
+      const newId = `paste-${timestamp}-${index}`
+      idMap.set(node.id, newId)
+      return {
+        ...node,
+        id: newId,
+        position: {
+          x: node.position.x + offset,
+          y: node.position.y + offset,
+        },
+      }
+    })
+    const newEdges = clipboard.edges
+      .filter((edge) => idMap.has(edge.source) && idMap.has(edge.target))
+      .map((edge, index) => ({
+        ...edge,
+        id: `paste-edge-${timestamp}-${index}`,
+        source: idMap.get(edge.source) ?? edge.source,
+        target: idMap.get(edge.target) ?? edge.target,
+      }))
+    setNodes((current) => [...current, ...newNodes])
+    setEdges((current) => [...current, ...newEdges])
+    setSelectedNodeIds(newNodes.map((node) => node.id))
+    markDirty()
+  }, [markDirty, pushHistory, setEdges, setNodes])
+
+  useEffect(() => {
+    if (initialSnapshotCaptured.current) return
+    if (nodes.length === 0 && edges.length === 0) return
+    historyRef.current = [{ nodes: cloneNodes(nodes), edges: cloneEdges(edges) }]
+    initialSnapshotCaptured.current = true
+  }, [edges, nodes])
+
+  useEffect(() => {
+    historyRef.current = []
+    initialSnapshotCaptured.current = false
+  }, [workflowId])
 
   const toggleTheme = useCallback(() => {
     setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
@@ -951,23 +1129,35 @@ function WorkflowEditorInner() {
         }
         return change.type !== 'select' && change.type !== 'dimensions'
       })
+      const shouldSnapshot = changes.some(
+        (change) =>
+          change.type !== 'select' &&
+          change.type !== 'dimensions' &&
+          !(change.type === 'position' && change.dragging),
+      )
+      if (shouldSnapshot) {
+        pushHistory()
+      }
       if (shouldMark) {
         markDirty()
       }
       internalOnNodesChange(changes)
     },
-    [internalOnNodesChange, markDirty],
+    [internalOnNodesChange, markDirty, pushHistory],
   )
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       const shouldMark = changes.some((change) => change.type !== 'select')
       if (shouldMark) {
+        pushHistory()
+      }
+      if (shouldMark) {
         markDirty()
       }
       setEdges((current) => applyEdgeChanges(changes, current))
     },
-    [markDirty, setEdges],
+    [markDirty, pushHistory, setEdges],
   )
 
   const getBlockType = useCallback(
@@ -1100,6 +1290,7 @@ function WorkflowEditorInner() {
             : sourceType === 'If' && sourceHandle === 'success'
               ? 'var(--edge-success)'
               : 'var(--edge-default)'
+        pushHistory()
         setEdges((current) =>
           addEdge(
             {
@@ -1138,6 +1329,7 @@ function WorkflowEditorInner() {
       markDirty,
       nodes,
       pendingSelection,
+      pushHistory,
       setEdges,
       pushToast,
       switchConfigs,
@@ -1180,6 +1372,7 @@ function WorkflowEditorInner() {
           connection = { ...connection, label: 'Default' }
         }
       }
+      pushHistory()
       setEdges((current) =>
         addEdge(
           {
@@ -1199,7 +1392,7 @@ function WorkflowEditorInner() {
       )
       markDirty()
     },
-    [hasOutgoingForHandle, markDirty, nodes, pushToast, setEdges, switchConfigs],
+    [hasOutgoingForHandle, markDirty, nodes, pushHistory, pushToast, setEdges, switchConfigs],
   )
 
   const onEdgeClick = useCallback(
@@ -1249,13 +1442,37 @@ function WorkflowEditorInner() {
   }, [])
 
   const closeEdgeMenu = useCallback(() => {
-    setEdgeMenu(null)
-    setNodeMenu(null)
-    setSelectionMenu(null)
-    setCanvasMenu(null)
-    setPendingSelection(null)
-    setShowVariables(false)
-  }, [])
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+    const type = edgeMenu
+      ? 'edge'
+      : nodeMenu
+        ? 'node'
+        : selectionMenu
+          ? 'selection'
+          : canvasMenu
+            ? 'canvas'
+            : null
+    if (!type) {
+      setClosingMenu(null)
+      return
+    }
+    lastMenuType.current = type
+    setClosingMenu(type)
+    closeTimer.current = window.setTimeout(() => {
+      setEdgeMenu(null)
+      setNodeMenu(null)
+      setSelectionMenu(null)
+      setCanvasMenu(null)
+      setPendingSelection(null)
+      setShowVariables(false)
+      setClosingMenu(null)
+      lastMenuType.current = null
+      closeTimer.current = null
+    }, 200)
+  }, [canvasMenu, edgeMenu, nodeMenu, selectionMenu])
 
   const toggleVariables = useCallback(() => {
     setShowVariables((open) => !open)
@@ -1267,23 +1484,26 @@ function WorkflowEditorInner() {
 
   const deleteEdge = useCallback(() => {
     if (!edgeMenu) return
+    pushHistory()
     setEdges((current) => current.filter((item) => item.id !== edgeMenu.id))
     setEdgeMenu(null)
     markDirty()
-  }, [edgeMenu, markDirty, setEdges])
+  }, [edgeMenu, markDirty, pushHistory, setEdges])
 
   const deleteNode = useCallback(() => {
     if (!nodeMenu) return
+    pushHistory()
     setNodes((current) => current.filter((node) => node.id !== nodeMenu.id))
     setEdges((current) =>
       current.filter((edge) => edge.source !== nodeMenu.id && edge.target !== nodeMenu.id),
     )
     setNodeMenu(null)
     markDirty()
-  }, [markDirty, nodeMenu, setEdges, setNodes])
+  }, [markDirty, nodeMenu, pushHistory, setEdges, setNodes])
 
   const deleteSelection = useCallback(() => {
     if (selectedNodeIds.length === 0) return
+    pushHistory()
     setNodes((current) => current.filter((node) => !selectedNodeIds.includes(node.id)))
     setEdges((current) =>
       current.filter(
@@ -1294,54 +1514,19 @@ function WorkflowEditorInner() {
     setSelectionMenu(null)
     setSelectedNodeIds([])
     markDirty()
-  }, [markDirty, selectedNodeIds, setEdges, setNodes])
+  }, [markDirty, pushHistory, selectedNodeIds, setEdges, setNodes])
 
   const selectAllNodes = useCallback(() => {
     setSelectedNodeIds(nodes.map((node) => node.id))
     setCanvasMenu(null)
   }, [nodes])
 
-  const distributeSelection = useCallback(() => {
-    if (selectedNodeIds.length < 2) return
-    setNodes((current) => {
-      const selected = current.filter((node) => selectedNodeIds.includes(node.id))
-      if (selected.length < 2) return current
-
-      const minX = Math.min(...selected.map((node) => node.position.x))
-      const minY = Math.min(...selected.map((node) => node.position.y))
-      const columns = Math.ceil(Math.sqrt(selected.length))
-      const xGap = 240
-      const yGap = 160
-
-      const ordered = [...selected].sort(
-        (a, b) => a.position.y - b.position.y || a.position.x - b.position.x,
-      )
-
-      const updated = new Map<string, { x: number; y: number }>()
-      ordered.forEach((node, index) => {
-        const row = Math.floor(index / columns)
-        const col = index % columns
-        updated.set(node.id, {
-          x: minX + col * xGap,
-          y: minY + row * yGap,
-        })
-      })
-
-      return current.map((node) =>
-        updated.has(node.id)
-          ? { ...node, position: updated.get(node.id)! }
-          : node,
-      )
-    })
-    setSelectionMenu(null)
-    markDirty()
-  }, [markDirty, selectedNodeIds, setNodes])
-
   const duplicateSelection = useCallback(() => {
     if (selectedNodeIds.length === 0) return
     const timestamp = Date.now()
     const idMap = new Map<string, string>()
 
+    pushHistory()
     setNodes((current) => {
       const selected = current.filter((node) => selectedNodeIds.includes(node.id))
       const duplicates = selected.map((node, index) => {
@@ -1375,10 +1560,46 @@ function WorkflowEditorInner() {
     })
 
     setSelectionMenu(null)
+    setSelectedNodeIds(Array.from(idMap.values()))
     markDirty()
-  }, [markDirty, selectedNodeIds, setEdges, setNodes])
+  }, [markDirty, pushHistory, selectedNodeIds, setEdges, setNodes])
 
   const nodeTypes = useMemo(() => ({ flowNode: FlowNode }), [])
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName
+      const isEditable =
+        target?.isContentEditable ||
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        target?.getAttribute('role') === 'textbox'
+      if (isEditable) return
+
+      const key = event.key.toLowerCase()
+      const meta = event.metaKey || event.ctrlKey
+      if (!meta) return
+
+      if (key === 'a') {
+        event.preventDefault()
+        selectAllNodes()
+      } else if (key === 'c') {
+        event.preventDefault()
+        copySelection()
+      } else if (key === 'v') {
+        event.preventDefault()
+        pasteClipboard()
+      } else if (key === 'z') {
+        event.preventDefault()
+        undoHistory()
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [copySelection, pasteClipboard, selectAllNodes, undoHistory])
 
   const addNode = useCallback(
     (template: BlockTemplate & { position?: { x: number; y: number } }) => {
@@ -1397,6 +1618,7 @@ function WorkflowEditorInner() {
       }
       const position = template.position ?? { x: 80 + nodes.length * 40, y: 80 }
       const node = createNode(`${template.type}-${Date.now()}`, template, position, openConfig)
+      pushHistory()
       setNodes((current) => [...current, node])
       if (template.type === 'Switch') {
         setSwitchConfigs((current) => ({
@@ -1409,7 +1631,7 @@ function WorkflowEditorInner() {
       setPaletteCategory('All')
       markDirty()
     },
-    [markDirty, nodes, openConfig, setNodes, setSaveStatus, setSwitchConfigs, systemBlocks],
+    [markDirty, nodes, openConfig, pushHistory, setNodes, setSaveStatus, setSwitchConfigs, systemBlocks],
   )
 
   const status = useMemo(() => {
@@ -1850,183 +2072,216 @@ function WorkflowEditorInner() {
 
   return (
     <div className="editor-shell">
-      <header className="editor-topbar">
-        <button type="button" className="ghost" onClick={() => navigate('/')}>
-          Back to workflows
-        </button>
-        <div className="editor-title">
-          <h1>{workflow?.name ?? 'Workflow'}</h1>
-          <p className="subtitle">Design blocks and connections with React Flow.</p>
-        </div>
-        <div className="editor-actions">
-          <button
-            type="button"
-            className="icon-button"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? (
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path
-                  d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  fill="none"
-                  strokeLinecap="round"
-                />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path
-                  d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            )}
-          </button>
-          {/*
-            Run should only be available when the workflow is saved.
-            A title hint helps explain why it might be disabled.
-          */}
-          <button type="button" className="ghost" onClick={() => setShowPalette((open) => !open)}>
-            {showPalette ? 'Close palette' : 'Add block'}
-          </button>
-          <button type="button" onClick={saveWorkflow} disabled={saving || workflowLoading}>
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <span
-            style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-          >
-            <button
-              type="button"
-              className="pill"
-              onClick={openRunPanel}
-              disabled={workflowLoading || saving}
-            >
-              Run
-            </button>
-          </span>
-          {saveStatus && <span className="hint">{saveStatus}</span>}
-        </div>
-      </header>
-
       {status ? (
         <div className="state">{status}</div>
       ) : (
         <div className="editor-body">
-          <div className="canvas">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onEdgeClick={onEdgeClick}
-              onNodeClick={onNodeClick}
-              onNodeContextMenu={onNodeContextMenu}
-              onSelectionChange={onSelectionChange}
-              onSelectionContextMenu={onSelectionContextMenu}
-              onPaneClick={closeEdgeMenu}
-              onPaneContextMenu={onPaneContextMenu}
-              nodeTypes={nodeTypes}
-              snapToGrid={snapToGrid}
-              snapGrid={[16, 16]}
-              fitView
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background gap={18} color="#d9ddd3" />
-              <MiniMap
-                position="bottom-left"
-                style={{ background: 'var(--canvas-bg)' }}
-                nodeColor={() => 'var(--card)'}
-                nodeStrokeColor={() => 'var(--border-soft)'}
-                maskColor={theme === 'dark' ? 'rgba(13, 17, 23, 0.65)' : 'rgba(255, 255, 255, 0.6)'}
-              />
-            </ReactFlow>
-            <div className="canvas-controls">
-              <div className="control-group">
-                <span className="control-label">Zoom</span>
-                <span className="control-chip">{Math.round(zoom * 100)}%</span>
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => zoomOut({ duration: 200 })}
-                  aria-label="Zoom out"
-                >
+          <header className="editor-topbar">
+            <button type="button" className="ghost" onClick={() => navigate('/')}>
+              Back to workflows
+            </button>
+            <div className="editor-title">
+              <h1>{workflow?.name ?? 'Workflow'}</h1>
+              <p className="subtitle">Design blocks and connections with React Flow.</p>
+            </div>
+            <div className="editor-actions">
+              <button
+                type="button"
+                className="icon-button"
+                onClick={toggleTheme}
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                {theme === 'dark' ? (
                   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                     <path
-                      d="M6 12h12"
+                      d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
                       stroke="currentColor"
-                      strokeWidth="1.8"
+                      strokeWidth="1.6"
+                      fill="none"
                       strokeLinecap="round"
                     />
                   </svg>
-                </button>
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => zoomIn({ duration: 200 })}
-                  aria-label="Zoom in"
-                >
+                ) : (
                   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                     <path
-                      d="M12 6v12M6 12h12"
+                      d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
                       stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => fitView({ padding: 0.2, duration: 220 })}
-                  aria-label="Fit to view"
-                >
-                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                    <path
-                      d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
+                      strokeWidth="1.6"
+                      fill="none"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                   </svg>
-                </button>
-              </div>
-              <div className="control-group">
-                <span className="control-label">Grid</span>
+                )}
+              </button>
+              {/*
+                Run should only be available when the workflow is saved.
+                A title hint helps explain why it might be disabled.
+              */}
+              <button type="button" onClick={saveWorkflow} disabled={saving || workflowLoading}>
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+              <span
+                style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+              >
                 <button
                   type="button"
-                  className={`control-chip control-chip--toggle ${snapToGrid ? 'active' : ''}`}
-                  onClick={() => setSnapToGrid((enabled) => !enabled)}
+                  className="pill"
+                  onClick={openRunPanel}
+                  disabled={workflowLoading || saving}
                 >
-                  {snapToGrid ? 'Snap on' : 'Snap off'}
+                  Run
+                </button>
+              </span>
+              {saveStatus && <span className="hint">{saveStatus}</span>}
+            </div>
+          </header>
+          <div className="editor-main">
+            <aside className="editor-sidebar">
+              <p className="sidebar-label">Canvas</p>
+              <div className="sidebar-group">
+                <button
+                  type="button"
+                  className="sidebar-button"
+                  onClick={() => setShowPalette((open) => !open)}
+                >
+                  <span className="sidebar-button__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <span className="sidebar-button__label">
+                    {showPalette ? 'Close palette' : 'Add block'}
+                  </span>
+                </button>
+                <button type="button" className="sidebar-button" onClick={toggleVariables}>
+                  <span className="sidebar-button__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M6.5 6.5h11M6.5 12h11M6.5 17.5h11M6.5 6.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S4.17 5 5 5s1.5.67 1.5 1.5ZM6.5 12c0 .83-.67 1.5-1.5 1.5S3.5 12.83 3.5 12 4.17 10.5 5 10.5s1.5.67 1.5 1.5Zm0 5.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S4.17 16.5 5 16.5s1.5.67 1.5 1.5Z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                      />
+                    </svg>
+                  </span>
+                  <span className="sidebar-button__label">
+                    {showVariables ? 'Hide variables' : 'Variables'}
+                  </span>
                 </button>
               </div>
-            </div>
-            <div className="canvas-toolbar">
-              <button type="button" onClick={() => setShowPalette((open) => !open)}>
-                {showPalette ? 'Hide blocks' : 'Add block'}
-              </button>
-              <button type="button" className="ghost" onClick={toggleVariables}>
-                {showVariables ? 'Hide variables' : 'Variables'}
-              </button>
-              <button
-                type="button"
-                className="ghost"
-                onClick={distributeSelection}
-                disabled={selectedNodeIds.length < 2}
-              >
-                Distribute
-              </button>
-              {pendingSelection && (
-                <span className="hint">Select another node to connect...</span>
-              )}
+              <p className="sidebar-label">Context</p>
+              <div className="sidebar-group subtle">
+                <p className="sidebar-hint">Right-click canvas or elements for quick actions.</p>
+              </div>
+            </aside>
+
+            <div className={`canvas-wrapper ${isDragging ? 'is-dragging' : ''}`}>
+              <div className="canvas">
+                <ReactFlow
+                  nodes={nodes}
+                  edges={renderedEdges}
+                  style={{ width: '100%', height: '100%' }}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onConnect={onConnect}
+                  onEdgeClick={onEdgeClick}
+                  onNodeClick={onNodeClick}
+                  onNodeContextMenu={onNodeContextMenu}
+                  onSelectionChange={onSelectionChange}
+                  onSelectionContextMenu={onSelectionContextMenu}
+                  onPaneClick={closeEdgeMenu}
+                  onMoveStart={() => setIsDragging(true)}
+                  onMoveEnd={() => {
+                    if (dragFrame.current) {
+                      cancelAnimationFrame(dragFrame.current)
+                    }
+                    dragFrame.current = requestAnimationFrame(() => {
+                      setIsDragging(false)
+                      dragFrame.current = null
+                    })
+                  }}
+                  onPaneContextMenu={onPaneContextMenu}
+                  nodeTypes={nodeTypes}
+                  snapToGrid={snapToGrid}
+                  snapGrid={[16, 16]}
+                  fitView
+                  proOptions={{ hideAttribution: true }}
+                >
+                  <Background gap={18} color="#d9ddd3" />
+                  <MiniMap
+                    position="bottom-left"
+                    style={{ background: 'var(--canvas-bg)' }}
+                    nodeColor={() => 'var(--card)'}
+                    nodeStrokeColor={() => 'var(--border-soft)'}
+                    maskColor={theme === 'dark' ? 'rgba(13, 17, 23, 0.65)' : 'rgba(255, 255, 255, 0.6)'}
+                  />
+                </ReactFlow>
+                <div className="canvas-controls">
+                  <div className="control-group">
+                    <span className="control-label">Zoom</span>
+                    <span className="control-chip">{Math.round(zoom * 100)}%</span>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() => zoomOut({ duration: 200 })}
+                      aria-label="Zoom out"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path
+                          d="M6 12h12"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() => zoomIn({ duration: 200 })}
+                      aria-label="Zoom in"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path
+                          d="M12 6v12M6 12h12"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() => fitView({ padding: 0.2, duration: 220 })}
+                      aria-label="Fit to view"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path
+                          d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="control-group">
+                    <span className="control-label">Grid</span>
+                    <button
+                      type="button"
+                      className={`control-chip control-chip--toggle ${snapToGrid ? 'active' : ''}`}
+                      onClick={() => setSnapToGrid((enabled) => !enabled)}
+                    >
+                      {snapToGrid ? 'Snap on' : 'Snap off'}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2240,10 +2495,13 @@ function WorkflowEditorInner() {
             </>
           )}
 
-          {edgeMenu && (
+          {(edgeMenu || (closingMenu === 'edge' && lastEdgeMenu.current)) && (
             <div
-              className="edge-menu"
-              style={{ left: edgeMenu.x, top: edgeMenu.y }}
+              className={`edge-menu ${closingMenu === 'edge' ? 'closing' : ''}`}
+              style={{
+                left: (edgeMenu ?? lastEdgeMenu.current)?.x,
+                top: (edgeMenu ?? lastEdgeMenu.current)?.y,
+              }}
             >
               <p className="edge-menu-title">Connection</p>
               <button type="button" className="danger" onClick={deleteEdge}>
@@ -2255,10 +2513,13 @@ function WorkflowEditorInner() {
             </div>
           )}
 
-          {nodeMenu && (
+          {(nodeMenu || (closingMenu === 'node' && lastNodeMenu.current)) && (
             <div
-              className="edge-menu"
-              style={{ left: nodeMenu.x, top: nodeMenu.y }}
+              className={`edge-menu ${closingMenu === 'node' ? 'closing' : ''}`}
+              style={{
+                left: (nodeMenu ?? lastNodeMenu.current)?.x,
+                top: (nodeMenu ?? lastNodeMenu.current)?.y,
+              }}
             >
               <p className="edge-menu-title">Block</p>
               <button type="button" className="danger" onClick={deleteNode}>
@@ -2270,17 +2531,17 @@ function WorkflowEditorInner() {
             </div>
           )}
 
-          {selectionMenu && (
+          {(selectionMenu || (closingMenu === 'selection' && lastSelectionMenu.current)) && (
             <div
-              className="edge-menu"
-              style={{ left: selectionMenu.x, top: selectionMenu.y }}
+              className={`edge-menu ${closingMenu === 'selection' ? 'closing' : ''}`}
+              style={{
+                left: (selectionMenu ?? lastSelectionMenu.current)?.x,
+                top: (selectionMenu ?? lastSelectionMenu.current)?.y,
+              }}
             >
               <p className="edge-menu-title">
-                Selection ({selectedNodeIds.length})
+                Selection ({(selectionMenu ?? lastSelectionMenu.current) ? selectedNodeIds.length : selectedNodeIds.length})
               </p>
-              <button type="button" onClick={distributeSelection}>
-                Distribute
-              </button>
               <button type="button" onClick={duplicateSelection}>
                 Duplicate selected
               </button>
@@ -2293,10 +2554,13 @@ function WorkflowEditorInner() {
             </div>
           )}
 
-          {canvasMenu && (
+          {(canvasMenu || (closingMenu === 'canvas' && lastCanvasMenu.current)) && (
             <div
-              className="edge-menu"
-              style={{ left: canvasMenu.x, top: canvasMenu.y }}
+              className={`edge-menu ${closingMenu === 'canvas' ? 'closing' : ''}`}
+              style={{
+                left: (canvasMenu ?? lastCanvasMenu.current)?.x,
+                top: (canvasMenu ?? lastCanvasMenu.current)?.y,
+              }}
             >
               <p className="edge-menu-title">Canvas</p>
               <button

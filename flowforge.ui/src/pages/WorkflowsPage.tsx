@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useThemePreference } from '../hooks/useThemePreference'
 
 type Workflow = {
   id: number
@@ -29,10 +30,7 @@ export default function WorkflowsPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
   const [saving, setSaving] = useState(false)
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light'
-    return localStorage.getItem('flowforge-theme') === 'dark' ? 'dark' : 'light'
-  })
+  const { theme, toggleTheme } = useThemePreference()
   const navigate = useNavigate()
 
   const hasWorkflows = workflows.length > 0
@@ -43,16 +41,6 @@ export default function WorkflowsPage() {
     if (!hasWorkflows) return 'No workflows yet. Create your first project.'
     return ''
   }, [error, hasWorkflows, loading])
-
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('theme-dark')
-    } else {
-      root.classList.remove('theme-dark')
-    }
-    localStorage.setItem('flowforge-theme', theme)
-  }, [theme])
 
   useEffect(() => {
     let cancelled = false
@@ -111,10 +99,6 @@ export default function WorkflowsPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  const toggleTheme = () => {
-    setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
   }
 
   function startEditing(workflow: Workflow) {
