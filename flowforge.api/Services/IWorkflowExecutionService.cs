@@ -11,5 +11,5 @@ public interface IWorkflowExecutionService
     Task<WorkflowExecution> CreateAsync(WorkflowExecution execution);
     Task<bool> UpdateAsync(int id, WorkflowExecution execution);
     Task<bool> DeleteAsync(int id);
-    Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null);
+    Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null, bool skipWaits = false);
 }

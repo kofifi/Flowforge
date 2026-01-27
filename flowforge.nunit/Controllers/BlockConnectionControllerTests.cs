@@ -1,4 +1,5 @@
 ﻿using Flowforge.Controllers;
+using Flowforge.DTOs;
 using Flowforge.Models;
 using Flowforge.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -61,23 +62,24 @@ public class BlockConnectionControllerTests
     [Test]
     public async Task Create_ReturnsCreatedAtAction()
     {
-        var connection = new BlockConnection { Id = 1 };
-        _serviceMock.Setup(s => s.CreateAsync(connection)).ReturnsAsync(connection);
+        var dto = new BlockConnectionDto { SourceBlockId = 1, TargetBlockId = 2, ConnectionType = "Success" };
+        var createdEntity = new BlockConnection { Id = 1, SourceBlockId = 1, TargetBlockId = 2 };
+        _serviceMock.Setup(s => s.CreateAsync(It.IsAny<BlockConnection>())).ReturnsAsync(createdEntity);
 
-        var result = await _controller.Create(connection);
+        var result = await _controller.Create(dto);
 
         Assert.That(result.Result, Is.InstanceOf<CreatedAtActionResult>());
-        var created = (CreatedAtActionResult)result.Result!;
-        Assert.That(created.Value, Is.EqualTo(connection));
+        var createdResult = (CreatedAtActionResult)result.Result!;
+        Assert.That(createdResult.Value, Is.EqualTo(createdEntity));
     }
 
     [Test]
     public async Task Update_ReturnsNoContent_WhenSuccess()
     {
-        var connection = new BlockConnection { Id = 1 };
-        _serviceMock.Setup(s => s.UpdateAsync(1, connection)).ReturnsAsync(true);
+        var dto = new BlockConnectionDto { Id = 1, SourceBlockId = 1, TargetBlockId = 2, ConnectionType = "Success" };
+        _serviceMock.Setup(s => s.UpdateAsync(1, It.IsAny<BlockConnection>())).ReturnsAsync(true);
 
-        var result = await _controller.Update(1, connection);
+        var result = await _controller.Update(1, dto);
 
         Assert.That(result, Is.InstanceOf<NoContentResult>());
     }
@@ -85,7 +87,7 @@ public class BlockConnectionControllerTests
     [Test]
     public async Task Update_ReturnsBadRequest_WhenIdMismatch()
     {
-        var connection = new BlockConnection { Id = 2 };
+        var connection = new BlockConnectionDto { Id = 2 };
 
         var result = await _controller.Update(1, connection);
 
@@ -95,8 +97,8 @@ public class BlockConnectionControllerTests
     [Test]
     public async Task Update_ReturnsNotFound_WhenNotExists()
     {
-        var connection = new BlockConnection { Id = 1 };
-        _serviceMock.Setup(s => s.UpdateAsync(1, connection)).ReturnsAsync(false);
+        var connection = new BlockConnectionDto { Id = 1, SourceBlockId = 1, TargetBlockId = 2, ConnectionType = "Success" };
+        _serviceMock.Setup(s => s.UpdateAsync(1, It.IsAny<BlockConnection>())).ReturnsAsync(false);
 
         var result = await _controller.Update(1, connection);
 

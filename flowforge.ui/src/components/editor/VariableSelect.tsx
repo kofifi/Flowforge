@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import Icon from '../Icon'
 
 type VariableSelectProps = {
   id: string
@@ -45,14 +46,7 @@ export function VariableSelect({
     <div className="combo">
       <label className="drawer-label" htmlFor={id}>
         <span className="label-icon">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M5 7h14M5 12h9M5 17h11"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
+          <Icon name="rows" />
         </span>
         {label}
       </label>

@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useThemePreference } from '../hooks/useThemePreference'
 import { useLanguagePreference } from '../hooks/useLanguagePreference'
+import Icon from '../components/Icon'
 
 type Execution = {
   id: number
   executedAt: string
   inputData?: Record<string, string> | null
   resultData?: Record<string, string> | null
-  path?: unknown
-  actions?: unknown
+  path?: string[] | { $values?: string[] } | null
+  actions?: string[] | { $values?: string[] } | null
   workflowId: number
   workflowName?: string
 }
@@ -23,8 +24,11 @@ function formatDateTime(value: string) {
 
 function normalizeList(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String)
-  if (value && typeof value === 'object' && '$values' in value && Array.isArray((value as any).$values)) {
-    return (value as { $values: unknown[] }).$values.map(String)
+  if (value && typeof value === 'object' && '$values' in value) {
+    const maybeValues = (value as { $values?: unknown[] }).$values
+    if (Array.isArray(maybeValues)) {
+      return maybeValues.map(String)
+    }
   }
   return []
 }
@@ -57,7 +61,7 @@ export default function ExecutionDetailsPage() {
   const [execution, setExecution] = useState<Execution | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { language, toggleLanguage } = useLanguagePreference()
+  const { language } = useLanguagePreference()
   const { theme, toggleTheme } = useThemePreference()
   const navigate = useNavigate()
 
@@ -106,17 +110,17 @@ export default function ExecutionDetailsPage() {
     return ''
   }, [error, execution, language, loading])
 
+  const actionsList = useMemo(() => normalizeList(execution?.actions), [execution?.actions])
+  const pathList = useMemo(() => normalizeList(execution?.path), [execution?.path])
+
   const flowSteps = useMemo(
     () =>
-      normalizeList(execution?.path).map((label, index) => {
-        const actions = normalizeList(execution?.actions)
-        return {
-          label,
-          note: actions[index] ?? undefined,
-          index: index + 1
-        }
-      }),
-    [execution?.actions, execution?.path]
+      pathList.map((label, index) => ({
+        label,
+        note: actionsList[index] ?? undefined,
+        index: index + 1,
+      })),
+    [actionsList, pathList],
   )
 
   return (
@@ -138,6 +142,9 @@ export default function ExecutionDetailsPage() {
           </button>
           <button type="button" className="nav-item active" onClick={() => navigate('/executions')}>
             {language === 'pl' ? 'Egzekucje' : 'Executions'}
+          </button>
+          <button type="button" className="nav-item" onClick={() => navigate('/scheduler')}>
+            Scheduler
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -164,39 +171,10 @@ export default function ExecutionDetailsPage() {
             <button
               type="button"
               className="icon-button"
-              onClick={toggleLanguage}
-              aria-label={`Switch to ${language === 'pl' ? 'English' : 'Polish'}`}
-            >
-              {language === 'pl' ? 'PL' : 'EN'}
-            </button>
-            <button
-              type="button"
-              className="icon-button"
               onClick={toggleTheme}
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
-              {theme === 'dark' ? (
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
             </button>
           </div>
         </header>
@@ -227,7 +205,7 @@ export default function ExecutionDetailsPage() {
                 </div>
                 <div className="execution-card">
                   <p className="label">{language === 'pl' ? 'Długość ścieżki' : 'Path length'}</p>
-                  <p className="meta">{execution?.path?.length ?? 0}</p>
+                  <p className="meta">{pathList.length}</p>
                 </div>
               </div>
             </section>
@@ -270,20 +248,22 @@ export default function ExecutionDetailsPage() {
                 </p>
               </div>
               {flowSteps.length > 0 ? (
-                <div className="flow-lane flow-scroll">
-                  {flowSteps.map((step, idx) => (
-                    <div key={`${step.label}-${idx}`} className="flow-segment">
-                      <div className="flow-node">
-                        <div className="flow-node-top">
-                          <span className="flow-index">{step.index}</span>
-                          <span className="flow-badge">Executed</span>
+                <div className="flow-wrapper">
+                  <div className="flow-lane flow-scroll">
+                    {flowSteps.map((step, idx) => (
+                      <div key={`${step.label}-${idx}`} className="flow-segment">
+                        <div className="flow-node">
+                          <div className="flow-node-top">
+                            <span className="flow-index">{step.index}</span>
+                            <span className="flow-badge">Executed</span>
+                          </div>
+                          <span className="flow-label">{step.label}</span>
+                          {step.note && <span className="flow-note">{step.note}</span>}
                         </div>
-                        <span className="flow-label">{step.label}</span>
-                        {step.note && <span className="flow-note">{step.note}</span>}
+                        {idx < flowSteps.length - 1 && <div className="flow-connector" />}
                       </div>
-                      {idx < flowSteps.length - 1 && <div className="flow-connector" />}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="state">
@@ -299,9 +279,9 @@ export default function ExecutionDetailsPage() {
                   {language === 'pl' ? 'Szczegółowy log wykonania.' : 'Detailed execution logs.'}
                 </p>
               </div>
-              {execution?.actions && execution.actions.length > 0 ? (
+              {actionsList.length > 0 ? (
                 <ul className="executions-list">
-                  {execution.actions.map((action, index) => (
+                  {actionsList.map((action, index) => (
                     <li key={`${action}-${index}`} className="execution-card">
                       <p className="meta">{action}</p>
                     </li>

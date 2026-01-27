@@ -9,4 +9,7 @@ public class Workflow
     public ICollection<WorkflowVariable> WorkflowVariables { get; set; } = new List<WorkflowVariable>();
     public ICollection<WorkflowRevision> WorkflowRevisions { get; set; } = new List<WorkflowRevision>();
     public ICollection<WorkflowExecution> WorkflowExecutions { get; set; } = new List<WorkflowExecution>();
+
+    public int? CurrentRevisionId { get; set; }
+    public WorkflowRevision? CurrentRevision { get; set; }
 }

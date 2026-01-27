@@ -1,0 +1,376 @@
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { requestJson, withJson } from '../api/http'
+import type { WorkflowDto, WorkflowScheduleDto } from '../api/types'
+import { useThemePreference } from '../hooks/useThemePreference'
+import Icon from '../components/Icon'
+
+const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
+
+type ScheduleForm = {
+  name: string
+  description: string
+  workflowId: number | null
+  triggerType: 'Interval' | 'Once' | 'Daily'
+  startAt: string
+  intervalMinutes: number
+  isActive: boolean
+}
+
+function normalizeWorkflows(data: unknown): WorkflowDto[] {
+  if (Array.isArray(data)) return data as WorkflowDto[]
+  if (data && typeof data === 'object' && '$values' in data) {
+    const values = (data as { $values?: unknown }).$values
+    return Array.isArray(values) ? (values as WorkflowDto[]) : []
+  }
+  return []
+}
+
+function normalizeSchedules(data: unknown): WorkflowScheduleDto[] {
+  if (Array.isArray(data)) return data as WorkflowScheduleDto[]
+  if (data && typeof data === 'object' && '$values' in data) {
+    const values = (data as { $values?: unknown }).$values
+    return Array.isArray(values) ? (values as WorkflowScheduleDto[]) : []
+  }
+  return []
+}
+
+export default function SchedulerPage() {
+  const navigate = useNavigate()
+  const { theme, toggleTheme } = useThemePreference()
+  const [workflows, setWorkflows] = useState<WorkflowDto[]>([])
+  const [schedules, setSchedules] = useState<WorkflowScheduleDto[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<ScheduleForm>({
+    name: '',
+    description: '',
+    workflowId: null,
+    triggerType: 'Interval',
+    startAt: '',
+    intervalMinutes: 60,
+    isActive: true,
+  })
+
+  const statusLabel = useMemo(() => {
+    if (loading) return 'Ładowanie schedulerów...'
+    if (error) return error
+    if (schedules.length === 0) return 'Brak harmonogramów.'
+    return ''
+  }, [loading, error, schedules.length])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const [wfRes, schedRes] = await Promise.all([
+          requestJson<unknown>('/api/Workflow'),
+          requestJson<unknown>('/api/WorkflowSchedule'),
+        ])
+        if (cancelled) return
+        setWorkflows(normalizeWorkflows(wfRes))
+        setSchedules(normalizeSchedules(schedRes))
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Nie udało się pobrać danych')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function createSchedule(event: FormEvent) {
+    event.preventDefault()
+    if (!form.workflowId || !form.name.trim() || saving) return
+    setSaving(true)
+    setError(null)
+    try {
+      const start = form.startAt ? new Date(form.startAt) : new Date()
+      const payload = {
+        workflowId: form.workflowId,
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        triggerType: form.triggerType,
+        startAtUtc: start.toISOString(),
+        intervalMinutes: form.triggerType === 'Interval' ? form.intervalMinutes : null,
+        isActive: form.isActive,
+      }
+      const created = await requestJson<WorkflowScheduleDto>(
+        '/api/WorkflowSchedule',
+        withJson(payload),
+      )
+      setSchedules((current) => [created, ...current])
+      setForm((current) => ({
+        ...current,
+        name: '',
+        description: '',
+        workflowId: current.workflowId,
+        startAt: '',
+      }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się utworzyć harmonogramu')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteSchedule(id: number) {
+    try {
+      await requestJson<void>(`/api/WorkflowSchedule/${id}`, { method: 'DELETE' })
+      setSchedules((current) => current.filter((item) => item.id !== id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się usunąć harmonogramu')
+    }
+  }
+
+  async function runScheduleNow(scheduleId: number) {
+    try {
+      await requestJson<void>(`/api/WorkflowSchedule/${scheduleId}/run`, { method: 'POST' })
+      const refreshed = await requestJson<unknown>('/api/WorkflowSchedule')
+      setSchedules(normalizeSchedules(refreshed))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się uruchomić harmonogramu')
+    }
+  }
+
+  function formatDate(value?: string | null) {
+    if (!value) return ''
+    try {
+      const normalized = value.endsWith('Z') ? value : `${value}Z`
+      return new Date(normalized).toLocaleString()
+    } catch {
+      return value
+    }
+  }
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark">F</span>
+          <div>
+            <p className="brand-name">Flowforge</p>
+            <p className="brand-subtitle">Workflow Studio</p>
+          </div>
+        </div>
+        <nav className="nav">
+          <button type="button" className="nav-item" onClick={() => navigate('/')}>
+            Workflows
+          </button>
+          <button type="button" className="nav-item" onClick={() => navigate('/blocks')}>
+            Blocks
+          </button>
+          <button type="button" className="nav-item" onClick={() => navigate('/executions')}>
+            Executions
+          </button>
+          <button type="button" className="nav-item active">
+            Scheduler
+          </button>
+        </nav>
+        <div className="sidebar-footer">
+          <p>Connected to local API</p>
+          <span className="pill">{apiBase || 'proxy /api'}</span>
+        </div>
+      </aside>
+
+      <main className="main">
+        <header className="topbar">
+          <div>
+            <h1>Scheduler</h1>
+            <p className="subtitle">Planowanie automatycznych uruchomień workflowów.</p>
+          </div>
+          <div className="topbar-meta">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+            </button>
+            <span className="count">{schedules.length} total</span>
+          </div>
+        </header>
+
+        <section className="panel">
+          <div className="panel-header">
+            <div>
+              <h2>Nowy harmonogram</h2>
+              <p className="muted">Wybierz workflow i ustaw czas startu oraz interwał.</p>
+            </div>
+          </div>
+          <form onSubmit={createSchedule} className="filter-bar" style={{ alignItems: 'flex-start' }}>
+            <div className="filter-grid">
+              <label className="filter-group">
+                <span>Nazwa</span>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(event) => setForm((curr) => ({ ...curr, name: event.target.value }))}
+                  placeholder="np. Nightly ETL"
+                  required
+                />
+              </label>
+
+              <label className="filter-group">
+                <span>Workflow</span>
+                <select
+                  value={form.workflowId ?? ''}
+                  onChange={(event) =>
+                    setForm((curr) => ({
+                      ...curr,
+                      workflowId: Number(event.target.value) || null,
+                    }))
+                  }
+                >
+                  <option value="">Wybierz...</option>
+                  {workflows.map((wf) => (
+                    <option key={wf.id} value={wf.id}>
+                      {wf.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="filter-group">
+                <span>Typ</span>
+                <select
+                  value={form.triggerType}
+                  onChange={(event) =>
+                    setForm((curr) => ({
+                      ...curr,
+                      triggerType: event.target.value as ScheduleForm['triggerType'],
+                    }))
+                  }
+                >
+                  <option value="Interval">Interval</option>
+                  <option value="Once">Once</option>
+                  <option value="Daily">Daily (godzina)</option>
+                </select>
+              </label>
+
+              <label className="filter-group" style={{ opacity: form.triggerType === 'Once' || form.triggerType === 'Daily' ? 0.4 : 1, pointerEvents: form.triggerType === 'Once' || form.triggerType === 'Daily' ? 'none' : 'auto' }}>
+                <span>Interwał (min)</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.intervalMinutes}
+                  onChange={(event) =>
+                    setForm((curr) => ({
+                      ...curr,
+                      intervalMinutes: Number(event.target.value) || 1,
+                    }))
+                  }
+                  disabled={form.triggerType === 'Once' || form.triggerType === 'Daily'}
+                />
+              </label>
+
+              <label className="filter-group">
+                <span>Start (UTC)</span>
+                <input
+                  type="datetime-local"
+                  value={form.startAt}
+                  onChange={(event) => setForm((curr) => ({ ...curr, startAt: event.target.value }))}
+                  style={{ opacity: form.triggerType === 'Once' || form.triggerType === 'Daily' ? 1 : 0.9 }}
+                />
+              </label>
+
+              <label className="filter-group">
+                <span>Opis</span>
+                <input
+                  type="text"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((curr) => ({ ...curr, description: event.target.value }))
+                  }
+                  placeholder="np. codziennie o 2:00"
+                />
+              </label>
+
+              <label className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span>Aktywny</span>
+                <span className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={form.isActive}
+                    onChange={(event) =>
+                      setForm((curr) => ({ ...curr, isActive: event.target.checked }))
+                    }
+                  />
+                  <span className="slider" />
+                </span>
+              </label>
+            </div>
+            <div className="filter-footer" style={{ justifyContent: 'flex-end' }}>
+              <button type="submit" disabled={saving}>
+                {saving ? 'Zapisywanie...' : 'Dodaj'}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section className="panel">
+          <div className="panel-header">
+            <h2>Harmonogramy</h2>
+            <p className="muted">Lista zaplanowanych uruchomień.</p>
+          </div>
+          {statusLabel && <p className="muted">{statusLabel}</p>}
+          {!statusLabel && (
+            <div className="execution-grid">
+              {schedules.map((sched) => (
+                <div
+                  key={sched.id}
+                  className="workflow-card"
+                  style={{
+                    alignItems: 'flex-start',
+                    borderLeft: sched.isActive ? '4px solid #2f9e68' : '4px solid var(--border-soft)',
+                    boxShadow: '0 12px 26px rgba(0,0,0,0.08)',
+                  }}
+                >
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span className="pill" style={{ background: 'rgba(47,158,104,0.12)', color: '#2f9e68' }}>
+                        Harmonogram
+                      </span>
+                      <span className="pill muted">{sched.triggerType}</span>
+                      {sched.intervalMinutes ? (
+                        <span className="pill muted">{sched.intervalMinutes} min</span>
+                      ) : null}
+                      {!sched.isActive && <span className="pill muted">Inactive</span>}
+                    </div>
+                    <h3 style={{ margin: '2px 0 0' }}>{sched.name}</h3>
+                    <p className="meta" style={{ margin: 0 }}>Workflow #{sched.workflowId}</p>
+                    <p className="muted" style={{ margin: '4px 0' }}>
+                      Następne: {formatDate(sched.nextRunAtUtc) || '—'}
+                    </p>
+                    <p className="muted" style={{ margin: '0 0 4px' }}>
+                      Ostatnie: {formatDate(sched.lastRunAtUtc) || '—'}
+                    </p>
+                  </div>
+                  <div className="card-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => runScheduleNow(sched.id)}
+                    >
+                      Uruchom teraz
+                    </button>
+                    <button type="button" className="ghost danger" onClick={() => deleteSchedule(sched.id)}>
+                      Usuń
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  )
+}

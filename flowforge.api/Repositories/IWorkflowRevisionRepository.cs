@@ -8,6 +8,7 @@ public interface IWorkflowRevisionRepository
 {
     // CRUD operations for WorkflowRevision
     Task<IEnumerable<WorkflowRevision>> GetAllAsync();
+    Task<IEnumerable<WorkflowRevision>> GetByWorkflowIdAsync(int workflowId);
     Task<WorkflowRevision?> GetByIdAsync(int id);
     Task<WorkflowRevision> AddAsync(WorkflowRevision revision);
     Task<bool> UpdateAsync(WorkflowRevision revision);

@@ -17,6 +17,7 @@ public class FlowforgeDbContext : DbContext
     public DbSet<WorkflowVariable> WorkflowVariables { get; set; }
     public DbSet<WorkflowRevision> WorkflowRevisions { get; set; }
     public DbSet<WorkflowExecution> WorkflowExecutions { get; set; }
+    public DbSet<WorkflowSchedule> WorkflowSchedules { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,23 @@ public class FlowforgeDbContext : DbContext
             .WithMany(w => w.WorkflowRevisions)
             .HasForeignKey(wr => wr.WorkflowId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Workflow>()
+            .HasOne(w => w.CurrentRevision)
+            .WithMany()
+            .HasForeignKey(w => w.CurrentRevisionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<WorkflowSchedule>()
+            .HasOne(ws => ws.Workflow)
+            .WithMany()
+            .HasForeignKey(ws => ws.WorkflowId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorkflowSchedule>()
+            .HasOne(ws => ws.WorkflowRevision)
+            .WithMany()
+            .HasForeignKey(ws => ws.WorkflowRevisionId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Workflow 1:N WorkflowExecution
         modelBuilder.Entity<WorkflowExecution>()
@@ -86,7 +104,11 @@ public class FlowforgeDbContext : DbContext
             new SystemBlock { Id = 4, Type = "If", Description = "Conditional block" },
             new SystemBlock { Id = 5, Type = "Switch", Description = "Switch (case) block" },
             new SystemBlock { Id = 6, Type = "HttpRequest", Description = "HTTP request block" },
-            new SystemBlock { Id = 7, Type = "Parser", Description = "Parser JSON/XML" }
+            new SystemBlock { Id = 7, Type = "Parser", Description = "Parser JSON/XML" },
+            new SystemBlock { Id = 8, Type = "Loop", Description = "Loop block" },
+            new SystemBlock { Id = 9, Type = "Wait", Description = "Wait (delay) block" },
+            new SystemBlock { Id = 10, Type = "TextTransform", Description = "Transform text casing" },
+            new SystemBlock { Id = 11, Type = "TextReplace", Description = "Replace text (literal or regex)" }
         );
     }
 }

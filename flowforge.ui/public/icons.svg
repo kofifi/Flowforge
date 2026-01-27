@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <symbol id="sun" viewBox="0 0 24 24">
+      <path
+        d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
+        stroke="currentColor"
+        stroke-width="1.6"
+        fill="none"
+        stroke-linecap="round"
+      />
+    </symbol>
+    <symbol id="moon" viewBox="0 0 24 24">
+      <path
+        d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
+        stroke="currentColor"
+        stroke-width="1.6"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </symbol>
+    <symbol id="plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </symbol>
+    <symbol id="minus" viewBox="0 0 24 24">
+      <path d="M6 12h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </symbol>
+    <symbol id="fit" viewBox="0 0 24 24">
+      <path
+        d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </symbol>
+    <symbol id="list-bullets" viewBox="0 0 24 24">
+      <path
+        d="M6.5 6.5h11M6.5 12h11M6.5 17.5h11M6.5 6.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S4.17 5 5 5s1.5.67 1.5 1.5ZM6.5 12c0 .83-.67 1.5-1.5 1.5S3.5 12.83 3.5 12 4.17 10.5 5 10.5s1.5.67 1.5 1.5Zm0 5.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5S4.17 16.5 5 16.5s1.5.67 1.5 1.5Z"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+      />
+    </symbol>
+    <symbol id="rows" viewBox="0 0 24 24">
+      <path d="M5 7h14M5 12h9M5 17h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+    </symbol>
+    <symbol id="rows-wide" viewBox="0 0 24 24">
+      <path d="M4 7h16M4 12h10M4 17h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+    </symbol>
+    <symbol id="gear" viewBox="0 0 24 24">
+      <path
+        d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.28 7.28 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.22-1.13.52-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.8 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.92 14.5a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.42 1.05.72 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.58-.22 1.13-.52 1.63-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"
+        fill="currentColor"
+      />
+    </symbol>
+  </defs>
+</svg>

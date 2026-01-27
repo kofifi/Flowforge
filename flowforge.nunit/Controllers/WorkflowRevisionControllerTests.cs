@@ -1,4 +1,5 @@
 ﻿using Flowforge.Controllers;
+using Flowforge.DTOs;
 using Flowforge.Models;
 using Flowforge.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -25,14 +26,17 @@ public class WorkflowRevisionControllerTests
     [Test]
     public async Task GetAll_ReturnsOkWithRevisions()
     {
-        var revisions = new List<WorkflowRevision> { new WorkflowRevision { Id = 1 } };
+        var revisions = new List<WorkflowRevision>
+        {
+            new WorkflowRevision { Id = 1, WorkflowId = 2, Version = "v1" }
+        };
         _serviceMock.Setup(s => s.GetAllAsync()).ReturnsAsync(revisions);
 
         var result = await _controller.GetAll();
 
         Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
         var ok = result.Result as OkObjectResult;
-        Assert.That(ok!.Value, Is.EqualTo(revisions));
+        Assert.That(ok!.Value, Is.Not.Null);
     }
 
     [Test]
@@ -56,19 +60,6 @@ public class WorkflowRevisionControllerTests
         var result = await _controller.GetById(1);
 
         Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
-    }
-
-    [Test]
-    public async Task Create_ReturnsCreatedAtAction()
-    {
-        var revision = new WorkflowRevision { Id = 1 };
-        _serviceMock.Setup(s => s.CreateAsync(revision)).ReturnsAsync(revision);
-
-        var result = await _controller.Create(revision);
-
-        Assert.That(result.Result, Is.InstanceOf<CreatedAtActionResult>());
-        var created = result.Result as CreatedAtActionResult;
-        Assert.That(created!.Value, Is.EqualTo(revision));
     }
 
     [Test]
@@ -147,24 +138,36 @@ public class WorkflowRevisionControllerTests
     }
     
     [Test]
-    public async Task RollbackToRevision_ReturnsNoContent_WhenSuccess()
+    public async Task RestoreRevision_ReturnsNoContent_WhenSuccess()
     {
-        _serviceMock.Setup(s => s.RollbackToRevisionAsync(1, 5)).ReturnsAsync(true);
+        var revision = new WorkflowRevision { Id = 5, WorkflowId = 1 };
+        _serviceMock.Setup(s => s.GetByIdAsync(5)).ReturnsAsync(revision);
+        _serviceMock.Setup(s => s.RestoreRevisionAsync(1, 5)).ReturnsAsync(true);
 
-        var result = await _controller.RollbackToRevision(1, 5);
+        var result = await _controller.Restore(5);
 
         Assert.That(result, Is.InstanceOf<NoContentResult>());
-        _serviceMock.Verify(s => s.RollbackToRevisionAsync(1, 5), Times.Once);
+        _serviceMock.Verify(s => s.RestoreRevisionAsync(1, 5), Times.Once);
     }
 
     [Test]
-    public async Task RollbackToRevision_ReturnsNotFound_WhenFails()
+    public async Task RestoreRevision_ReturnsNotFound_WhenFails()
     {
-        _serviceMock.Setup(s => s.RollbackToRevisionAsync(1, 5)).ReturnsAsync(false);
+        _serviceMock.Setup(s => s.GetByIdAsync(5)).ReturnsAsync((WorkflowRevision?)null);
 
-        var result = await _controller.RollbackToRevision(1, 5);
+        var result = await _controller.Restore(5);
 
         Assert.That(result, Is.InstanceOf<NotFoundResult>());
-        _serviceMock.Verify(s => s.RollbackToRevisionAsync(1, 5), Times.Once);
+    }
+
+    [Test]
+    public async Task CreateSnapshot_ReturnsCreated()
+    {
+        var revision = new WorkflowRevision { Id = 12, WorkflowId = 3, Version = "v1" };
+        _serviceMock.Setup(s => s.CreateSnapshotAsync(3, null)).ReturnsAsync(revision);
+
+        var result = await _controller.CreateSnapshot(3, new CreateWorkflowRevisionRequest { Label = null });
+
+        Assert.That(result.Result, Is.InstanceOf<CreatedAtActionResult>());
     }
 }

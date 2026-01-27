@@ -45,6 +45,8 @@ builder.Services.AddScoped<IBlockExecutor, ConditionBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, SwitchBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, HttpRequestBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, ParserBlockExecutor>();
+builder.Services.AddScoped<IBlockExecutor, TextTransformBlockExecutor>();
+builder.Services.AddScoped<IBlockExecutor, TextReplaceBlockExecutor>();
 builder.Services.AddScoped<IBlockExecutor, DefaultBlockExecutor>();
 builder.Services.AddHttpClient();
 
@@ -53,6 +55,10 @@ builder.Services.AddScoped<IWorkflowExecutionService, WorkflowExecutionService>(
 
 builder.Services.AddScoped<IWorkflowRevisionRepository, WorkflowRevisionRepository>();
 builder.Services.AddScoped<IWorkflowRevisionService, WorkflowRevisionService>();
+
+builder.Services.AddScoped<IWorkflowScheduleRepository, WorkflowScheduleRepository>();
+builder.Services.AddScoped<IWorkflowScheduleService, WorkflowScheduleService>();
+builder.Services.AddHostedService<WorkflowSchedulerHostedService>();
 
 var app = builder.Build();
 
@@ -68,7 +74,11 @@ using (var scope = app.Services.CreateScope())
         new SystemBlock { Type = "If", Description = "Conditional block" },
         new SystemBlock { Type = "Switch", Description = "Switch (case) block" },
         new SystemBlock { Type = "HttpRequest", Description = "HTTP request block" },
-        new SystemBlock { Type = "Parser", Description = "Parser JSON/XML" }
+        new SystemBlock { Type = "Parser", Description = "Parser JSON/XML" },
+        new SystemBlock { Type = "Loop", Description = "Loop block" },
+        new SystemBlock { Type = "Wait", Description = "Wait (delay) block" },
+        new SystemBlock { Type = "TextTransform", Description = "Transform text casing" },
+        new SystemBlock { Type = "TextReplace", Description = "Replace text (literal or regex)" }
     };
 
     foreach (var block in requiredBlocks)

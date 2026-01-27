@@ -3,6 +3,7 @@ using Flowforge.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Flowforge.Services;
@@ -36,7 +37,11 @@ public class WorkflowExecutionService : IWorkflowExecutionService
     public async Task<bool> DeleteAsync(int id)
         => await _repository.DeleteAsync(id);
 
-    public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null)
+    private record LoopConfig(int Iterations);
+    private record WaitConfig(int? DelayMs, string? DelayVariable);
+    private const int MaxWaitMs = 300_000;
+
+    public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null, bool skipWaits = false)
     {
     // Handle duplicate variable names by grouping and taking the last defined value (case-insensitive).
     var variables = workflow.WorkflowVariables
@@ -77,7 +82,93 @@ public class WorkflowExecutionService : IWorkflowExecutionService
         executor ??= new DefaultBlockExecutor();
         var result = executor.Execute(current, variables);
         error = result.Error;
-        actions.Add(result.Description);
+        var actionDescription = result.Description;
+
+        // Specjalna logika dla pętli
+        if (current.SystemBlock?.Type == "Loop")
+        {
+            var loopConnections = current.SourceConnections
+                ?.Where(c => c.ConnectionType == ConnectionType.Success)
+                .ToList() ?? new List<BlockConnection>();
+            var exitConnections = current.SourceConnections
+                ?.Where(c => c.ConnectionType == ConnectionType.Error)
+                .ToList() ?? new List<BlockConnection>();
+
+            var iterations = 1;
+            if (!string.IsNullOrWhiteSpace(current.JsonConfig))
+            {
+                try
+                {
+                    var config = System.Text.Json.JsonSerializer.Deserialize<LoopConfig>(current.JsonConfig);
+                    if (config != null)
+                    {
+                        iterations = Math.Max(0, config.Iterations);
+                    }
+                }
+                catch
+                {
+                    // ignore parse errors and use defaults
+                }
+            }
+
+            iterations = Math.Min(iterations, 1000); // safety cap
+
+            for (var i = 0; i < iterations; i++)
+            {
+                foreach (var conn in loopConnections)
+                {
+                    if (conn.TargetBlock != null)
+                        queue.Enqueue((conn.TargetBlock, new HashSet<int>(pathVisited)));
+                }
+            }
+
+            foreach (var conn in exitConnections)
+            {
+                if (conn.TargetBlock != null)
+                    queue.Enqueue((conn.TargetBlock, new HashSet<int>(pathVisited)));
+            }
+
+            actions.Add(actionDescription);
+            continue;
+        }
+
+        if (current.SystemBlock?.Type == "Wait")
+        {
+            var delay = 0;
+            if (!string.IsNullOrWhiteSpace(current.JsonConfig))
+            {
+                try
+                {
+                    var cfg = JsonSerializer.Deserialize<WaitConfig>(current.JsonConfig);
+                    if (cfg != null)
+                    {
+                        delay = ResolveWaitDuration(cfg, variables);
+                    }
+                }
+                catch
+                {
+                    delay = 0;
+                }
+            }
+
+            if (!skipWaits && delay > 0)
+            {
+                try
+                {
+                    await Task.Delay(delay);
+                }
+                catch
+                {
+                    // ignore cancellation; proceed
+                }
+            }
+
+            actionDescription = skipWaits
+                ? $"Wait {delay} ms (skipped)"
+                : $"Wait {delay} ms";
+        }
+
+        actions.Add(actionDescription);
 
         // Wybierz połączenia w zależności od błędu
         var nextConnections = current.SourceConnections
@@ -170,4 +261,34 @@ public class WorkflowExecutionService : IWorkflowExecutionService
 
     return await _repository.AddAsync(execution);
 }
+
+    private static int ResolveWaitDuration(WaitConfig cfg, IDictionary<string, string> variables)
+    {
+        static int ParseDelay(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return 0;
+            return int.TryParse(value, out var parsed) ? parsed : 0;
+        }
+
+        var delay = 0;
+        if (!string.IsNullOrWhiteSpace(cfg.DelayVariable))
+        {
+            var key = cfg.DelayVariable.StartsWith("$", StringComparison.Ordinal)
+                ? cfg.DelayVariable.Substring(1)
+                : cfg.DelayVariable;
+            if (variables.TryGetValue(key, out var variableValue))
+            {
+                delay = ParseDelay(variableValue);
+            }
+        }
+
+        if (delay <= 0 && cfg.DelayMs.HasValue)
+        {
+            delay = cfg.DelayMs.Value;
+        }
+
+        delay = Math.Max(0, delay);
+        delay = Math.Min(delay, MaxWaitMs);
+        return delay;
+    }
 }

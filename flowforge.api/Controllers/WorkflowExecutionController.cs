@@ -72,7 +72,7 @@ public class WorkflowExecutionController : ControllerBase
 
     // Zmieniona trasa, aby nie było konfliktu
     [HttpPost("/api/Workflow/{id}/run")]
-    public async Task<ActionResult<WorkflowExecution>> Run(int id, [FromBody] Dictionary<string, string>? inputs = null)
+    public async Task<ActionResult<WorkflowExecution>> Run(int id, [FromBody] Dictionary<string, string>? inputs = null, [FromQuery] bool skipWaits = false)
     {
         var workflow = await _context.Workflows
             .Include(w => w.Blocks).ThenInclude(b => b.SystemBlock)
@@ -84,7 +84,7 @@ public class WorkflowExecutionController : ControllerBase
         if (workflow == null)
             return NotFound();
 
-        var execution = await _service.EvaluateAsync(workflow, inputs);
+        var execution = await _service.EvaluateAsync(workflow, inputs, skipWaits);
 
         var dto = MapToDto(execution);
 

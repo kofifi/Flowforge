@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguagePreference } from '../hooks/useLanguagePreference'
 import { useThemePreference } from '../hooks/useThemePreference'
+import Icon from '../components/Icon'
 
 type SystemBlock = {
   id: number
@@ -28,7 +29,7 @@ export default function BlocksPage() {
   const [blocks, setBlocks] = useState<SystemBlock[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { language, toggleLanguage } = useLanguagePreference()
+  const { language } = useLanguagePreference()
   const { theme, toggleTheme } = useThemePreference()
   const navigate = useNavigate()
 
@@ -94,7 +95,8 @@ export default function BlocksPage() {
       plDesc: 'Wywołanie HTTP (GET/POST itp.)',
       enDesc: 'HTTP request block'
     },
-    Parser: { plLabel: 'Parser', enLabel: 'Parser', plDesc: 'Parser JSON/XML', enDesc: 'Parser JSON/XML' }
+    Parser: { plLabel: 'Parser', enLabel: 'Parser', plDesc: 'Parser JSON/XML', enDesc: 'Parser JSON/XML' },
+    Loop: { plLabel: 'Pętla', enLabel: 'Loop', plDesc: 'Powtarza gałąź wiele razy.', enDesc: 'Loop block' }
   }
 
   const copy = language === 'pl'
@@ -102,6 +104,7 @@ export default function BlocksPage() {
         navWorkflows: 'Workflowy',
         navBlocks: 'Bloki',
         navExecutions: 'Egzekucje',
+        navScheduler: 'Scheduler',
         title: 'Systemowe bloki',
         subtitle: 'Bazowe typy bloków dostępne w edytorze.',
         statusLabel: 'Tylko podgląd',
@@ -116,6 +119,7 @@ export default function BlocksPage() {
         navWorkflows: 'Workflows',
         navBlocks: 'Blocks',
         navExecutions: 'Executions',
+        navScheduler: 'Scheduler',
         title: 'System blocks',
         subtitle: 'Core block types available in the workflow editor.',
         statusLabel: 'Read-only',
@@ -147,6 +151,9 @@ export default function BlocksPage() {
           <button type="button" className="nav-item" onClick={() => navigate('/executions')}>
             {copy.navExecutions}
           </button>
+          <button type="button" className="nav-item" onClick={() => navigate('/scheduler')}>
+            {copy.navScheduler}
+          </button>
         </nav>
         <div className="sidebar-footer">
           <p>Connected to local API</p>
@@ -164,39 +171,10 @@ export default function BlocksPage() {
             <button
               type="button"
               className="icon-button"
-              onClick={toggleLanguage}
-              aria-label={`Switch to ${language === 'pl' ? 'English' : 'Polish'}`}
-            >
-              {language === 'pl' ? 'PL' : 'EN'}
-            </button>
-            <button
-              type="button"
-              className="icon-button"
               onClick={toggleTheme}
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
-              {theme === 'dark' ? (
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
             </button>
             <span className="count">{blocks.length} total</span>
             <span className="pill">{copy.statusLabel}</span>

@@ -13,6 +13,9 @@ public class WorkflowServiceTests
 {
     private FlowforgeDbContext _context;
     private IWorkflowRepository _repository;
+    private IBlockRepository _blockRepository;
+    private ISystemBlockRepository _systemBlockRepository;
+    private IBlockConnectionRepository _blockConnectionRepository;
     private WorkflowService _service;
 
     [SetUp]
@@ -22,8 +25,12 @@ public class WorkflowServiceTests
             .UseInMemoryDatabase(System.Guid.NewGuid().ToString())
             .Options;
         _context = new FlowforgeDbContext(options);
+        _context.Database.EnsureCreated();
         _repository = new WorkflowRepository(_context);
-        _service = new WorkflowService(_repository);
+        _blockRepository = new BlockRepository(_context);
+        _systemBlockRepository = new SystemBlockRepository(_context);
+        _blockConnectionRepository = new BlockConnectionRepository(_context);
+        _service = new WorkflowService(_repository, _blockRepository, _systemBlockRepository, _blockConnectionRepository);
     }
 
     [TearDown]
@@ -47,6 +54,9 @@ public class WorkflowServiceTests
 
         Assert.That(created.Id, Is.Not.EqualTo(0));
         Assert.That(_context.Workflows.Count(), Is.EqualTo(1));
+        var blocks = _context.Blocks.Where(b => b.WorkflowId == created.Id).ToList();
+        Assert.That(blocks.Count, Is.EqualTo(2));
+        Assert.That(blocks.Select(b => b.Name), Is.EquivalentTo(new[] { "Start", "End" }));
     }
 
     [Test]

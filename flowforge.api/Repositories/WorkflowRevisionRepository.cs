@@ -21,6 +21,14 @@ public class WorkflowRevisionRepository : IWorkflowRevisionRepository
         return await _context.WorkflowRevisions.Include(r => r.Workflow).ToListAsync();
     }
 
+    public async Task<IEnumerable<WorkflowRevision>> GetByWorkflowIdAsync(int workflowId)
+    {
+        return await _context.WorkflowRevisions
+            .Where(r => r.WorkflowId == workflowId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<WorkflowRevision?> GetByIdAsync(int id)
     {
         return await _context.WorkflowRevisions.Include(r => r.Workflow).FirstOrDefaultAsync(r => r.Id == id);

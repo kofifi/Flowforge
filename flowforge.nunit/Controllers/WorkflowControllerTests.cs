@@ -12,6 +12,10 @@ public class WorkflowControllerTests
 {
     private FlowforgeDbContext _context;
     private IWorkflowRepository _repository;
+    private IBlockRepository _blockRepository;
+    private ISystemBlockRepository _systemBlockRepository;
+    private IBlockConnectionRepository _blockConnectionRepository;
+    private ISystemBlockService _systemBlockService;
     private WorkflowService _service;
     private WorkflowController _controller;
 
@@ -22,9 +26,14 @@ public class WorkflowControllerTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _context = new FlowforgeDbContext(options);
+        _context.Database.EnsureCreated();
         _repository = new WorkflowRepository(_context);
-        _service = new WorkflowService(_repository);
-        _controller = new WorkflowController(_service);
+        _blockRepository = new BlockRepository(_context);
+        _systemBlockRepository = new SystemBlockRepository(_context);
+        _blockConnectionRepository = new BlockConnectionRepository(_context);
+        _systemBlockService = new SystemBlockService(_systemBlockRepository);
+        _service = new WorkflowService(_repository, _blockRepository, _systemBlockRepository, _blockConnectionRepository);
+        _controller = new WorkflowController(_service, _context, _systemBlockService);
     }
 
     [TearDown]

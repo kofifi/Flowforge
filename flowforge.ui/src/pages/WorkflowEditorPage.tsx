@@ -1,33 +1,48 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import ReactFlow, {
-  addEdge,
-  Background,
-  MarkerType,
-  MiniMap,
-  applyEdgeChanges,
-  useEdgesState,
-  useNodesState,
+import {
   ReactFlowProvider,
-  useReactFlow,
-  useViewport,
   type Connection,
   type Edge,
   type EdgeChange,
+  type MarkerType,
   type Node,
   type NodeChange,
   type OnSelectionChangeParams,
-} from 'reactflow'
-import 'reactflow/dist/style.css'
+} from '@reactflow/core'
 import { normalizeValues } from '../utils/dataTransforms'
+import { requestJson, withJson } from '../api/http'
 import { useBodyClass } from '../hooks/useBodyClass'
 import { useThemePreference } from '../hooks/useThemePreference'
 import { useLanguagePreference } from '../hooks/useLanguagePreference'
 import { useWorkflowStore } from '../state/workflowStore'
-import FlowNode from '../components/editor/FlowNode'
-import CanvasSidebar from '../components/editor/CanvasSidebar'
-import CanvasControls from '../components/editor/CanvasControls'
+import { useWorkflowHistory } from '../hooks/useWorkflowHistory'
+import { cloneNodes, cloneEdges } from './WorkflowEditorPage.helpers'
+const CanvasSidebar = lazy(() => import('../components/editor/CanvasSidebar'))
+const BlocksDrawer = lazy(() => import('../components/editor/BlocksDrawer'))
+const VariablesDrawer = lazy(() => import('../components/editor/VariablesDrawer'))
+const FlowCanvas = lazy(() => import('../components/editor/FlowCanvas'))
+const RunDrawer = lazy(() => import('../components/editor/RunDrawer'))
+const ConfigDrawer = lazy(() => import('../components/editor/ConfigDrawer'))
+const EditorTopbar = lazy(() => import('../components/editor/EditorTopbar'))
+const ContextMenus = lazy(() => import('../components/editor/ContextMenus'))
+import type { ConfigPanelState } from '../components/editor/ConfigDrawer'
 import type { BlockTemplate, NodeData } from '../components/editor/types'
+import type {
+  CalculationConfig,
+  HttpRequestConfig,
+  HttpRequestAuthType,
+  IfConfig,
+  LoopConfig,
+  ParserBlockFormat,
+  ParserConfig,
+  StartConfig,
+  SwitchConfig,
+  WaitConfig,
+  TextTransformConfig,
+  TextReplaceConfig,
+  TextReplaceRule,
+} from '../components/editor/configTypes'
 
 type WorkflowVariable = {
   id: number
@@ -68,61 +83,11 @@ type WorkflowGraphResponse = {
     sourceBlockId: number
     targetBlockId: number
     connectionType: 'Success' | 'Error' | string
+    Label?: string | null
   }>
 }
 
-type StartConfig = {
-  displayName: string
-  trigger: 'manual' | 'on-save' | 'schedule'
-  variables: string
-}
-
-type CalculationConfig = {
-  operation: 'Add' | 'Subtract' | 'Multiply' | 'Divide' | 'Concat'
-  firstVariable: string
-  secondVariable: string
-  resultVariable: string
-}
-
-type IfConfig = {
-  first: string
-  second: string
-  dataType: 'String' | 'Number'
-}
-
-type SwitchConfig = {
-  expression: string
-  cases: string[]
-}
-
-type HttpRequestAuthType = 'none' | 'bearer' | 'basic' | 'apiKeyHeader' | 'apiKeyQuery'
-
-type HttpRequestConfig = {
-  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-  url: string
-  body?: string
-  headers: Array<{ name: string; value: string }>
-  authType: HttpRequestAuthType
-  bearerToken?: string
-  basicUsername?: string
-  basicPassword?: string
-  apiKeyName?: string
-  apiKeyValue?: string
-  responseVariable?: string
-}
-
-type ParserBlockFormat = 'json' | 'xml'
-
-type ParserBlockMapping = {
-  path: string
-  variable: string
-}
-
-type ParserConfig = {
-  format: ParserBlockFormat
-  sourceVariable: string
-  mappings: ParserBlockMapping[]
-}
+const DEFAULT_EDGE_COLOR = '#7a8899'
 
 function normalizeSwitchCases(values: unknown): string[] {
   if (!Array.isArray(values)) return ['']
@@ -146,21 +111,6 @@ type ToastMessage = {
   message: string
 }
 
-function cloneNodes<T extends Node>(list: T[]): T[] {
-  return list.map((node) => ({
-    ...node,
-    data: { ...(node.data as Record<string, unknown>) },
-    position: { ...node.position },
-  }))
-}
-
-function cloneEdges<T extends Edge>(list: T[]): T[] {
-  return list.map((edge) => ({
-    ...edge,
-    data: edge.data ? { ...(edge.data as Record<string, unknown>) } : undefined,
-  }))
-}
-
 function formatSwitchEdgeLabel(index: number, caseValue: string | undefined): string {
   const num = index + 1
   return caseValue && caseValue.length > 0 ? `#${num} · ${caseValue}` : `#${num}`
@@ -168,32 +118,16 @@ function formatSwitchEdgeLabel(index: number, caseValue: string | undefined): st
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
-function parseJsonString(value: string) {
-  const trimmed = value.trim()
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return value
-  try {
-    return JSON.parse(trimmed)
-  } catch {
-    return value
-  }
-}
-
-function normalizeDataMap(record: Record<string, string> | undefined) {
-  if (!record) return {}
-  return Object.fromEntries(
-    Object.entries(record).map(([key, val]) => {
-      if (typeof val === 'string') return [key, parseJsonString(val)]
-      return [key, val]
-    }),
-  )
-}
-
 const templates: BlockTemplate[] = [
   { type: 'Start', label: 'Start', description: 'Entry point for the workflow.', category: 'Flow' },
   { type: 'End', label: 'End', description: 'Finish the workflow.', category: 'Flow' },
   { type: 'If', label: 'If', description: 'Route based on a condition.', category: 'Logic' },
   { type: 'Switch', label: 'Switch', description: 'Multi-branch on cases', category: 'Logic' },
+  { type: 'Loop', label: 'Loop', description: 'Repeat a branch multiple times.', category: 'Logic' },
+  { type: 'Wait', label: 'Wait', description: 'Pause execution for a duration.', category: 'Flow' },
   { type: 'Calculation', label: 'Calculation', description: 'Compute variables.', category: 'Logic' },
+  { type: 'TextTransform', label: 'Text Transform', description: 'Trim / lower / upper.', category: 'Logic' },
+  { type: 'TextReplace', label: 'Text Replace', description: 'Replace text literal/regex.', category: 'Logic' },
   { type: 'HttpRequest', label: 'HTTP request', description: 'Call external HTTP APIs.', category: 'Action' },
   { type: 'Parser', label: 'Parser', description: 'Extract values from JSON or XML.', category: 'Action' },
 ]
@@ -213,7 +147,7 @@ function createNode(
       blockType: template.type,
       label: template.label,
       description: template.description,
-      allowErrorOutput: template.type === 'If',
+      allowErrorOutput: template.type === 'If' || template.type === 'Loop',
       switchCases: template.type === 'Switch' ? [''] : undefined,
     },
     className: 'flow-node',
@@ -221,206 +155,9 @@ function createNode(
   }
 }
 
-function NodeCreator({
-  onCreate,
-  search,
-  onSearchChange,
-  category,
-  onCategoryChange,
-  availableTemplates,
-}: {
-  onCreate: (template: BlockTemplate) => void
-  search: string
-  onSearchChange: (next: string) => void
-  category: 'All' | BlockTemplate['category']
-  onCategoryChange: (next: 'All' | BlockTemplate['category']) => void
-  availableTemplates: BlockTemplate[]
-}) {
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return availableTemplates.filter((template) => {
-      const matchesCategory = category === 'All' || template.category === category
-      const matchesQuery =
-        !query ||
-        template.label.toLowerCase().includes(query) ||
-        template.description.toLowerCase().includes(query)
-      return matchesCategory && matchesQuery
-    })
-  }, [availableTemplates, category, search])
-
-  const byCategory = useMemo(() => {
-    const map = new Map<string, BlockTemplate[]>()
-    filtered.forEach((template) => {
-      if (!map.has(template.category)) {
-        map.set(template.category, [])
-      }
-      map.get(template.category)!.push(template)
-    })
-    return Array.from(map.entries())
-  }, [filtered])
-
-  return (
-    <div className="block-panel">
-      <div className="palette-header">
-        <p className="palette-title">Add block</p>
-        <span className="palette-subtitle">Search or browse by type.</span>
-      </div>
-      <div className="palette-search">
-        <input
-          type="text"
-          placeholder="Search blocks..."
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
-        <div className="palette-filters">
-          {['All', 'Flow', 'Logic', 'Action'].map((value) => (
-            <button
-              key={value}
-              type="button"
-              className={`chip ${category === value ? 'chip--active' : ''}`}
-              onClick={() => onCategoryChange(value as 'All' | BlockTemplate['category'])}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
-      </div>
-      {byCategory.map(([group, items]) => (
-        <div key={group} className="palette-section">
-          <div className="section-header">
-            <p className="section-title">{group}</p>
-            <span className="section-subtitle">{items.length} blocks</span>
-          </div>
-          <div className="palette-grid cards">
-            {items.map((template) => (
-              <button
-                key={template.type}
-                type="button"
-                className="palette-item block-card"
-                onClick={() => onCreate(template)}
-              >
-                <div className="block-card__title">{template.label}</div>
-                <div className="block-card__desc">{template.description}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-      {filtered.length === 0 && <p className="muted">No blocks match your filters.</p>}
-    </div>
-  )
-}
-
-function VariableSelect({
-  id,
-  label,
-  value,
-  options,
-  placeholder,
-  onValueChange,
-  trailingAction,
-  showHints = true,
-}: {
-  id: string
-  label: string
-  value: string
-  options: string[]
-  placeholder?: string
-  onValueChange: (next: string) => void
-  trailingAction?: React.ReactNode
-  showHints?: boolean
-}) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState(value)
-
-  useEffect(() => {
-    setQuery(value)
-  }, [value])
-
-  const isKnown = useMemo(
-    () => options.some((option) => option === value),
-    [options, value],
-  )
-
-  const showNotVariable = showHints && value.trim().length > 0 && !isKnown
-
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
-    if (!normalized) return options
-    return options.filter((option) => option.toLowerCase().includes(normalized))
-  }, [options, query])
-
-  return (
-    <div className="combo">
-      <label className="drawer-label" htmlFor={id}>
-        <span className="label-icon">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M5 7h14M5 12h9M5 17h11"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
-        {label}
-      </label>
-      <div
-        className={`combo-input ${isKnown ? 'combo-input--known' : ''} ${
-          trailingAction ? 'combo-input--with-action' : ''
-        }`}
-      >
-        <input
-          id={id}
-          type="text"
-          placeholder={placeholder}
-          value={query}
-          onFocus={() => setOpen(true)}
-          onChange={(event) => {
-            const next = event.target.value
-            setQuery(next)
-            onValueChange(next)
-            setOpen(true)
-          }}
-          onBlur={() => {
-            window.setTimeout(() => setOpen(false), 120)
-          }}
-        />
-        {trailingAction && <span className="combo-action">{trailingAction}</span>}
-        <span className="combo-icon">⌄</span>
-      </div>
-      {showHints && isKnown && <span className="combo-hint">Matched variable</span>}
-      {showNotVariable && <span className="combo-warn">This is not a variable</span>}
-      {open && (
-        <div className="combo-menu">
-          {filtered.length === 0 ? (
-            <div className="combo-empty">No matches</div>
-          ) : (
-            filtered.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className="combo-item"
-                onClick={() => {
-                  onValueChange(option)
-                  setQuery(option)
-                  setOpen(false)
-                }}
-              >
-                {option}
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function WorkflowEditorInner() {
   const { id } = useParams()
   const workflowId = Number(id)
-  const navigate = useNavigate()
   useBodyClass('editor-wide')
   const {
     workflow,
@@ -443,6 +180,7 @@ function WorkflowEditorInner() {
   const [runResult, setRunResult] = useState<WorkflowExecution | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
+  const [skipWaits, setSkipWaits] = useState(false)
   const [showRunSnippet, setShowRunSnippet] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
   const [paletteSearch, setPaletteSearch] = useState('')
@@ -452,6 +190,7 @@ function WorkflowEditorInner() {
   const [nodeMenu, setNodeMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number } | null>(null)
   const [canvasMenu, setCanvasMenu] = useState<{ x: number; y: number } | null>(null)
+  const [graphLoading, setGraphLoading] = useState(false)
   const [closingMenu, setClosingMenu] = useState<'edge' | 'node' | 'selection' | 'canvas' | null>(null)
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [pendingSelection, setPendingSelection] = useState<{
@@ -482,8 +221,15 @@ function WorkflowEditorInner() {
   const [showRunInputs, setShowRunInputs] = useState(false)
   const [snapToGrid, setSnapToGrid] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
+  const systemBlocksCacheRef = useRef<SystemBlock[] | null>(null)
+  const graphCacheRef = useRef<Map<number, WorkflowGraphResponse>>(new Map())
+  const [loopConfigs, setLoopConfigs] = useState<Record<string, LoopConfig>>({})
+  const [waitConfigs, setWaitConfigs] = useState<Record<string, WaitConfig>>({})
+  const [textTransformConfigs, setTextTransformConfigs] = useState<Record<string, TextTransformConfig>>({})
+  const [textReplaceConfigs, setTextReplaceConfigs] = useState<Record<string, TextReplaceConfig>>({})
   const { theme, toggleTheme } = useThemePreference()
-  const { language, toggleLanguage } = useLanguagePreference()
+  const { language } = useLanguagePreference()
+  const navigate = useNavigate()
   const editorCopy = language === 'pl'
     ? {
         back: 'Powrót do workflowów',
@@ -496,24 +242,22 @@ function WorkflowEditorInner() {
         untitled: 'Workflow'
       }
 
-  const [nodes, setNodes, internalOnNodesChange] = useNodesState<Node<NodeData>>([])
-  const [edges, setEdges] = useEdgesState<Edge>([])
-  const { fitView, zoomIn, zoomOut } = useReactFlow()
-  const { zoom } = useViewport()
-  const dragFrame = useRef<number | null>(null)
+  const [nodes, setNodes] = useState<Array<Node<NodeData>>>([])
+  const [edges, setEdges] = useState<Edge[]>([])
   const closeTimer = useRef<number | null>(null)
   const lastEdgeMenu = useRef<typeof edgeMenu>(null)
   const lastNodeMenu = useRef<typeof nodeMenu>(null)
   const lastSelectionMenu = useRef<typeof selectionMenu>(null)
   const lastCanvasMenu = useRef<typeof canvasMenu>(null)
   const lastMenuType = useRef<'edge' | 'node' | 'selection' | 'canvas' | null>(null)
-  const historyRef = useRef<Array<{ nodes: Node<NodeData>[]; edges: Edge[] }>>([])
-  const clipboardRef = useRef<{ nodes: Node<NodeData>[]; edges: Edge[] } | null>(null)
-  const initialSnapshotCaptured = useRef(false)
-  const renderedEdges = useMemo(
-    () => (isDragging ? edges.map((edge) => (edge.animated ? { ...edge, animated: false } : edge)) : edges),
-    [edges, isDragging],
-  )
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) {
+        window.clearTimeout(closeTimer.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (edgeMenu) {
@@ -559,17 +303,7 @@ function WorkflowEditorInner() {
   }, [canvasMenu, closingMenu, edgeMenu, nodeMenu, selectionMenu])
 
   useEffect(() => {
-    return () => {
-      if (dragFrame.current) {
-        cancelAnimationFrame(dragFrame.current)
-      }
-      if (closeTimer.current) {
-        window.clearTimeout(closeTimer.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
+    if (isDragging) return
     setNodes((current) =>
       current.map((node) => {
         if (node.data.blockType !== 'Switch') return node
@@ -577,7 +311,7 @@ function WorkflowEditorInner() {
         const cases = config ? normalizeSwitchCases(config.cases) : ['']
         const existing = node.data.switchCases ?? []
         const sameLength = existing.length === cases.length
-        const sameValues = sameLength && existing.every((value, idx) => value === cases[idx])
+        const sameValues = sameLength && existing.every((value: string, idx: number) => value === cases[idx])
         if (sameValues) return node
         return {
           ...node,
@@ -588,9 +322,10 @@ function WorkflowEditorInner() {
         }
       }),
     )
-  }, [setNodes, switchConfigs])
+  }, [isDragging, setNodes, switchConfigs])
 
   useEffect(() => {
+    if (isDragging) return
     setEdges((current) => {
       let changed = false
       const updated = current.map((edge) => {
@@ -642,7 +377,7 @@ function WorkflowEditorInner() {
       })
       return changed ? updated : current
     })
-  }, [nodes, setEdges, switchConfigs])
+  }, [isDragging, nodes, setEdges, switchConfigs])
 
   const pushToast = useCallback((message: string) => {
     const id = Date.now() + Math.random()
@@ -653,27 +388,21 @@ function WorkflowEditorInner() {
   }, [])
 
   const markDirty = useCallback(() => {
-    setHasUnsavedChanges(true)
-    setSaveStatus('Unsaved changes')
+    setHasUnsavedChanges((current) => (current ? current : true))
+    setSaveStatus((current) => (current === 'Unsaved changes' ? current : 'Unsaved changes'))
   }, [])
 
-  const pushHistory = useCallback(() => {
-    historyRef.current = [
-      ...historyRef.current.slice(-49),
-      {
-        nodes: cloneNodes(nodes),
-        edges: cloneEdges(edges),
-      },
-    ]
-  }, [edges, nodes])
+  const {
+    historyRef,
+    initialSnapshotCaptured,
+    pushHistory,
+    undoHistory: undoHistoryBase,
+    copySelection: copySelectionBase,
+    pasteClipboard: pasteClipboardBase,
+  } = useWorkflowHistory({ nodes, edges, setNodes, setEdges, markDirty })
 
   const undoHistory = useCallback(() => {
-    const history = historyRef.current
-    if (!history.length) return
-    const previous = history[history.length - 1]
-    historyRef.current = history.slice(0, -1)
-    setNodes(cloneNodes(previous.nodes))
-    setEdges(cloneEdges(previous.edges))
+    undoHistoryBase()
     setSelectedNodeIds([])
     setEdgeMenu(null)
     setNodeMenu(null)
@@ -683,28 +412,15 @@ function WorkflowEditorInner() {
     setShowPalette(false)
     setShowVariables(false)
     setConfigPanel(null)
-    markDirty()
-  }, [
-    markDirty,
-    setEdges,
-    setNodes,
-  ])
+  }, [setEdges, setNodes, undoHistoryBase])
 
   const copySelection = useCallback(() => {
     if (selectedNodeIds.length === 0) return
-    const selected = nodes.filter((node) => selectedNodeIds.includes(node.id))
-    const selectedIds = new Set(selected.map((node) => node.id))
-    const scopedEdges = edges.filter(
-      (edge) => selectedIds.has(edge.source) && selectedIds.has(edge.target),
-    )
-    clipboardRef.current = {
-      nodes: cloneNodes(selected),
-      edges: cloneEdges(scopedEdges),
-    }
-  }, [edges, nodes, selectedNodeIds])
+    copySelectionBase(selectedNodeIds)
+  }, [copySelectionBase, selectedNodeIds])
 
   const pasteClipboard = useCallback(() => {
-    const clipboard = clipboardRef.current
+    const clipboard = pasteClipboardBase()
     if (!clipboard || clipboard.nodes.length === 0) return
     pushHistory()
     const timestamp = Date.now()
@@ -772,14 +488,17 @@ function WorkflowEditorInner() {
     async function loadBlocksAndConnections() {
       if (!workflow || systemBlocks.length === 0) return
 
-      console.debug('[Flowforge] Loading graph for workflow', workflow.id)
       try {
-        const response = await fetch(`${apiBase}/api/Workflow/${workflow.id}/graph`)
-        if (!response.ok) {
-          throw new Error(`Failed to load workflow graph (${response.status})`)
+        setGraphLoading(true)
+        let graph = graphCacheRef.current.get(workflow.id)
+        if (!graph) {
+          const response = await fetch(`${apiBase}/api/Workflow/${workflow.id}/graph`)
+          if (!response.ok) {
+            throw new Error(`Failed to load workflow graph (${response.status})`)
+          }
+          graph = (await response.json()) as WorkflowGraphResponse
+          graphCacheRef.current.set(workflow.id, graph)
         }
-        const graph = (await response.json()) as WorkflowGraphResponse
-        console.debug('[Flowforge] Graph', graph)
       const workflowBlocks = normalizeValues<WorkflowGraphResponse['blocks'][number]>(
         graph.blocks as unknown,
       )
@@ -924,6 +643,88 @@ function WorkflowEditorInner() {
               // ignore parse errors
             }
           }
+          if (blockType === 'TextTransform' && block.jsonConfig) {
+            try {
+              const parsed = JSON.parse(block.jsonConfig) as {
+                Input?: string
+                InputVariable?: string
+                Operation?: TextTransformConfig['operation']
+                ResultVariable?: string
+              }
+              setTextTransformConfigs((current) => ({
+                ...current,
+                [nodeId]: {
+                  input: parsed.Input ?? '',
+                  inputVariable: parsed.InputVariable ?? '',
+                  operation: parsed.Operation ?? 'Trim',
+                  resultVariable: parsed.ResultVariable ?? 'result',
+                },
+              }))
+            } catch {
+              // ignore parse errors
+            }
+          }
+          if (blockType === 'Loop' && block.jsonConfig) {
+            try
+            {
+              const parsed = JSON.parse(block.jsonConfig) as {
+                Iterations?: number
+              }
+              setLoopConfigs((current) => ({
+                ...current,
+                [nodeId]: {
+                  iterations: parsed.Iterations ?? 1,
+                },
+              }))
+            } catch
+            {
+              // ignore parse errors
+            }
+          }
+          if (blockType === 'Wait' && block.jsonConfig) {
+            try {
+              const parsed = JSON.parse(block.jsonConfig) as {
+                DelayMs?: number
+                DelayVariable?: string
+              }
+              setWaitConfigs((current) => ({
+                ...current,
+                [nodeId]: {
+                  delayMs: parsed.DelayMs ?? 0,
+                  delayVariable: parsed.DelayVariable ?? '',
+                },
+              }))
+            } catch {
+              // ignore parse errors
+            }
+          }
+          if (blockType === 'TextReplace' && block.jsonConfig) {
+            try {
+              const parsed = JSON.parse(block.jsonConfig) as {
+                Input?: string
+                InputVariable?: string
+                ResultVariable?: string
+                Replacements?: Array<{ From?: string; To?: string; UseRegex?: boolean; IgnoreCase?: boolean }>
+              }
+              setTextReplaceConfigs((current) => ({
+                ...current,
+                [nodeId]: {
+                  input: parsed.Input ?? '',
+                  inputVariable: parsed.InputVariable ?? '',
+                  resultVariable: parsed.ResultVariable ?? 'result',
+                  replacements:
+                    parsed.Replacements?.map((item) => ({
+                      from: item.From ?? '',
+                      to: item.To ?? '',
+                      useRegex: item.UseRegex ?? false,
+                      ignoreCase: item.IgnoreCase ?? false,
+                    })) ?? [{ from: '', to: '', useRegex: false, ignoreCase: false }],
+                },
+              }))
+            } catch {
+              // ignore parse errors
+            }
+          }
 
           return {
             id: nodeId,
@@ -960,17 +761,22 @@ function WorkflowEditorInner() {
           const sourceType = blockTypeById.get(connection.sourceBlockId)
           const isIf = sourceType === 'If'
           const isSwitch = sourceType === 'Switch'
+          const isLoop = sourceType === 'Loop'
           const baseColor =
             isIf && connection.connectionType === 'Error'
-              ? 'var(--edge-error)'
+              ? '#d64545'
               : isIf && connection.connectionType === 'Success'
-                ? 'var(--edge-success)'
-                : 'var(--edge-default)'
+                ? '#2f9e68'
+                : DEFAULT_EDGE_COLOR
           const sourceHandle = isIf
             ? connection.connectionType === 'Error'
               ? 'error'
               : 'success'
-            : undefined
+            : isLoop
+              ? connection.connectionType === 'Error'
+                ? 'error'
+                : 'loop'
+              : undefined
           let edgeLabel = connection.Label ?? undefined
           let edgeData: { label?: string; caseValue?: string } | undefined
           let switchHandle: string | undefined
@@ -1002,14 +808,24 @@ function WorkflowEditorInner() {
               }
             }
           }
+          if (isLoop && !edgeLabel) {
+            edgeLabel = connection.connectionType === 'Error' ? 'Exit' : 'Loop'
+          }
           return {
             id: `edge-${connection.id}`,
             source: blockIdMap.get(connection.sourceBlockId)!,
             target: blockIdMap.get(connection.targetBlockId)!,
             sourceHandle: switchHandle ?? sourceHandle,
             animated: true,
-            markerEnd: { type: MarkerType.ArrowClosed, color: baseColor },
-            style: { stroke: baseColor, strokeWidth: 2.5 },
+            type: 'smoothstep',
+            markerEnd: { type: 'arrowclosed' as MarkerType, color: baseColor },
+            style: {
+              stroke: baseColor,
+              strokeWidth: 2.5,
+              ...edgeBaseStyle,
+              ...(isIf && connection.connectionType === 'Error' ? { strokeDasharray: '6 4' } : {}),
+            },
+            ...edgeLabelStyle,
             data: edgeData ?? (connection.Label ? { label: connection.Label } : undefined),
             label: edgeLabel,
           }
@@ -1019,14 +835,14 @@ function WorkflowEditorInner() {
           setNodes(loadedNodes)
           setEdges(loadedEdges)
           setHasUnsavedChanges(false)
-          console.debug('[Flowforge] Loaded nodes/edges', {
-            nodes: loadedNodes,
-            edges: loadedEdges,
-          })
         }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Unable to load workflow graph')
+        }
+      } finally {
+        if (!cancelled) {
+          setGraphLoading(false)
         }
       }
     }
@@ -1042,6 +858,11 @@ function WorkflowEditorInner() {
     let cancelled = false
 
     async function loadSystemBlocks() {
+      const cached = systemBlocksCacheRef.current
+      if (cached && cached.some((block) => block.type === 'Loop') && cached.some((block) => block.type === 'Wait')) {
+        setSystemBlocks(cached)
+        return
+      }
       try {
         const response = await fetch(`${apiBase}/api/SystemBlock`)
         if (!response.ok) {
@@ -1049,7 +870,9 @@ function WorkflowEditorInner() {
         }
         const data = (await response.json()) as unknown
         if (!cancelled) {
-          setSystemBlocks(normalizeValues<SystemBlock>(data))
+          const normalized = normalizeValues<SystemBlock>(data)
+          systemBlocksCacheRef.current = normalized
+          setSystemBlocks(normalized)
         }
       } catch (err) {
         if (!cancelled) {
@@ -1071,8 +894,9 @@ function WorkflowEditorInner() {
     }
   }, [loadVariables, workflowId])
 
-  const onNodesChange = useCallback(
+  const onNodesMutate = useCallback(
     (changes: NodeChange[]) => {
+      if (isDragging) return
       const shouldMark = changes.some((change) => {
         if (change.type === 'position') {
           return change.dragging === true
@@ -1091,23 +915,19 @@ function WorkflowEditorInner() {
       if (shouldMark) {
         markDirty()
       }
-      internalOnNodesChange(changes)
     },
-    [internalOnNodesChange, markDirty, pushHistory],
+    [isDragging, markDirty, pushHistory],
   )
 
-  const onEdgesChange = useCallback(
+  const onEdgesMutate = useCallback(
     (changes: EdgeChange[]) => {
       const shouldMark = changes.some((change) => change.type !== 'select')
       if (shouldMark) {
         pushHistory()
-      }
-      if (shouldMark) {
         markDirty()
       }
-      setEdges((current) => applyEdgeChanges(changes, current))
     },
-    [markDirty, pushHistory, setEdges],
+    [markDirty, pushHistory],
   )
 
   const getBlockType = useCallback(
@@ -1118,6 +938,25 @@ function WorkflowEditorInner() {
 
   const canBeSource = useCallback((blockType?: string) => blockType !== 'End', [])
   const canBeTarget = useCallback((blockType?: string) => blockType !== 'Start', [])
+
+  const edgeBaseStyle = useMemo(
+    () => ({
+      strokeLinecap: 'round' as const,
+      strokeLinejoin: 'round' as const,
+      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))',
+    }),
+    [],
+  )
+
+  const edgeLabelStyle = useMemo(
+    () => ({
+      labelBgPadding: [6, 4] as [number, number],
+      labelBgBorderRadius: 10,
+      labelBgStyle: { fill: 'rgba(0,0,0,0.55)', stroke: 'none' },
+      labelStyle: { fill: '#fff', fontWeight: 600, fontSize: 11 },
+    }),
+    [],
+  )
 
   const hasOutgoingForHandle = useCallback(
     (sourceId: string, sourceHandle?: string) =>
@@ -1197,6 +1036,7 @@ function WorkflowEditorInner() {
         const sourceNode = nodes.find((node) => node.id === sourceId)
         const sourceType = sourceNode?.data.blockType
         const isSwitch = sourceType === 'Switch'
+        const isIf = sourceType === 'If'
         let sourceHandle: string | undefined
         let label: string | undefined
         let caseValue: string | undefined
@@ -1222,49 +1062,68 @@ function WorkflowEditorInner() {
             sourceHandle = 'success'
           } else if (!hasOutgoingForHandle(sourceId, 'error')) {
             sourceHandle = 'error'
-        } else {
+          } else {
+            pushToast('This output already has a connection.')
+            return
+          }
+        } else if (sourceType === 'Loop') {
+          if (!hasOutgoingForHandle(sourceId, 'loop')) {
+            sourceHandle = 'loop'
+          } else if (!hasOutgoingForHandle(sourceId, 'error')) {
+            sourceHandle = 'error'
+          } else {
+            pushToast('This output already has a connection.')
+            return
+          }
+        } else if (hasOutgoingForHandle(sourceId)) {
           pushToast('This output already has a connection.')
           return
         }
-      } else if (hasOutgoingForHandle(sourceId)) {
-        pushToast('This output already has a connection.')
-        return
-      }
-      if (sourceHandle && hasOutgoingForHandle(sourceId, sourceHandle)) {
-        pushToast('This output already has a connection.')
-        return
-      }
+        if (sourceHandle && hasOutgoingForHandle(sourceId, sourceHandle)) {
+          pushToast('This output already has a connection.')
+          return
+        }
         const baseColor =
           sourceType === 'If' && sourceHandle === 'error'
-            ? 'var(--edge-error)'
+            ? '#d64545'
             : sourceType === 'If' && sourceHandle === 'success'
-              ? 'var(--edge-success)'
-              : 'var(--edge-default)'
+              ? '#2f9e68'
+              : DEFAULT_EDGE_COLOR
         pushHistory()
-        setEdges((current) =>
-          addEdge(
-            {
-              id: `${sourceId}-${targetId}-${Date.now()}`,
-              source: sourceId,
-              target: targetId,
-              sourceHandle,
-              animated: true,
-              style: { stroke: baseColor, strokeWidth: 2.5 },
-              markerEnd: { type: MarkerType.ArrowClosed, color: baseColor },
-              data:
-                label !== undefined
-                  ? { label: caseValue ?? label, caseValue }
-                  : undefined,
-              label:
-                sourceHandle === 'default'
-                  ? 'Default'
-                  : label && label.length > 0
-                    ? label
-                    : undefined,
+        setEdges((current) => {
+          const newEdge: Edge = {
+            id: `${sourceId}-${targetId}-${Date.now()}`,
+            source: sourceId,
+            target: targetId,
+            sourceHandle,
+            animated: true,
+            type: 'smoothstep',
+            style: {
+              stroke: baseColor,
+              strokeWidth: 2.5,
+              strokeLinecap: 'round',
+              strokeLinejoin: 'round',
+              filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))',
+              ...(isIf && sourceHandle === 'error' ? { strokeDasharray: '6 4' } : {}),
             },
-            current,
-          ),
-        )
+            markerEnd: { type: 'arrowclosed' as MarkerType, color: baseColor },
+            labelBgPadding: [6, 4],
+            labelBgBorderRadius: 10,
+            labelBgStyle: { fill: 'rgba(0,0,0,0.55)', stroke: 'none' },
+            labelStyle: { fill: '#fff', fontWeight: 600, fontSize: 11 },
+            data:
+              label !== undefined
+                ? { label: caseValue ?? label, caseValue }
+                : undefined,
+            label:
+              sourceHandle === 'default'
+                ? 'Default'
+                : label && label.length > 0
+                  ? label
+                  : undefined,
+          }
+          return [...current, newEdge]
+        })
         markDirty()
       }
 
@@ -1289,7 +1148,8 @@ function WorkflowEditorInner() {
   const onConnect = useCallback(
     (connection: Connection) => {
       const connectionKey = `${connection.source ?? ''}-${connection.sourceHandle ?? ''}-${connection.target ?? ''}-${connection.targetHandle ?? ''}`
-      if (connection.source && hasOutgoingForHandle(connection.source, connection.sourceHandle)) {
+      const connectionSourceHandle = connection.sourceHandle ?? undefined
+      if (connection.source && hasOutgoingForHandle(connection.source, connectionSourceHandle)) {
         pushToast('This output already has a connection.')
         return
       }
@@ -1298,14 +1158,14 @@ function WorkflowEditorInner() {
       const isSwitch = sourceNode?.data.blockType === 'Switch'
       const baseColor =
         isIf && connection.sourceHandle === 'error'
-          ? 'var(--edge-error)'
+          ? '#d64545'
           : isIf && connection.sourceHandle === 'success'
-            ? 'var(--edge-success)'
-            : 'var(--edge-default)'
+            ? '#2f9e68'
+            : DEFAULT_EDGE_COLOR
       let label: string | undefined
       let caseValue: string | undefined
       if (isSwitch) {
-        const handleId = connection.sourceHandle ?? ''
+        const handleId = connectionSourceHandle ?? ''
         const cases = switchConfigs[sourceNode?.id ?? '']?.cases ?? []
         if (handleId.startsWith('case-')) {
           const parts = handleId.split('-')
@@ -1314,32 +1174,44 @@ function WorkflowEditorInner() {
           caseValue = value.trim()
           label = caseValue
           const display = index >= 0 ? formatSwitchEdgeLabel(index, caseValue) : caseValue
-          const displayLabel = (display ?? caseValue) || undefined
-          connection = { ...connection, label: displayLabel }
+          label = (display ?? caseValue) || undefined
         } else if (handleId === 'default') {
           caseValue = ''
           label = ''
-          connection = { ...connection, label: 'Default' }
+          label = 'Default'
         }
       }
       pushHistory()
-      setEdges((current) =>
-        addEdge(
-          {
-            ...connection,
-            id: `${connectionKey}-${Date.now()}`,
-            animated: true,
-            style: { stroke: baseColor, strokeWidth: 2.5 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: baseColor },
-            data:
-              label !== undefined
-                ? { label, caseValue }
-                : undefined,
-            label: connection.label ?? (label && label.length > 0 ? label : undefined),
+      setEdges((current) => {
+        const newEdge: Edge = {
+          id: `${connectionKey}-${Date.now()}`,
+          source: connection.source ?? '',
+          target: connection.target ?? '',
+          sourceHandle: connection.sourceHandle ?? undefined,
+          targetHandle: connection.targetHandle ?? undefined,
+          animated: true,
+          type: 'smoothstep',
+          style: {
+            stroke: baseColor,
+            strokeWidth: 2.5,
+            strokeLinecap: 'round' as const,
+            strokeLinejoin: 'round' as const,
+            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))',
+            ...(connection.sourceHandle === 'error' ? { strokeDasharray: '6 4' } : {}),
           },
-          current,
-        ),
-      )
+          markerEnd: { type: 'arrowclosed' as MarkerType, color: baseColor },
+          labelBgPadding: [6, 4],
+          labelBgBorderRadius: 10,
+          labelBgStyle: { fill: 'rgba(0,0,0,0.55)', stroke: 'none' },
+          labelStyle: { fill: '#fff', fontWeight: 600, fontSize: 11 },
+          data:
+            label !== undefined
+              ? { label, caseValue }
+              : undefined,
+          label: label && label.length > 0 ? label : undefined,
+        }
+        return [...current, newEdge]
+      })
       markDirty()
     },
     [hasOutgoingForHandle, markDirty, nodes, pushHistory, pushToast, setEdges, switchConfigs],
@@ -1514,8 +1386,6 @@ function WorkflowEditorInner() {
     markDirty()
   }, [markDirty, pushHistory, selectedNodeIds, setEdges, setNodes])
 
-  const nodeTypes = useMemo(() => ({ flowNode: FlowNode }), [])
-
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
@@ -1554,7 +1424,12 @@ function WorkflowEditorInner() {
   const addNode = useCallback(
     (template: BlockTemplate & { position?: { x: number; y: number } }) => {
       const apiHasBlockType =
-        systemBlocks.length === 0 || systemBlocks.some((block) => block.type === template.type)
+        systemBlocks.length === 0 ||
+        systemBlocks.some((block) => block.type === template.type) ||
+        template.type === 'Loop' ||
+        template.type === 'Wait' ||
+        template.type === 'TextTransform' ||
+        template.type === 'TextReplace'
       if (!apiHasBlockType) {
         setSaveStatus(`${template.label} block is not available on this server.`)
         return
@@ -1605,12 +1480,50 @@ function WorkflowEditorInner() {
           [node.id]: { expression: '', cases: [''] },
         }))
       }
+      if (template.type === 'Loop') {
+        setLoopConfigs((current) => ({
+          ...current,
+          [node.id]: { iterations: 1 },
+        }))
+      }
+      if (template.type === 'Wait') {
+        setWaitConfigs((current) => ({
+          ...current,
+          [node.id]: { delayMs: 1000, delayVariable: '' },
+        }))
+      }
+      if (template.type === 'TextTransform') {
+        setTextTransformConfigs((current) => ({
+          ...current,
+          [node.id]: { input: '', inputVariable: '', operation: 'Trim', resultVariable: 'result' },
+        }))
+      }
+      if (template.type === 'TextReplace') {
+        setTextReplaceConfigs((current) => ({
+          ...current,
+          [node.id]: {
+            input: '',
+            inputVariable: '',
+            resultVariable: 'result',
+            replacements: [{ from: '', to: '', useRegex: false, ignoreCase: false }],
+          },
+        }))
+      }
       setShowPalette(false)
       setPaletteSearch('')
       setPaletteCategory('All')
       markDirty()
     },
-    [markDirty, nodes, openConfig, pushHistory, setNodes, setSaveStatus, setSwitchConfigs, systemBlocks],
+    [
+      markDirty,
+      nodes,
+      openConfig,
+      pushHistory,
+      setNodes,
+      setSaveStatus,
+      setSwitchConfigs,
+      systemBlocks,
+    ],
   )
 
   const status = useMemo(() => {
@@ -1637,7 +1550,14 @@ function WorkflowEditorInner() {
   const availableTemplates = useMemo(() => {
     if (systemBlocks.length === 0) return templates
     const allowed = new Set(systemBlocks.map((block) => block.type))
-    return templates.filter((template) => allowed.has(template.type))
+    return templates.filter(
+      (template) =>
+        allowed.has(template.type) ||
+        template.type === 'Loop' ||
+        template.type === 'Wait' ||
+        template.type === 'TextTransform' ||
+        template.type === 'TextReplace',
+    )
   }, [systemBlocks])
 
   const runDefaults = useMemo(() => {
@@ -1647,6 +1567,29 @@ function WorkflowEditorInner() {
     })
     return defaults
   }, [variables])
+
+  const waitEstimateMs = useMemo(() => {
+    const capMs = 300000
+    let total = 0
+    Object.values(waitConfigs).forEach((config) => {
+      let delay = 0
+      const variableName = (config.delayVariable ?? '').trim()
+      if (variableName.length > 0) {
+        const key = variableName.startsWith('$') ? variableName.slice(1) : variableName
+        const raw = runInputs[key] ?? runDefaults[key]
+        const parsed = Number(raw)
+        if (Number.isFinite(parsed) && parsed > 0) {
+          delay = parsed
+        }
+      }
+      if (delay <= 0 && Number.isFinite(config.delayMs)) {
+        delay = config.delayMs ?? 0
+      }
+      delay = Math.max(0, Math.min(delay, capMs))
+      total += delay
+    })
+    return total
+  }, [runDefaults, runInputs, waitConfigs])
 
   async function createVariable(event: React.FormEvent) {
     event.preventDefault()
@@ -1769,6 +1712,7 @@ function WorkflowEditorInner() {
     setRunError(hasUnsavedChanges ? 'Save the workflow before running.' : null)
     setRunResult(null)
     setRunInputs(runDefaults)
+    setSkipWaits(false)
   }
 
   async function runWorkflow() {
@@ -1782,7 +1726,7 @@ function WorkflowEditorInner() {
     setRunResult(null)
 
     try {
-      const response = await fetch(`${apiBase}/api/Workflow/${workflow.id}/run`, {
+      const response = await fetch(`${apiBase}/api/Workflow/${workflow.id}/run?skipWaits=${skipWaits ? 'true' : 'false'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(runInputs),
@@ -1934,7 +1878,7 @@ function WorkflowEditorInner() {
           }
         }
 
-        if (blockType === 'Switch') {
+      if (blockType === 'Switch') {
           const config = switchConfigs[node.id]
           if (config) {
             const cases = normalizeSwitchCases(config.cases)
@@ -1976,7 +1920,55 @@ function WorkflowEditorInner() {
           }
         }
 
-        const response = await fetch(`${apiBase}/api/Blocks`, {
+        if (blockType === 'Loop') {
+            const config = loopConfigs[node.id]
+            if (config) {
+              jsonConfig = JSON.stringify({
+                Iterations: config.iterations,
+              })
+            }
+          }
+
+      if (blockType === 'Wait') {
+        const config = waitConfigs[node.id]
+        if (config) {
+          jsonConfig = JSON.stringify({
+            DelayMs: config.delayMs ?? 0,
+            DelayVariable: config.delayVariable ?? '',
+          })
+        }
+      }
+
+      if (blockType === 'TextTransform') {
+        const config = textTransformConfigs[node.id]
+        if (config) {
+          jsonConfig = JSON.stringify({
+            Input: config.input ?? '',
+            InputVariable: config.inputVariable ?? '',
+            Operation: config.operation,
+            ResultVariable: config.resultVariable ?? 'result',
+          })
+        }
+      }
+
+      if (blockType === 'TextReplace') {
+        const config = textReplaceConfigs[node.id]
+        if (config) {
+          jsonConfig = JSON.stringify({
+            Input: config.input ?? '',
+            InputVariable: config.inputVariable ?? '',
+            ResultVariable: config.resultVariable ?? 'result',
+            Replacements: (config.replacements ?? []).map((rule: TextReplaceRule) => ({
+              From: rule.from ?? '',
+              To: rule.to ?? '',
+              UseRegex: rule.useRegex ?? false,
+              IgnoreCase: rule.ignoreCase ?? false,
+            })),
+          })
+        }
+      }
+
+      const response = await fetch(`${apiBase}/api/Blocks`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2014,10 +2006,10 @@ function WorkflowEditorInner() {
         }
         const sourceNode = nodesToSave.find((node) => nodeMap.get(node.id) === sourceId)
         let connectionType: 'Success' | 'Error' = 'Success'
-        if (sourceNode?.data.blockType === 'If') {
+        if (sourceNode?.data.blockType === 'If' || sourceNode?.data.blockType === 'Loop') {
           if (edge.sourceHandle === 'error') {
             connectionType = 'Error'
-          } else if (edge.sourceHandle === 'success') {
+          } else if (edge.sourceHandle === 'success' || edge.sourceHandle === 'loop') {
             connectionType = 'Success'
           } else {
             // Fallback: order by appearance if handles missing
@@ -2068,6 +2060,11 @@ function WorkflowEditorInner() {
       }
 
       await loadVariables(workflow.id)
+      try {
+        await requestJson(`/api/WorkflowRevision/workflow/${workflow.id}`, withJson({ label: null }))
+      } catch (err) {
+        console.warn('Failed to auto-create revision', err)
+      }
       setHasUnsavedChanges(false)
       setSaveStatus('Saved')
     } catch (err) {
@@ -2085,1542 +2082,217 @@ function WorkflowEditorInner() {
         <div className="state">{status}</div>
       ) : (
           <div className="editor-body">
-          <header className="editor-topbar">
-            <button type="button" className="ghost" onClick={() => navigate('/')}>
-              {editorCopy.back}
-            </button>
-            <div className="editor-title">
-              <h1>{workflow?.name ?? editorCopy.untitled}</h1>
-              <p className="subtitle">{editorCopy.subtitle}</p>
-            </div>
-            <div className="editor-actions">
+          <Suspense fallback={<div className="editor-topbar" />}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', alignItems: 'center', gap: 12 }}>
               <button
                 type="button"
-                className="icon-button"
-                onClick={toggleLanguage}
-                aria-label={`Switch to ${language === 'pl' ? 'English' : 'Polish'}`}
+                className="ghost"
+                onClick={() => navigate('/')}
+                style={{ justifySelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                aria-label="Back"
               >
-                {language === 'pl' ? 'PL' : 'EN'}
+                <span style={{ fontSize: 16 }}>←</span>
               </button>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={toggleTheme}
-                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              >
-                {theme === 'dark' ? (
-                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                    <path
-                      d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                    <path
-                      d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </button>
-              {/*
-                Run should only be available when the workflow is saved.
-                A title hint helps explain why it might be disabled.
-              */}
-              <button type="button" onClick={saveWorkflow} disabled={saving || workflowLoading}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-              <span
-                style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-              >
-                <button
-                  type="button"
-                  className="pill"
-                  onClick={openRunPanel}
-                  disabled={workflowLoading || saving}
-                >
-                  Run
-                </button>
-              </span>
-              {saveStatus && <span className="hint">{saveStatus}</span>}
+              <EditorTopbar
+                workflowName={workflow?.name ?? editorCopy.untitled}
+                subtitle={editorCopy.subtitle}
+                saveStatus={saveStatus}
+                saving={saving}
+                workflowLoading={workflowLoading}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+                onSave={saveWorkflow}
+                onRun={openRunPanel}
+                onBack={() => navigate('/')}
+              />
             </div>
-          </header>
+          </Suspense>
           <div className="editor-main">
-            <CanvasSidebar
-              showPalette={showPalette}
-              showVariables={showVariables}
-              onTogglePalette={() => setShowPalette((open) => !open)}
-              onToggleVariables={toggleVariables}
-            />
+            <Suspense fallback={<div className="editor-sidebar" />}>
+              <CanvasSidebar
+                showPalette={showPalette}
+                showVariables={showVariables}
+                onTogglePalette={() => setShowPalette((open) => !open)}
+                onToggleVariables={toggleVariables}
+              />
+            </Suspense>
 
-            <div className={`canvas-wrapper ${isDragging ? 'is-dragging' : ''}`}>
-              <div className="canvas">
-                <ReactFlow
-                  nodes={nodes}
-                  edges={renderedEdges}
-                  style={{ width: '100%', height: '100%' }}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
-                  onEdgeClick={onEdgeClick}
-                  onNodeClick={onNodeClick}
-                  onNodeContextMenu={onNodeContextMenu}
-                  onSelectionChange={onSelectionChange}
-                  onSelectionContextMenu={onSelectionContextMenu}
-                  onPaneClick={closeEdgeMenu}
-                  onMoveStart={() => setIsDragging(true)}
-                  onMoveEnd={() => {
-                    if (dragFrame.current) {
-                      cancelAnimationFrame(dragFrame.current)
-                    }
-                    dragFrame.current = requestAnimationFrame(() => {
-                      setIsDragging(false)
-                      dragFrame.current = null
-                    })
-                  }}
-                  onPaneContextMenu={onPaneContextMenu}
-                  nodeTypes={nodeTypes}
-                  snapToGrid={snapToGrid}
-                  snapGrid={[16, 16]}
-                  fitView
-                  proOptions={{ hideAttribution: true }}
-                >
-                  <Background gap={18} color="#d9ddd3" />
-                <MiniMap
-                  position="bottom-left"
-                  style={{ background: 'var(--canvas-bg)' }}
-                  nodeColor={() => 'var(--card)'}
-                  nodeStrokeColor={() => 'var(--border-soft)'}
-                  maskColor={theme === 'dark' ? 'rgba(13, 17, 23, 0.65)' : 'rgba(255, 255, 255, 0.6)'}
-                />
-              </ReactFlow>
-                <CanvasControls
-                  zoomPercent={Math.round(zoom * 100)}
-                  snapToGrid={snapToGrid}
-                  onZoomIn={() => zoomIn({ duration: 200 })}
-                  onZoomOut={() => zoomOut({ duration: 200 })}
-                  onFitView={() => fitView({ padding: 0.2, duration: 220 })}
-                  onToggleSnap={() => setSnapToGrid((enabled) => !enabled)}
-                />
-              </div>
-            </div>
+            <Suspense fallback={<div className="canvas-wrapper" />}>
+              <FlowCanvas
+                nodes={nodes}
+                setNodes={setNodes}
+                edges={edges}
+                setEdges={setEdges}
+                snapToGrid={snapToGrid}
+                isDragging={isDragging}
+                setIsDragging={setIsDragging}
+                workflowLoading={workflowLoading}
+                graphLoading={graphLoading}
+                onConnect={onConnect}
+                onEdgeClick={onEdgeClick}
+                onNodeClick={onNodeClick}
+                onNodeContextMenu={onNodeContextMenu}
+                onSelectionChange={onSelectionChange}
+                onSelectionContextMenu={onSelectionContextMenu}
+                onPaneClick={closeEdgeMenu}
+                onPaneContextMenu={onPaneContextMenu}
+                onToggleSnap={() => setSnapToGrid((enabled) => !enabled)}
+                onNodesMutate={onNodesMutate}
+                onEdgesMutate={onEdgesMutate}
+              />
+            </Suspense>
           </div>
 
           {showPalette && (
-            <>
-              <div
-                className="drawer-backdrop"
-                onClick={() => {
+            <Suspense fallback={<div className="variables-drawer blocks-drawer" style={{ padding: 16 }}>Loading blocks...</div>}>
+              <BlocksDrawer
+                onClose={() => {
                   setShowPalette(false)
                   setPaletteSearch('')
                   setPaletteCategory('All')
                 }}
+                onCreate={addNode}
+                search={paletteSearch}
+                onSearchChange={setPaletteSearch}
+                category={paletteCategory}
+                onCategoryChange={setPaletteCategory}
+                availableTemplates={availableTemplates}
               />
-              <aside className="variables-drawer blocks-drawer">
-                <div className="palette-header">
-                  <div>
-                    <p className="palette-title">Blocks</p>
-                    <span className="palette-subtitle">Add blocks anywhere on the canvas.</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => {
-                      setShowPalette(false)
-                      setPaletteSearch('')
-                      setPaletteCategory('All')
-                    }}
-                  >
-                    Close
-                  </button>
-                </div>
-                <NodeCreator
-                  onCreate={addNode}
-                  search={paletteSearch}
-                  onSearchChange={setPaletteSearch}
-                  category={paletteCategory}
-                  onCategoryChange={setPaletteCategory}
-                  availableTemplates={availableTemplates}
-                />
-              </aside>
-            </>
+            </Suspense>
           )}
 
           {showVariables && (
-            <>
-              <div className="drawer-backdrop" onClick={toggleVariables} />
-              <aside className="variables-drawer">
-                <div className="palette-header">
-                  <div>
-                    <p className="palette-title">Workflow variables</p>
-                    <span className="palette-subtitle">Used by Calculation blocks.</span>
-                  </div>
-                  <button type="button" className="ghost" onClick={toggleVariables}>
-                    Close
-                  </button>
-                </div>
-
-                <section className="variables-section">
-                  <div className="section-header">
-                    <p className="section-title">Add variable</p>
-                    <span className="section-subtitle">Name + default value.</span>
-                  </div>
-                  <form className="variables-form" onSubmit={createVariable}>
-                    <label className="drawer-label" htmlFor="var-name">
-                      <span className="label-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M5 7h14M5 12h9M5 17h11"
-                            stroke="currentColor"
-                            strokeWidth="1.6"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </span>
-                      Name
-                    </label>
-                    <input
-                      id="var-name"
-                      type="text"
-                      placeholder="e.g. total"
-                      value={newVariableName}
-                      onChange={(event) => {
-                        setNewVariableName(event.target.value)
-                        markDirty()
-                      }}
-                    />
-                    <label className="drawer-label" htmlFor="var-default">
-                      <span className="label-icon">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M4 8h6M7 5v6M14 7h6M14 12h6M14 17h6"
-                            stroke="currentColor"
-                            strokeWidth="1.6"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </span>
-                      Default value
-                    </label>
-                    <input
-                      id="var-default"
-                      type="text"
-                      placeholder="Optional"
-                      value={newVariableDefault}
-                      onChange={(event) => {
-                        setNewVariableDefault(event.target.value)
-                        markDirty()
-                      }}
-                    />
-                    <button type="submit" disabled={!newVariableName.trim() || variablesSaving}>
-                      Add variable
-                    </button>
-                  </form>
-                </section>
-
-                <section className="variables-section">
-                  <div className="section-header">
-                    <p className="section-title">All variables</p>
-                    <span className="section-subtitle">{variables.length} total</span>
-                  </div>
-                  {variablesStatus ? (
-                    <p className="muted">{variablesStatus}</p>
-                  ) : (
-                    <ul className="variables-list">
-                      {variables.map((variable) => (
-                        <li key={variable.id} className="variable-card">
-                        {editingVariableId === variable.id ? (
-                          <form className="variable-edit" onSubmit={updateVariable}>
-                            <label className="drawer-label" htmlFor={`edit-name-${variable.id}`}>
-                              <span className="label-icon">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path
-                                    d="M5 7h14M5 12h9M5 17h11"
-                                    stroke="currentColor"
-                                    strokeWidth="1.6"
-                                    strokeLinecap="round"
-                                  />
-                                </svg>
-                              </span>
-                              Name
-                            </label>
-                              <input
-                              id={`edit-name-${variable.id}`}
-                              type="text"
-                              value={editingVariableName}
-                              onChange={(event) => {
-                                setEditingVariableName(event.target.value)
-                                markDirty()
-                              }}
-                            />
-                            <label className="drawer-label" htmlFor={`edit-default-${variable.id}`}>
-                              <span className="label-icon">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path
-                                    d="M4 8h6M7 5v6M14 7h6M14 12h6M14 17h6"
-                                    stroke="currentColor"
-                                    strokeWidth="1.6"
-                                    strokeLinecap="round"
-                                  />
-                                </svg>
-                              </span>
-                              Default value
-                            </label>
-                            <input
-                              id={`edit-default-${variable.id}`}
-                              type="text"
-                              value={editingVariableDefault}
-                              onChange={(event) => {
-                                setEditingVariableDefault(event.target.value)
-                                markDirty()
-                              }}
-                              placeholder="Optional"
-                            />
-                              <div className="card-actions">
-                                <button type="submit" disabled={!editingVariableName.trim() || variablesSaving}>
-                                  Save
-                                </button>
-                                <button type="button" className="ghost" onClick={cancelVariableEdit}>
-                                  Cancel
-                                </button>
-                              </div>
-                            </form>
-                          ) : (
-                            <>
-                              <div>
-                                <p className="label">{variable.name}</p>
-                                <p className="meta">
-                                  Default: {variable.defaultValue ?? '—'}
-                                </p>
-                              </div>
-                              <div className="card-actions">
-                                <button type="button" onClick={() => startVariableEdit(variable)}>
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  className="danger"
-                                  onClick={() => deleteVariable(variable.id)}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              </aside>
-            </>
+            <Suspense fallback={<div className="variables-drawer" style={{ padding: 16 }}>Loading variables...</div>}>
+              <VariablesDrawer
+                variables={variables}
+                variablesStatus={variablesStatus}
+                variablesSaving={variablesSaving}
+                variablesLocalError={variablesLocalError}
+                newVariableName={newVariableName}
+                newVariableDefault={newVariableDefault}
+                editingVariableId={editingVariableId}
+                editingVariableName={editingVariableName}
+                editingVariableDefault={editingVariableDefault}
+                onClose={toggleVariables}
+                onCreate={createVariable}
+                onUpdate={updateVariable}
+                onDelete={deleteVariable}
+                onStartEdit={startVariableEdit}
+                onCancelEdit={cancelVariableEdit}
+                setNewVariableName={setNewVariableName}
+                setNewVariableDefault={setNewVariableDefault}
+                setEditingVariableName={setEditingVariableName}
+                setEditingVariableDefault={setEditingVariableDefault}
+                markDirty={markDirty}
+              />
+            </Suspense>
           )}
 
-          {(edgeMenu || (closingMenu === 'edge' && lastEdgeMenu.current)) && (
-            <div
-              className={`edge-menu ${closingMenu === 'edge' ? 'closing' : ''}`}
-              style={{
-                left: (edgeMenu ?? lastEdgeMenu.current)?.x,
-                top: (edgeMenu ?? lastEdgeMenu.current)?.y,
+          <Suspense fallback={null}>
+            <ContextMenus
+              edgeMenu={edgeMenu}
+              nodeMenu={nodeMenu}
+              selectionMenu={selectionMenu}
+              canvasMenu={canvasMenu}
+              closingMenu={closingMenu}
+              lastEdgeMenu={lastEdgeMenu.current}
+              lastNodeMenu={lastNodeMenu.current}
+              lastSelectionMenu={lastSelectionMenu.current}
+              lastCanvasMenu={lastCanvasMenu.current}
+              selectedCount={selectedNodeIds.length}
+              onDeleteEdge={deleteEdge}
+              onDeleteNode={deleteNode}
+              onDeleteSelection={deleteSelection}
+              onDuplicateSelection={duplicateSelection}
+              onSelectAll={selectAllNodes}
+              onClose={closeEdgeMenu}
+              onOpenPalette={() => {
+                setShowPalette(true)
+                setCanvasMenu(null)
               }}
-            >
-              <p className="edge-menu-title">Connection</p>
-              <button type="button" className="danger" onClick={deleteEdge}>
-                Delete connection
-              </button>
-              <button type="button" className="ghost" onClick={closeEdgeMenu}>
-                Cancel
-              </button>
-            </div>
-          )}
-
-          {(nodeMenu || (closingMenu === 'node' && lastNodeMenu.current)) && (
-            <div
-              className={`edge-menu ${closingMenu === 'node' ? 'closing' : ''}`}
-              style={{
-                left: (nodeMenu ?? lastNodeMenu.current)?.x,
-                top: (nodeMenu ?? lastNodeMenu.current)?.y,
-              }}
-            >
-              <p className="edge-menu-title">Block</p>
-              <button type="button" className="danger" onClick={deleteNode}>
-                Delete block
-              </button>
-              <button type="button" className="ghost" onClick={closeEdgeMenu}>
-                Cancel
-              </button>
-            </div>
-          )}
-
-          {(selectionMenu || (closingMenu === 'selection' && lastSelectionMenu.current)) && (
-            <div
-              className={`edge-menu ${closingMenu === 'selection' ? 'closing' : ''}`}
-              style={{
-                left: (selectionMenu ?? lastSelectionMenu.current)?.x,
-                top: (selectionMenu ?? lastSelectionMenu.current)?.y,
-              }}
-            >
-              <p className="edge-menu-title">
-                Selection ({(selectionMenu ?? lastSelectionMenu.current) ? selectedNodeIds.length : selectedNodeIds.length})
-              </p>
-              <button type="button" onClick={duplicateSelection}>
-                Duplicate selected
-              </button>
-              <button type="button" className="danger" onClick={deleteSelection}>
-                Delete selected
-              </button>
-              <button type="button" className="ghost" onClick={closeEdgeMenu}>
-                Cancel
-              </button>
-            </div>
-          )}
-
-          {(canvasMenu || (closingMenu === 'canvas' && lastCanvasMenu.current)) && (
-            <div
-              className={`edge-menu ${closingMenu === 'canvas' ? 'closing' : ''}`}
-              style={{
-                left: (canvasMenu ?? lastCanvasMenu.current)?.x,
-                top: (canvasMenu ?? lastCanvasMenu.current)?.y,
-              }}
-            >
-              <p className="edge-menu-title">Canvas</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPalette(true)
-                  setCanvasMenu(null)
-                }}
-              >
-                Add block
-              </button>
-              <button type="button" onClick={selectAllNodes}>
-                Select all
-              </button>
-              <button type="button" className="ghost" onClick={closeEdgeMenu}>
-                Cancel
-              </button>
-            </div>
-          )}
+            />
+          </Suspense>
         </div>
       )}
 
       {configPanel && (
-        <>
-          <div className="drawer-backdrop" onClick={closeConfig} />
-          <aside className="config-drawer">
-            <div className="drawer-header">
-              <div>
+        <Suspense
+          fallback={
+            <aside className="config-drawer">
+              <div className="drawer-header">
                 <p className="drawer-title">{configPanel.label} settings</p>
                 <span className="drawer-subtitle">{configPanel.blockType} block</span>
               </div>
-              <button type="button" className="ghost" onClick={closeConfig}>
-                Close
-              </button>
-            </div>
-
-            {configPanel.blockType === 'Start' ? (
-              <form className="drawer-form">
-                <label htmlFor="start-display" className="drawer-label">
-                  <span className="label-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M4 7h16M4 12h10M4 17h13"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </span>
-                  Display name
-                </label>
-                <input
-                  id="start-display"
-                  type="text"
-                  value={
-                    startConfigs[configPanel.id]?.displayName ??
-                    configPanel.label
-                  }
-                  onChange={(event) => {
-                    const value = event.target.value
-                    setStartConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        displayName: value,
-                        trigger: current[configPanel.id]?.trigger ?? 'manual',
-                        variables: current[configPanel.id]?.variables ?? '',
-                      },
-                    }))
-                    setNodes((current) =>
-                      current.map((node) =>
-                        node.id === configPanel.id
-                          ? {
-                              ...node,
-                              data: {
-                                ...node.data,
-                                label: value || 'Start',
-                              },
-                            }
-                          : node,
-                      ),
-                    )
-                    setConfigPanel((current) =>
-                      current
-                        ? {
-                            ...current,
-                            label: value || 'Start',
-                          }
-                        : current,
-                    )
-                    markDirty()
-                  }}
-                />
-
-                <label htmlFor="start-trigger" className="drawer-label">
-                  <span className="label-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M12 3v6l4 2"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.6" fill="none" />
-                    </svg>
-                  </span>
-                  Trigger
-                </label>
-                <select
-                  id="start-trigger"
-                  value={startConfigs[configPanel.id]?.trigger ?? 'manual'}
-                  onChange={(event) => {
-                    const value = event.target.value as StartConfig['trigger']
-                    setStartConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        displayName:
-                          current[configPanel.id]?.displayName ?? configPanel.label,
-                        trigger: value,
-                        variables: current[configPanel.id]?.variables ?? '',
-                      },
-                    }))
-                    markDirty()
-                  }}
-                >
-                  <option value="manual">Manual</option>
-                  <option value="on-save">On save</option>
-                  <option value="schedule">Scheduled</option>
-                </select>
-
-                <label htmlFor="start-vars" className="drawer-label">
-                  <span className="label-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M8 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path d="M12 7v10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    </svg>
-                  </span>
-                  Initial variables (JSON)
-                </label>
-                <textarea
-                  id="start-vars"
-                  rows={6}
-                  placeholder='{"customerId":"123"}'
-                  value={startConfigs[configPanel.id]?.variables ?? ''}
-                  onChange={(event) => {
-                    const value = event.target.value
-                    setStartConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        displayName:
-                          current[configPanel.id]?.displayName ?? configPanel.label,
-                        trigger: current[configPanel.id]?.trigger ?? 'manual',
-                        variables: value,
-                      },
-                    }))
-                    markDirty()
-                  }}
-                />
-                <p className="muted">
-                  This configuration is local-only for now.
-                </p>
-              </form>
-            ) : configPanel.blockType === 'If' ? (
-              <form className="drawer-form">
-                <label htmlFor="if-first" className="drawer-label">
-                  <span className="label-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M5 7h14M5 12h14M5 17h10"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </span>
-                  First value
-                </label>
-                <VariableSelect
-                  id="if-first"
-                  label=""
-                  placeholder="Variable (e.g. amount) or literal"
-                  value={ifConfigs[configPanel.id]?.first ?? ''}
-                  options={variables.map((variable) => `$${variable.name}`)}
-                  onValueChange={(value) => {
-                    setIfConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        dataType: current[configPanel.id]?.dataType ?? 'String',
-                        first: value,
-                        second: current[configPanel.id]?.second ?? '',
-                      },
-                    }))
-                    markDirty()
-                  }}
-                />
-
-                <label htmlFor="if-second" className="drawer-label">
-                  <span className="label-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M5 7h14M5 12h14M5 17h10"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </span>
-                  Second value
-                </label>
-                <VariableSelect
-                  id="if-second"
-                  label=""
-                  placeholder="Variable (e.g. total) or literal"
-                  value={ifConfigs[configPanel.id]?.second ?? ''}
-                  options={variables.map((variable) => `$${variable.name}`)}
-                  onValueChange={(value) => {
-                    setIfConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        dataType: current[configPanel.id]?.dataType ?? 'String',
-                        first: current[configPanel.id]?.first ?? '',
-                        second: value,
-                      },
-                    }))
-                    markDirty()
-                  }}
-                />
-
-                <label htmlFor="if-type" className="drawer-label">
-                  <span className="label-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M12 4v16M4 12h16"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </span>
-                  Compare as
-                </label>
-                <select
-                  id="if-type"
-                  value={ifConfigs[configPanel.id]?.dataType ?? 'String'}
-                  onChange={(event) => {
-                    const value = event.target.value as IfConfig['dataType']
-                    setIfConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        dataType: value,
-                        first: current[configPanel.id]?.first ?? '',
-                        second: current[configPanel.id]?.second ?? '',
-                      },
-                    }))
-                    markDirty()
-                  }}
-                >
-                  <option value="String">String</option>
-                  <option value="Number">Number</option>
-                </select>
-                <p className="muted">
-                  If evaluates to true, the first outgoing edge is taken; otherwise the second (error) edge.
-                </p>
-              </form>
-            ) : configPanel.blockType === 'Switch' ? (
-              <form className="drawer-form">
-                {/*
-                  Show at least one empty row for quick entry; state keeps [] until user types.
-                */}
-                <VariableSelect
-                  id="switch-expression"
-                  label="Expression / variable"
-                  placeholder="$variable or literal"
-                  value={switchConfigs[configPanel.id]?.expression ?? ''}
-                  options={variables.map((variable) => `$${variable.name}`)}
-                  onValueChange={(value) => {
-                    setSwitchConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        expression: value,
-                        cases: normalizeSwitchCases(current[configPanel.id]?.cases),
-                      },
-                    }))
-                    markDirty()
-                  }}
-                />
-
-                <label className="drawer-label">
-                  <span className="label-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M7 7h10M7 12h10M7 17h6"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </span>
-                  Cases
-                </label>
-                {(switchConfigs[configPanel.id]?.cases ?? ['']).map((caseValue, idx) => (
-                  <VariableSelect
-                    key={`switch-case-${idx}`}
-                    id={`switch-case-${configPanel.id}-${idx}`}
-                    label={`Case ${idx + 1}`}
-                    placeholder="Value (e.g. pending)"
-                    value={caseValue}
-                    options={variables.map((variable) => `$${variable.name}`)}
-                    showHints={false}
-                    onValueChange={(value) => {
-                      setSwitchConfigs((current) => {
-                        const currentCases = normalizeSwitchCases(
-                          current[configPanel.id]?.cases,
-                        )
-                        const nextCases = [...currentCases]
-                        nextCases[idx] = value
-                        return {
-                          ...current,
-                          [configPanel.id]: {
-                            expression: current[configPanel.id]?.expression ?? '',
-                            cases: nextCases,
-                          },
-                        }
-                      })
-                      markDirty()
-                    }}
-                    trailingAction={
-                      <button
-                        type="button"
-                        className="ghost"
-                        onClick={() => {
-                          setSwitchConfigs((current) => {
-                            const currentCases = normalizeSwitchCases(
-                              current[configPanel.id]?.cases,
-                            )
-                            const nextCases =
-                              currentCases.length <= 1
-                                ? ['']
-                                : currentCases.filter((_, i) => i !== idx)
-                            return {
-                              ...current,
-                              [configPanel.id]: {
-                                expression: current[configPanel.id]?.expression ?? '',
-                                cases: nextCases,
-                              },
-                            }
-                          })
-                          markDirty()
-                        }}
-                      >
-                        Remove
-                      </button>
-                    }
-                  />
-                ))}
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => {
-                    setSwitchConfigs((current) => {
-                      const nextCases = [...normalizeSwitchCases(current[configPanel.id]?.cases), '']
-                      return {
-                        ...current,
-                        [configPanel.id]: {
-                          expression: current[configPanel.id]?.expression ?? '',
-                          cases: nextCases,
-                        },
-                      }
-                    })
-                    markDirty()
-                  }}
-                >
-                  Add case
-                </button>
-                <p className="muted">
-                  Switch routes by matching case values to connection labels. Use the default handle for unmatched values.
-                </p>
-              </form>
-            ) : configPanel.blockType === 'Calculation' ? (
-              <form className="drawer-form">
-                <label htmlFor="calc-operation" className="drawer-label">
-                  <span className="label-icon">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M4 8h6M7 5v6M14 7h6M14 12h6M14 17h6"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </span>
-                  Operation
-                </label>
-                <select
-                  id="calc-operation"
-                  value={calculationConfigs[configPanel.id]?.operation ?? 'Add'}
-                  onChange={(event) => {
-                    const value = event.target.value as CalculationConfig['operation']
-                    setCalculationConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        operation: value,
-                        firstVariable: current[configPanel.id]?.firstVariable ?? '',
-                        secondVariable: current[configPanel.id]?.secondVariable ?? '',
-                        resultVariable: current[configPanel.id]?.resultVariable ?? '',
-                      },
-                    }))
-                    markDirty()
-                  }}
-                >
-                  <option value="Add">Add</option>
-                  <option value="Subtract">Subtract</option>
-                  <option value="Multiply">Multiply</option>
-                  <option value="Divide">Divide</option>
-                  <option value="Concat">Concat</option>
-                </select>
-
-                <VariableSelect
-                  id="calc-first"
-                  label="First variable"
-                  placeholder="e.g. amount"
-                  value={formatVariableDisplay(calculationConfigs[configPanel.id]?.firstVariable ?? '')}
-                  options={variables.map((variable) => `$${variable.name}`)}
-                  onValueChange={(value) => {
-                    const normalized = normalizeVariableName(value)
-                    setCalculationConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        operation: current[configPanel.id]?.operation ?? 'Add',
-                        firstVariable: normalized,
-                        secondVariable: current[configPanel.id]?.secondVariable ?? '',
-                        resultVariable: current[configPanel.id]?.resultVariable ?? '',
-                      },
-                    }))
-                    markDirty()
-                  }}
-                />
-
-                <VariableSelect
-                  id="calc-second"
-                  label="Second variable"
-                  placeholder="e.g. tax"
-                  value={formatVariableDisplay(calculationConfigs[configPanel.id]?.secondVariable ?? '')}
-                  options={variables.map((variable) => `$${variable.name}`)}
-                  onValueChange={(value) => {
-                    const normalized = normalizeVariableName(value)
-                    setCalculationConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        operation: current[configPanel.id]?.operation ?? 'Add',
-                        firstVariable: current[configPanel.id]?.firstVariable ?? '',
-                        secondVariable: normalized,
-                        resultVariable: current[configPanel.id]?.resultVariable ?? '',
-                      },
-                    }))
-                    markDirty()
-                  }}
-                />
-
-                <VariableSelect
-                  id="calc-result"
-                  label="Result variable"
-                  placeholder="e.g. total"
-                  value={formatVariableDisplay(calculationConfigs[configPanel.id]?.resultVariable ?? '')}
-                  options={variables.map((variable) => `$${variable.name}`)}
-                  onValueChange={(value) => {
-                    const normalized = normalizeVariableName(value)
-                    setCalculationConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: {
-                        operation: current[configPanel.id]?.operation ?? 'Add',
-                        firstVariable: current[configPanel.id]?.firstVariable ?? '',
-                        secondVariable: current[configPanel.id]?.secondVariable ?? '',
-                        resultVariable: normalized,
-                      },
-                    }))
-                    markDirty()
-                  }}
-                />
-                <p className="muted">
-                  Saved as JSON config with CalculationOperation and variable names.
-                </p>
-              </form>
-            ) : configPanel.blockType === 'HttpRequest' ? (
-              <form className="drawer-form">
-                {(() => {
-                  const config = httpConfigs[configPanel.id] ?? {
-                    method: 'GET',
-                    url: '',
-                    body: '',
-                    headers: [],
-                    authType: 'none' as HttpRequestAuthType,
-                    bearerToken: '',
-                    basicUsername: '',
-                    basicPassword: '',
-                    apiKeyName: '',
-                    apiKeyValue: '',
-                    responseVariable: '',
-                  }
-                  const updateConfig = (partial: Partial<HttpRequestConfig>) => {
-                    setHttpConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: { ...config, ...partial },
-                    }))
-                    markDirty()
-                  }
-                  const updateHeader = (index: number, field: 'name' | 'value', value: string) => {
-                    const headers = [...config.headers]
-                    headers[index] = { ...headers[index], [field]: value }
-                    updateConfig({ headers })
-                  }
-                  const addHeader = () => updateConfig({ headers: [...config.headers, { name: '', value: '' }] })
-                  const removeHeader = (index: number) =>
-                    updateConfig({ headers: config.headers.filter((_, idx) => idx !== index) })
-
-                  return (
-                    <>
-                      <label className="drawer-label" htmlFor="http-method">
-                        <span className="label-icon">
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 12h14M5 7h9M5 17h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                          </svg>
-                        </span>
-                        Method
-                      </label>
-                      <select
-                        id="http-method"
-                        value={config.method}
-                        onChange={(event) => updateConfig({ method: event.target.value as HttpRequestConfig['method'] })}
-                      >
-                        {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((method) => (
-                          <option key={method} value={method}>
-                            {method}
-                          </option>
-                        ))}
-                      </select>
-
-                      <label className="drawer-label" htmlFor="http-url">
-                        <span className="label-icon">
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                              d="M9.5 6.5 6.5 9.5a4 4 0 1 0 5.66 5.66l1.34-1.34m-2-2 3-3a4 4 0 1 0-5.66-5.66L7.5 4.5"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              fill="none"
-                            />
-                          </svg>
-                        </span>
-                        URL
-                      </label>
-                      <input
-                        id="http-url"
-                        type="url"
-                        placeholder="https://api.example.com/resource"
-                        value={config.url}
-                        onChange={(event) => updateConfig({ url: event.target.value })}
-                      />
-
-                      <VariableSelect
-                        id="http-response-var"
-                        label="Response variable"
-                        placeholder="e.g. responseBody"
-                        value={formatVariableDisplay(config.responseVariable ?? '')}
-                        options={variables.map((variable) => `$${variable.name}`)}
-                        onValueChange={(value) => {
-                          const normalized = normalizeVariableName(value)
-                          updateConfig({ responseVariable: normalized })
-                        }}
-                      />
-
-                      <label className="drawer-label" htmlFor="http-auth">
-                        <span className="label-icon">
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                              d="M6 10v8h12v-8M9 10V7a3 3 0 1 1 6 0v3"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              fill="none"
-                            />
-                          </svg>
-                        </span>
-                        Authorization
-                      </label>
-                      <select
-                        id="http-auth"
-                        value={config.authType}
-                        onChange={(event) =>
-                          updateConfig({ authType: event.target.value as HttpRequestAuthType })
-                        }
-                      >
-                        <option value="none">None</option>
-                        <option value="bearer">Bearer token</option>
-                        <option value="basic">Basic auth</option>
-                        <option value="apiKeyHeader">API key (header)</option>
-                        <option value="apiKeyQuery">API key (query)</option>
-                      </select>
-
-                      {config.authType === 'bearer' && (
-                        <>
-                          <label className="drawer-label" htmlFor="http-bearer">
-                            <span className="label-icon">
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path
-                                  d="M12 4v16m-6-8h12"
-                                  stroke="currentColor"
-                                  strokeWidth="1.6"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                            </span>
-                            Bearer token
-                          </label>
-                          <input
-                            id="http-bearer"
-                            type="text"
-                            value={config.bearerToken}
-                            onChange={(event) => updateConfig({ bearerToken: event.target.value })}
-                          />
-                        </>
-                      )}
-
-                      {config.authType === 'basic' && (
-                        <div className="two-col">
-                          <div>
-                            <label className="drawer-label" htmlFor="http-basic-user">
-                              <span className="label-icon">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path
-                                    d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-6 6a6 6 0 1 1 12 0"
-                                    stroke="currentColor"
-                                    strokeWidth="1.6"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    fill="none"
-                                  />
-                                </svg>
-                              </span>
-                              Username
-                            </label>
-                            <input
-                              id="http-basic-user"
-                              type="text"
-                              value={config.basicUsername}
-                              onChange={(event) => updateConfig({ basicUsername: event.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="drawer-label" htmlFor="http-basic-pass">
-                              <span className="label-icon">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path
-                                    d="M7 11V8a5 5 0 1 1 10 0v3"
-                                    stroke="currentColor"
-                                    strokeWidth="1.6"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    fill="none"
-                                  />
-                                  <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" fill="none" />
-                                  <path d="M12 14v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                                </svg>
-                              </span>
-                              Password
-                            </label>
-                            <input
-                              id="http-basic-pass"
-                              type="password"
-                              value={config.basicPassword}
-                              onChange={(event) => updateConfig({ basicPassword: event.target.value })}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {(config.authType === 'apiKeyHeader' || config.authType === 'apiKeyQuery') && (
-                        <div className="two-col">
-                          <div>
-                            <label className="drawer-label" htmlFor="http-api-name">
-                              <span className="label-icon">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path
-                                    d="M5 12h4l2-2 3 3 2-2 3 3"
-                                    stroke="currentColor"
-                                    strokeWidth="1.6"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    fill="none"
-                                  />
-                                </svg>
-                              </span>
-                              API key name
-                            </label>
-                            <input
-                              id="http-api-name"
-                              type="text"
-                              value={config.apiKeyName}
-                              onChange={(event) => updateConfig({ apiKeyName: event.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="drawer-label" htmlFor="http-api-value">
-                              <span className="label-icon">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path
-                                    d="M4 12h6l2-3 3 4 2-2 3 3"
-                                    stroke="currentColor"
-                                    strokeWidth="1.6"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    fill="none"
-                                  />
-                                </svg>
-                              </span>
-                              API key value
-                            </label>
-                            <input
-                              id="http-api-value"
-                              type="text"
-                              value={config.apiKeyValue}
-                              onChange={(event) => updateConfig({ apiKeyValue: event.target.value })}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      <label className="drawer-label">
-                        <span className="label-icon">
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                              d="M5 7h14M5 12h11M5 17h9"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        </span>
-                        Headers
-                      </label>
-                      <div className="stacked-list">
-                        {config.headers.map((header, index) => (
-                          <div key={`header-${index}`} className="header-row">
-                            <input
-                              type="text"
-                              placeholder="Header name"
-                              value={header.name}
-                              onChange={(event) => updateHeader(index, 'name', event.target.value)}
-                            />
-                            <input
-                              type="text"
-                              placeholder="Value"
-                              value={header.value}
-                              onChange={(event) => updateHeader(index, 'value', event.target.value)}
-                            />
-                            <button type="button" className="ghost" onClick={() => removeHeader(index)}>
-                              Remove
-                            </button>
-                          </div>
-                        ))}
-                        <button type="button" className="ghost" onClick={addHeader}>
-                          Add header
-                        </button>
-                      </div>
-
-                      {config.method !== 'GET' && (
-                        <>
-                          <label className="drawer-label" htmlFor="http-body">
-                            <span className="label-icon">
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path
-                                  d="M5 5h14v14H5z"
-                                  stroke="currentColor"
-                                  strokeWidth="1.6"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  fill="none"
-                                />
-                                <path d="M9 9h6v6H9z" fill="currentColor" />
-                              </svg>
-                            </span>
-                            Body (JSON or form)
-                          </label>
-                          <textarea
-                            id="http-body"
-                            placeholder='e.g. {\"name\":\"value\"}'
-                            rows={4}
-                            value={config.body}
-                            onChange={(event) => updateConfig({ body: event.target.value })}
-                          />
-                        </>
-                      )}
-                    </>
-                  )
-                })()}
-              </form>
-            ) : configPanel.blockType === 'Parser' ? (
-              <form className="drawer-form">
-                {(() => {
-                  const config = parserConfigs[configPanel.id] ?? {
-                    format: 'json' as ParserBlockFormat,
-                    sourceVariable: '',
-                    mappings: [],
-                  }
-                  const updateConfig = (partial: Partial<ParserConfig>) => {
-                    setParserConfigs((current) => ({
-                      ...current,
-                      [configPanel.id]: { ...config, ...partial },
-                    }))
-                    markDirty()
-                  }
-
-                  const updateMapping = (index: number, key: 'path' | 'variable', value: string) => {
-                    const next = [...config.mappings]
-                    next[index] = { ...next[index], [key]: value }
-                    updateConfig({ mappings: next })
-                  }
-
-                  const addMapping = () =>
-                    updateConfig({ mappings: [...config.mappings, { path: '', variable: '' }] })
-
-                  const removeMapping = (index: number) =>
-                    updateConfig({ mappings: config.mappings.filter((_, i) => i !== index) })
-
-                  return (
-                    <>
-                      <label className="drawer-label" htmlFor="parser-format">
-                        <span className="label-icon">
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 6h14M5 12h14M5 18h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                          </svg>
-                        </span>
-                        Format
-                        <p className="muted">JSON (e.g. HTTP response) or XML payload to parse.</p>
-                      </label>
-                      <select
-                        id="parser-format"
-                        value={config.format}
-                        onChange={(event) => updateConfig({ format: event.target.value as ParserBlockFormat })}
-                      >
-                        <option value="json">JSON</option>
-                        <option value="xml">XML</option>
-                      </select>
-
-                      <VariableSelect
-                        id="parser-source"
-                        label="Source variable"
-                        placeholder="e.g. responseBody"
-                        value={formatVariableDisplay(config.sourceVariable)}
-                        options={variables.map((variable) => `$${variable.name}`)}
-                        onValueChange={(value) => updateConfig({ sourceVariable: normalizeVariableName(value) })}
-                      />
-                      <p className="muted">
-                        Point to the payload variable (e.g. <code>$http.body</code> or <code>$responseBody</code>).
-                        For JSON arrays, include the array name in the path (e.g. <code>$.responseBody[0].id</code>).
-                      </p>
-
-                      <label className="drawer-label">
-                        <span className="label-icon">
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                              d="M5 7h14M5 12h14M5 17h10"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        </span>
-                        Mappings (path → variable)
-                      </label>
-                      <p className="muted">
-                        JSON: <code>$.field</code>, <code>$.items[0].id</code>. XML: <code>/root/item/id</code>. Each mapping writes the
-                        matched value into the target variable.
-                      </p>
-
-                      <div className="stacked-list">
-                        {(config.mappings.length ? config.mappings : [{ path: '', variable: '' }]).map(
-                          (mapping, index) => (
-                            <div key={`mapping-${index}`} className="mapping-row">
-                              <input
-                                type="text"
-                                placeholder={config.format === 'json' ? '$.payload.id' : '/root/item/id'}
-                                value={mapping.path}
-                                onChange={(event) => updateMapping(index, 'path', event.target.value)}
-                              />
-                              <VariableSelect
-                                id={`parser-var-${index}`}
-                                label=""
-                                placeholder="Variable (e.g. itemId)"
-                                value={formatVariableDisplay(mapping.variable)}
-                                options={variables.map((variable) => `$${variable.name}`)}
-                                onValueChange={(value) =>
-                                  updateMapping(index, 'variable', normalizeVariableName(value))
-                                }
-                              />
-                              <button type="button" className="ghost" onClick={() => removeMapping(index)}>
-                                Remove
-                              </button>
-                            </div>
-                          ),
-                        )}
-                        <button type="button" className="ghost" onClick={addMapping}>
-                          Add mapping
-                        </button>
-                      </div>
-                      <p className="muted">
-                        Paths: JSON uses dot/`$.field` style, XML uses XPath-like `/root/item/id`. Each mapping writes the
-                        matched value into the target variable.
-                      </p>
-                    </>
-                  )
-                })()}
-              </form>
-            ) : (
-              <div className="drawer-empty">
-                <p className="muted">Configuration for this block is coming soon.</p>
-              </div>
-            )}
-          </aside>
-        </>
+            </aside>
+          }
+        >
+          <ConfigDrawer
+            panel={configPanel as ConfigPanelState}
+            variables={variables}
+            startConfigs={startConfigs}
+            setStartConfigs={setStartConfigs}
+            ifConfigs={ifConfigs}
+            setIfConfigs={setIfConfigs}
+            switchConfigs={switchConfigs}
+            setSwitchConfigs={setSwitchConfigs}
+            loopConfigs={loopConfigs}
+            setLoopConfigs={setLoopConfigs}
+            waitConfigs={waitConfigs}
+            setWaitConfigs={setWaitConfigs}
+            textTransformConfigs={textTransformConfigs}
+            setTextTransformConfigs={setTextTransformConfigs}
+            textReplaceConfigs={textReplaceConfigs}
+            setTextReplaceConfigs={setTextReplaceConfigs}
+            calculationConfigs={calculationConfigs}
+            setCalculationConfigs={setCalculationConfigs}
+            httpConfigs={httpConfigs}
+            setHttpConfigs={setHttpConfigs}
+            parserConfigs={parserConfigs}
+            setParserConfigs={setParserConfigs}
+            normalizeSwitchCases={normalizeSwitchCases}
+            formatVariableDisplay={formatVariableDisplay}
+            normalizeVariableName={normalizeVariableName}
+            setNodes={setNodes}
+            setPanelLabel={(label) => setConfigPanel((current) => (current ? { ...current, label } : current))}
+            markDirty={markDirty}
+            onClose={closeConfig}
+          />
+        </Suspense>
       )}
 
+
+
       {runOpen && (
-        <>
-          <div className="drawer-backdrop" onClick={() => setRunOpen(false)} />
-          <aside className="config-drawer">
-            <div className="drawer-header">
-              <div>
+        <Suspense
+          fallback={
+            <aside className="config-drawer">
+              <div className="drawer-header">
                 <p className="drawer-title">Run workflow</p>
                 <span className="drawer-subtitle">{workflow?.name}</span>
               </div>
-              <button type="button" className="ghost" onClick={() => setRunOpen(false)}>
-                Close
-              </button>
-              </div>
-
-            <section className="variables-section">
-              <div className="section-toggle" style={{ marginBottom: showRunSnippet ? 8 : 0 }}>
-                <div className="section-toggle__meta">
-                  <span className="section-title">API snippet</span>
-                  <span className="section-subtitle">HTTP call template</span>
-                </div>
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => setShowRunSnippet((open) => !open)}
-                  aria-label={showRunSnippet ? 'Collapse snippet' : 'Expand snippet'}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="18"
-                    height="18"
-                    style={{
-                      transform: showRunSnippet ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.15s ease',
-                    }}
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M6 9l6 6 6-6"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-              {showRunSnippet && (
-                <div className="variables-section" style={{ gap: 8 }}>
-                  <p className="muted">
-                    1) Replace <code>&lt;API_BASE&gt;</code> with your backend URL.<br />
-                    2) Fill variable values in the JSON body.<br />
-                    3) Run in terminal (curl) or any HTTP client (Postman).
-                  </p>
-                  <div className="code-card">
-                    <div className="code-card__header">
-                      <span>curl</span>
-                      <span className="muted">HTTP POST</span>
-                    </div>
-<pre className="code-block">{`curl -X POST \\
-  "<API_BASE>/api/Workflow/${workflow?.id ?? 'ID'}/run" \\
-  -H "Content-Type: application/json" \\
-  -d '${JSON.stringify(
-    variables.reduce<Record<string, string>>((acc, variable) => {
-      acc[variable.name] = variable.defaultValue ?? ''
-      return acc
-    }, {}),
-    null,
-    2,
-  )}'`}</pre>
-                  </div>
-                  <p className="muted">
-                    Response returns execution id, path, actions, and output variables as JSON.
-                  </p>
-                </div>
-              )}
-
-              <div className="section-header">
-                <div className="section-toggle">
-                  <div className="section-toggle__meta">
-                    <span className="section-title">Inputs</span>
-                    <span className="section-subtitle">{variables.length} variables</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    onClick={() => setShowRunInputs((open) => !open)}
-                    aria-label={showRunInputs ? 'Collapse inputs' : 'Expand inputs'}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="18"
-                      height="18"
-                      style={{
-                        transform: showRunInputs ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.15s ease',
-                      }}
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M6 9l6 6 6-6"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              {showRunInputs && (
-                <form className="drawer-form" onSubmit={(event) => {
-                  event.preventDefault()
-                  runWorkflow()
-                }}>
-                  {variables.length === 0 && (
-                    <p className="muted">No workflow variables defined.</p>
-                  )}
-                  {variables.map((variable) => (
-                    <div key={variable.id} className="combo">
-                      <label className="drawer-label" htmlFor={`run-${variable.id}`}>
-                        <span className="label-icon">
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path
-                              d="M5 7h14M5 12h9M5 17h11"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        </span>
-                        {variable.name}
-                      </label>
-                      <input
-                        id={`run-${variable.id}`}
-                        type="text"
-                        value={runInputs[variable.name] ?? ''}
-                        onChange={(event) => {
-                          const value = event.target.value
-                          setRunInputs((current) => ({
-                            ...current,
-                            [variable.name]: value,
-                          }))
-                        }}
-                      />
-                    </div>
-                  ))}
-                </form>
-              )}
-              <button
-                type="button"
-                disabled={running}
-                onClick={runWorkflow}
-                style={{ marginTop: 10 }}
-              >
-                {running ? 'Running...' : 'Run workflow'}
-              </button>
-              {runError && <p className="muted">{runError}</p>}
-            </section>
-
-            {runResult && (
-              <section className="variables-section">
-                <div className="section-header">
-                  <p className="section-title">Result</p>
-                  <span className="section-subtitle">Execution #{runResult.id}</span>
-                </div>
-              <div className="drawer-empty">
-                <p className="label">Flow</p>
-                {runResult.path && runResult.path.length > 0 ? (
-                  <div className="flow-lane">
-                    {runResult.path.map((step, idx) => (
-                        <div key={`${step}-${idx}`} className="flow-segment">
-                          <div className="flow-node">
-                            <div className="flow-node-top">
-                              <span className="flow-index">{idx + 1}</span>
-                              <span className="flow-badge">Executed</span>
-                            </div>
-                            <span className="flow-label">{step}</span>
-                            {runResult.actions && runResult.actions[idx] && (
-                              <span className="flow-note">{runResult.actions[idx]}</span>
-                            )}
-                          </div>
-                          {idx < runResult.path.length - 1 && <div className="flow-connector" />}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="meta">No path recorded.</p>
-                  )}
-                </div>
-                <div className="drawer-empty">
-                  <p className="label">Output variables</p>
-                  <pre className="meta">
-                    {JSON.stringify(normalizeDataMap(runResult.resultData), null, 2)}
-                  </pre>
-                </div>
-              </section>
-            )}
-          </aside>
-        </>
+            </aside>
+          }
+        >
+          <RunDrawer
+            workflowId={workflow?.id}
+            workflowName={workflow?.name}
+            variables={variables}
+            runInputs={runInputs}
+            setRunInputs={setRunInputs}
+            running={running}
+            runError={runError}
+            runResult={runResult}
+            skipWaits={skipWaits}
+            setSkipWaits={setSkipWaits}
+            estimatedWaitMs={waitEstimateMs}
+            showRunSnippet={showRunSnippet}
+            setShowRunSnippet={setShowRunSnippet}
+            showRunInputs={showRunInputs}
+            setShowRunInputs={setShowRunInputs}
+            onRun={runWorkflow}
+            onClose={() => setRunOpen(false)}
+          />
+        </Suspense>
       )}
       {toasts.length > 0 && (
         <div

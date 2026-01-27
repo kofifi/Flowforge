@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useThemePreference } from '../hooks/useThemePreference'
 import { useLanguagePreference } from '../hooks/useLanguagePreference'
+import Icon from '../components/Icon'
 
 type Execution = {
   id: number
@@ -26,7 +27,8 @@ function normalizeValues<T>(data: unknown): T[] {
 }
 
 function formatDateTime(value: string) {
-  const date = new Date(value)
+  const normalized = value.endsWith('Z') ? value : `${value}Z`
+  const date = new Date(normalized)
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString()
 }
 
@@ -41,14 +43,20 @@ export default function ExecutionsPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const cacheRef = useRef<Execution[] | null>(null)
   const { theme, toggleTheme } = useThemePreference()
-  const { language, toggleLanguage } = useLanguagePreference()
+  const { language } = useLanguagePreference()
   const navigate = useNavigate()
 
   useEffect(() => {
     let cancelled = false
 
     async function loadExecutions() {
+      if (cacheRef.current) {
+        setExecutions(cacheRef.current)
+        setLoading(false)
+        return
+      }
       setLoading(true)
       setError(null)
       try {
@@ -58,7 +66,9 @@ export default function ExecutionsPage() {
         }
         const data = (await response.json()) as unknown
         if (!cancelled) {
-          setExecutions(normalizeValues<Execution>(data))
+          const normalized = normalizeValues<Execution>(data)
+          cacheRef.current = normalized
+          setExecutions(normalized)
         }
       } catch (err) {
         if (!cancelled) {
@@ -139,6 +149,7 @@ export default function ExecutionsPage() {
         navWorkflows: 'Workflowy',
         navBlocks: 'Bloki',
         navExecutions: 'Egzekucje',
+        navScheduler: 'Scheduler',
         title: 'Egzekucje',
         subtitle: 'Ostatnie uruchomienia i znaczniki czasu.',
         history: 'Historia',
@@ -174,6 +185,7 @@ export default function ExecutionsPage() {
         navWorkflows: 'Workflows',
         navBlocks: 'Blocks',
         navExecutions: 'Executions',
+        navScheduler: 'Scheduler',
         title: 'Executions',
         subtitle: 'Recent workflow runs and timestamps.',
         history: 'History',
@@ -252,6 +264,9 @@ export default function ExecutionsPage() {
           <button type="button" className="nav-item active">
             {copy.navExecutions}
           </button>
+          <button type="button" className="nav-item" onClick={() => navigate('/scheduler')}>
+            {copy.navScheduler}
+          </button>
         </nav>
         <div className="sidebar-footer">
           <p>Connected to local API</p>
@@ -269,39 +284,10 @@ export default function ExecutionsPage() {
             <button
               type="button"
               className="icon-button"
-              onClick={toggleLanguage}
-              aria-label={`Switch to ${language === 'pl' ? 'English' : 'Polish'}`}
-            >
-              {language === 'pl' ? 'PL' : 'EN'}
-            </button>
-            <button
-              type="button"
-              className="icon-button"
               onClick={toggleTheme}
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
-              {theme === 'dark' ? (
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
             </button>
             <span className="count">{executions.length} total</span>
             <span className="pill">{copy.history}</span>

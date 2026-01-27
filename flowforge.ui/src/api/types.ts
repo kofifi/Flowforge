@@ -36,3 +36,27 @@ export type SystemBlockDto = {
   type: string
   description: string
 }
+
+export type WorkflowRevisionDto = {
+  id: number
+  workflowId: number
+  version: string
+  label?: string | null
+  createdAt: string
+  appliedAt?: string | null
+  isActive: boolean
+}
+
+export type WorkflowScheduleDto = {
+  id: number
+  workflowId: number
+  workflowRevisionId?: number | null
+  name: string
+  description?: string | null
+  triggerType: string
+  startAtUtc: string
+  intervalMinutes?: number | null
+  isActive: boolean
+  lastRunAtUtc?: string | null
+  nextRunAtUtc?: string | null
+}

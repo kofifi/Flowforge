@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useThemePreference } from '../hooks/useThemePreference'
 import { useLanguagePreference } from '../hooks/useLanguagePreference'
+import Icon from '../components/Icon'
 
 type Workflow = {
   id: number
@@ -46,14 +47,24 @@ export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const cacheRef = useRef<Workflow[] | null>(null)
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importStatus, setImportStatus] = useState<string | null>(null)
+  const [versionsOpenId, setVersionsOpenId] = useState<number | null>(null)
+  const [versions, setVersions] = useState<
+    Array<{ id: number; label?: string | null; version: string; createdAt: string; isActive: boolean }>
+  >([])
+  const [versionsLoading, setVersionsLoading] = useState(false)
+  const [versionsError, setVersionsError] = useState<string | null>(null)
+  const [versionsFilter, setVersionsFilter] = useState<'all' | 'active'>('all')
+  const [sortDesc, setSortDesc] = useState(true)
+  const [actionMenuId, setActionMenuId] = useState<number | null>(null)
   const { theme, toggleTheme } = useThemePreference()
-  const { language, toggleLanguage } = useLanguagePreference()
+  const { language } = useLanguagePreference()
   const navigate = useNavigate()
 
   const hasWorkflows = workflows.length > 0
@@ -63,6 +74,7 @@ export default function WorkflowsPage() {
         navWorkflows: 'Workflowy',
         navBlocks: 'Bloki',
         navExecutions: 'Egzekucje',
+        navScheduler: 'Scheduler',
         title: 'Projekty workflow',
         subtitle: 'Zarządzaj projektami przed łączeniem bloków i konektorów.',
         createTitle: 'Utwórz nowy workflow',
@@ -89,6 +101,7 @@ export default function WorkflowsPage() {
         navWorkflows: 'Workflows',
         navBlocks: 'Blocks',
         navExecutions: 'Executions',
+        navScheduler: 'Scheduler',
         title: 'Workflow projects',
         subtitle: 'Manage projects before wiring blocks and connections in React Flow.',
         createTitle: 'Create new workflow',
@@ -123,6 +136,11 @@ export default function WorkflowsPage() {
     let cancelled = false
 
     async function loadWorkflows() {
+      if (cacheRef.current) {
+        setWorkflows(cacheRef.current)
+        setLoading(false)
+        return
+      }
       setLoading(true)
       setError(null)
       try {
@@ -132,7 +150,9 @@ export default function WorkflowsPage() {
         }
         const data = (await response.json()) as unknown
         if (!cancelled) {
-          setWorkflows(normalizeWorkflows(data))
+          const normalized = normalizeWorkflows(data)
+          cacheRef.current = normalized
+          setWorkflows(normalized)
         }
       } catch (err) {
         if (!cancelled) {
@@ -168,7 +188,11 @@ export default function WorkflowsPage() {
         throw new Error(`Failed to create workflow (${response.status})`)
       }
       const created = (await response.json()) as Workflow
-      setWorkflows((current) => [created, ...current])
+      setWorkflows((current) => {
+        const next = [created, ...current]
+        cacheRef.current = next
+        return next
+      })
       setNewName('')
       navigate(`/workflows/${created.id}`)
     } catch (err) {
@@ -181,6 +205,7 @@ export default function WorkflowsPage() {
   function startEditing(workflow: Workflow) {
     setEditingId(workflow.id)
     setEditingName(workflow.name)
+    setActionMenuId(null)
   }
 
   function cancelEditing() {
@@ -207,9 +232,15 @@ export default function WorkflowsPage() {
         throw new Error(`Failed to update workflow (${response.status})`)
       }
       setWorkflows((current) =>
-        current.map((item) =>
-          item.id === editingId ? { ...item, name: trimmed } : item,
-        ),
+        current.map((item) => {
+          if (item.id === editingId) {
+            return { ...item, name: trimmed }
+          }
+          return item
+        }),
+      )
+      cacheRef.current = (cacheRef.current ?? []).map((item) =>
+        item.id === editingId ? { ...item, name: trimmed } : item,
       )
       cancelEditing()
     } catch (err) {
@@ -232,8 +263,12 @@ export default function WorkflowsPage() {
         throw new Error(`Failed to delete workflow (${response.status})`)
       }
       setWorkflows((current) => current.filter((item) => item.id !== workflowId))
+      cacheRef.current = (cacheRef.current ?? []).filter((item) => item.id !== workflowId)
       if (editingId === workflowId) {
         cancelEditing()
+      }
+      if (actionMenuId === workflowId) {
+        setActionMenuId(null)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to delete workflow')
@@ -286,6 +321,70 @@ export default function WorkflowsPage() {
     }
   }
 
+  function normalizeVersions(data: unknown) {
+    if (Array.isArray(data)) return data as typeof versions
+    if (data && typeof data === 'object' && '$values' in data) {
+      const values = (data as { $values?: unknown }).$values
+      return Array.isArray(values) ? (values as typeof versions) : []
+    }
+    return []
+  }
+
+  async function loadVersions(workflowId: number) {
+    setVersionsLoading(true)
+    setVersionsError(null)
+    try {
+      const response = await fetch(`${apiBase}/api/WorkflowRevision/workflow/${workflowId}`)
+      if (!response.ok) throw new Error(`Failed to load versions (${response.status})`)
+      const data = (await response.json()) as unknown
+      const normalized = normalizeVersions(data)
+      setVersions(normalized)
+    } catch (err) {
+      setVersionsError(err instanceof Error ? err.message : 'Unable to load versions')
+      setVersions([])
+    } finally {
+      setVersionsLoading(false)
+    }
+  }
+
+  async function openVersionsModal(workflowId: number) {
+    setVersionsOpenId(workflowId)
+    setActionMenuId(null)
+    await loadVersions(workflowId)
+  }
+
+  function closeVersionsModal() {
+    setVersionsOpenId(null)
+    setVersions([])
+    setVersionsError(null)
+    setVersionsFilter('all')
+    setSortDesc(true)
+  }
+
+  async function deleteVersion(versionId: number) {
+    try {
+      const response = await fetch(`${apiBase}/api/WorkflowRevision/${versionId}`, { method: 'DELETE' })
+      if (!response.ok) throw new Error(`Failed to delete version (${response.status})`)
+      if (versionsOpenId !== null) {
+        await loadVersions(versionsOpenId)
+      }
+    } catch (err) {
+      setVersionsError(err instanceof Error ? err.message : 'Unable to delete version')
+    }
+  }
+
+  async function restoreVersion(versionId: number, workflowId: number) {
+    try {
+      const response = await fetch(`${apiBase}/api/WorkflowRevision/${versionId}/restore`, {
+        method: 'POST',
+      })
+      if (!response.ok) throw new Error(`Failed to restore version (${response.status})`)
+      await loadVersions(workflowId)
+    } catch (err) {
+      setVersionsError(err instanceof Error ? err.message : 'Unable to restore version')
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -306,6 +405,9 @@ export default function WorkflowsPage() {
           <button type="button" className="nav-item" onClick={() => navigate('/executions')}>
             {copy.navExecutions}
           </button>
+          <button type="button" className="nav-item" onClick={() => navigate('/scheduler')}>
+            {copy.navScheduler}
+          </button>
         </nav>
         <div className="sidebar-footer">
           <p>Connected to local API</p>
@@ -323,39 +425,10 @@ export default function WorkflowsPage() {
             <button
               type="button"
               className="icon-button"
-              onClick={toggleLanguage}
-              aria-label={`Switch to ${language === 'pl' ? 'English' : 'Polish'}`}
-            >
-              {language === 'pl' ? 'PL' : 'EN'}
-            </button>
-            <button
-              type="button"
-              className="icon-button"
               onClick={toggleTheme}
               aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
-              {theme === 'dark' ? (
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M12 4.5V6m0 12v1.5M6 12H4.5M19.5 12H18M7.76 7.76 6.7 6.7m10.6 10.6-1.06-1.06M7.76 16.24 6.7 17.3m10.6-10.6-1.06 1.06M12 9.25A2.75 2.75 0 1 1 9.25 12 2.75 2.75 0 0 1 12 9.25Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M20 14.5A8.5 8.5 0 0 1 9.5 4a6.5 6.5 0 1 0 10.5 10.5Z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
             </button>
             <span className="count">{workflows.length} total</span>
             <span className="pill">CRUD ready</span>
@@ -460,23 +533,48 @@ export default function WorkflowsPage() {
                     )}
                   </div>
                   {editingId !== workflow.id && (
-                    <div className="card-actions">
+                    <div className="card-actions" style={{ position: 'relative', gap: '0.5rem' }}>
                       <button type="button" onClick={() => navigate(`/workflows/${workflow.id}`)}>
                         {copy.open}
                       </button>
-                      <button type="button" onClick={() => exportWorkflow(workflow.id, workflow.name)}>
-                        {copy.export}
-                      </button>
-                      <button type="button" onClick={() => startEditing(workflow)}>
-                        {copy.rename}
-                      </button>
                       <button
                         type="button"
-                        onClick={() => deleteWorkflow(workflow.id)}
-                        className="danger"
+                        className="ghost"
+                        onClick={() => setActionMenuId((current) => (current === workflow.id ? null : workflow.id))}
                       >
-                        {copy.delete}
+                        More
                       </button>
+                      {actionMenuId === workflow.id && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '110%',
+                            right: 0,
+                            background: 'var(--panel)',
+                            border: '1px solid var(--border-soft)',
+                            borderRadius: 12,
+                            boxShadow: '0 12px 30px rgba(0,0,0,0.12)',
+                            padding: '0.5rem',
+                            display: 'grid',
+                            gap: '0.35rem',
+                            minWidth: 180,
+                            zIndex: 10,
+                          }}
+                        >
+                          <button type="button" className="ghost" onClick={() => exportWorkflow(workflow.id, workflow.name)}>
+                            {copy.export}
+                          </button>
+                          <button type="button" className="ghost" onClick={() => openVersionsModal(workflow.id)}>
+                            Versions
+                          </button>
+                          <button type="button" className="ghost" onClick={() => startEditing(workflow)}>
+                            {copy.rename}
+                          </button>
+                          <button type="button" className="ghost danger" onClick={() => deleteWorkflow(workflow.id)}>
+                            {copy.delete}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </li>
@@ -484,6 +582,104 @@ export default function WorkflowsPage() {
             </ul>
           )}
         </section>
+
+        {versionsOpenId !== null && (
+          <div
+            className="modal-overlay"
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.38)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}
+          >
+            <div className="panel" style={{ width: '92%', maxWidth: 820, maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--card)', border: '1px solid rgba(0,0,0,0.08)' }}>
+              <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ margin: 0 }}>Versions (workflow #{versionsOpenId})</h2>
+                  <p className="muted" style={{ marginTop: 4, marginBottom: 0 }}>
+                    Migawki zapisywane automatycznie przy zapisie workflowu.
+                  </p>
+                </div>
+                <button type="button" className="ghost" onClick={closeVersionsModal}>
+                  Close
+                </button>
+              </div>
+              <div style={{ overflow: 'auto', paddingRight: 4 }}>
+                {versionsError && <p className="error">{versionsError}</p>}
+                {versionsLoading ? (
+                  <p className="muted">Ładowanie wersji...</p>
+                ) : versions.length === 0 ? (
+                  <p className="muted">Brak wersji.</p>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+                      <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span className="muted">Pokaż tylko aktywne</span>
+                        <span className="toggle">
+                          <input
+                            type="checkbox"
+                            checked={versionsFilter === 'active'}
+                            onChange={(event) => setVersionsFilter(event.target.checked ? 'active' : 'all')}
+                          />
+                          <span className="slider" />
+                        </span>
+                      </label>
+                      <button type="button" className="ghost" onClick={() => setSortDesc((curr) => !curr)}>
+                        Sortuj wg daty: {sortDesc ? 'najnowsze' : 'najstarsze'}
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {versions
+                        .filter((rev) => (versionsFilter === 'active' ? rev.isActive : true))
+                        .slice()
+                        .sort((a, b) =>
+                          sortDesc
+                            ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                            : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+                        )
+                        .map((rev) => (
+                          <div
+                            key={rev.id}
+                            className="menu-row"
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '12px 14px',
+                              borderRadius: 12,
+                              background: 'var(--card)',
+                              border: rev.isActive ? '1px solid #2f9e68' : '1px solid rgba(0,0,0,0.08)',
+                              gap: 12,
+                              transition: 'transform 120ms ease, border-color 120ms ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                <strong style={{ whiteSpace: 'nowrap' }}>{rev.label || rev.version}</strong>
+                                <span className="pill muted">{rev.version}</span>
+                                {rev.isActive && (
+                                  <span className="pill" style={{ background: '#2f9e68', color: '#0a0d0a' }}>
+                                    Active
+                                  </span>
+                                )}
+                              </div>
+                              <span className="muted" style={{ fontSize: 13 }}>
+                                {new Date(rev.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <button type="button" className="ghost" onClick={() => restoreVersion(rev.id, versionsOpenId)}>
+                                Przywróć
+                              </button>
+                              <button type="button" className="ghost danger" onClick={() => deleteVersion(rev.id)}>
+                                Usuń
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

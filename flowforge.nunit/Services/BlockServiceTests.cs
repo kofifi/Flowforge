@@ -13,13 +13,17 @@ namespace Flowforge.NUnit.Services;
 public class BlockServiceTests
 {
     private Mock<IBlockRepository> _repoMock;
+    private Mock<ISystemBlockRepository> _systemBlockRepoMock;
     private BlockService _service;
 
     [SetUp]
     public void Setup()
     {
         _repoMock = new Mock<IBlockRepository>();
-        _service = new BlockService(_repoMock.Object);
+        _systemBlockRepoMock = new Mock<ISystemBlockRepository>();
+        _systemBlockRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((SystemBlock?)null);
+        _repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Block>());
+        _service = new BlockService(_repoMock.Object, _systemBlockRepoMock.Object);
     }
 
     [Test]

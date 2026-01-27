@@ -102,37 +102,37 @@ namespace Flowforge.Migrations
                         new
                         {
                             Id = 1,
-                            Description = "Blok początkowy",
+                            Description = "Start block",
                             Type = "Start"
                         },
                         new
                         {
                             Id = 2,
-                            Description = "Blok końcowy",
+                            Description = "End block",
                             Type = "End"
                         },
                         new
                         {
                             Id = 3,
-                            Description = "Blok kalkulacji",
+                            Description = "Calculation block",
                             Type = "Calculation"
                         },
                         new
                         {
                             Id = 4,
-                            Description = "Blok warunkowy",
+                            Description = "Conditional block",
                             Type = "If"
                         },
                         new
                         {
                             Id = 5,
-                            Description = "Blok wielościeżkowy (case)",
+                            Description = "Switch (case) block",
                             Type = "Switch"
                         },
                         new
                         {
                             Id = 6,
-                            Description = "Wywołanie HTTP (GET/POST itp.)",
+                            Description = "HTTP request block",
                             Type = "HttpRequest"
                         },
                         new
@@ -140,6 +140,30 @@ namespace Flowforge.Migrations
                             Id = 7,
                             Description = "Parser JSON/XML",
                             Type = "Parser"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Description = "Loop block",
+                            Type = "Loop"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Description = "Wait (delay) block",
+                            Type = "Wait"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Description = "Transform text casing",
+                            Type = "TextTransform"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Description = "Replace text (literal or regex)",
+                            Type = "TextReplace"
                         });
                 });
 
@@ -149,11 +173,16 @@ namespace Flowforge.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("CurrentRevisionId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CurrentRevisionId");
 
                     b.ToTable("Workflows");
                 });
@@ -195,7 +224,20 @@ namespace Flowforge.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("AppliedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Label")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Version")
@@ -210,6 +252,53 @@ namespace Flowforge.Migrations
                     b.HasIndex("WorkflowId");
 
                     b.ToTable("WorkflowRevisions");
+                });
+
+            modelBuilder.Entity("Flowforge.Models.WorkflowSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("IntervalMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastRunAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("NextRunAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WorkflowId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("WorkflowRevisionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkflowId");
+
+                    b.HasIndex("WorkflowRevisionId");
+
+                    b.ToTable("WorkflowSchedules");
                 });
 
             modelBuilder.Entity("Flowforge.Models.WorkflowVariable", b =>
@@ -273,6 +362,16 @@ namespace Flowforge.Migrations
                     b.Navigation("TargetBlock");
                 });
 
+            modelBuilder.Entity("Flowforge.Models.Workflow", b =>
+                {
+                    b.HasOne("Flowforge.Models.WorkflowRevision", "CurrentRevision")
+                        .WithMany()
+                        .HasForeignKey("CurrentRevisionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CurrentRevision");
+                });
+
             modelBuilder.Entity("Flowforge.Models.WorkflowExecution", b =>
                 {
                     b.HasOne("Flowforge.Models.Workflow", "Workflow")
@@ -293,6 +392,24 @@ namespace Flowforge.Migrations
                         .IsRequired();
 
                     b.Navigation("Workflow");
+                });
+
+            modelBuilder.Entity("Flowforge.Models.WorkflowSchedule", b =>
+                {
+                    b.HasOne("Flowforge.Models.Workflow", "Workflow")
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Flowforge.Models.WorkflowRevision", "WorkflowRevision")
+                        .WithMany()
+                        .HasForeignKey("WorkflowRevisionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Workflow");
+
+                    b.Navigation("WorkflowRevision");
                 });
 
             modelBuilder.Entity("Flowforge.Models.WorkflowVariable", b =>

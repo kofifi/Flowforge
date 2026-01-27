@@ -1,0 +1,1 @@
+import{j as e}from"./index-BQ9o7mEa.js";function n({name:r,size:s=18,className:t}){return e.jsx("svg",{className:t,width:s,height:s,"aria-hidden":"true",focusable:"false",children:e.jsx("use",{href:`/icons.svg#${r}`})})}export{n as I};

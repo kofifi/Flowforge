@@ -27,6 +27,14 @@ public class IWorkflowRevisionServiceTests
     }
 
     [Test]
+    public async Task GetByWorkflowIdAsync_CalledOnce()
+    {
+        _serviceMock.Setup(s => s.GetByWorkflowIdAsync(2)).ReturnsAsync(new List<WorkflowRevision>());
+        var result = await _serviceMock.Object.GetByWorkflowIdAsync(2);
+        _serviceMock.Verify(s => s.GetByWorkflowIdAsync(2), Times.Once);
+    }
+
+    [Test]
     public async Task GetByIdAsync_CalledWithCorrectId()
     {
         _serviceMock.Setup(s => s.GetByIdAsync(5)).ReturnsAsync((WorkflowRevision?)null);
@@ -41,6 +49,18 @@ public class IWorkflowRevisionServiceTests
         _serviceMock.Setup(s => s.CreateAsync(revision)).ReturnsAsync(revision);
         var result = await _serviceMock.Object.CreateAsync(revision);
         _serviceMock.Verify(s => s.CreateAsync(revision), Times.Once);
+    }
+
+    [Test]
+    public async Task CreateSnapshotAsync_CalledWithWorkflowId()
+    {
+        var revision = new WorkflowRevision { Id = 2, WorkflowId = 3 };
+        _serviceMock.Setup(s => s.CreateSnapshotAsync(3, null)).ReturnsAsync(revision);
+
+        var result = await _serviceMock.Object.CreateSnapshotAsync(3, null);
+
+        _serviceMock.Verify(s => s.CreateSnapshotAsync(3, null), Times.Once);
+        Assert.That(result, Is.EqualTo(revision));
     }
 
     [Test]
@@ -71,13 +91,13 @@ public class IWorkflowRevisionServiceTests
     }
     
     [Test]
-    public async Task RollbackToRevisionAsync_CalledWithCorrectParams()
+    public async Task RestoreRevisionAsync_CalledWithCorrectParams()
     {
-        _serviceMock.Setup(s => s.RollbackToRevisionAsync(1, 5)).ReturnsAsync(true);
+        _serviceMock.Setup(s => s.RestoreRevisionAsync(1, 5)).ReturnsAsync(true);
 
-        var result = await _serviceMock.Object.RollbackToRevisionAsync(1, 5);
+        var result = await _serviceMock.Object.RestoreRevisionAsync(1, 5);
 
-        _serviceMock.Verify(s => s.RollbackToRevisionAsync(1, 5), Times.Once);
+        _serviceMock.Verify(s => s.RestoreRevisionAsync(1, 5), Times.Once);
         Assert.That(result, Is.True);
     }
 }

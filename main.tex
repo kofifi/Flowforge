@@ -1,0 +1,228 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{multicol}
+\usepackage{adjustbox}
+\usepackage{amsmath}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tocloft}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{matrix,calc,positioning,shapes.geometric}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+\usepackage[hidelinks]{hyperref}
+\usepackage{csquotes}
+
+\lstdefinestyle{myStyle}{
+    backgroundcolor=\color{white},
+    basicstyle=\ttfamily,
+    breaklines=true,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green},
+    stringstyle=\color{red},
+    captionpos=b
+}
+
+\lstset{style=myStyle}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    \includegraphics[width=0.5\textwidth]{Uniwersytet_Bielsko-Bialski_-_logo.jpg}\par\vspace{1cm}
+    \textsc{\LARGE Uniwersytet Bielsko-Bialski}\par\vspace{1.5cm}
+    \textsc{\Large Praca inżynierska}\par\vspace{0.5cm}
+    {\huge\bfseries Projektowanie i implementacja platformy do orkiestracji przepływów danych}\par
+    \vspace{2cm}
+    \begin{flushleft}
+        \large
+        \textbf{Autor:}\\
+        Konrad Firlej\\
+        Numer Karty Studenckiej: 60043\\
+    \end{flushleft}
+    \vspace{1cm}
+    \begin{flushleft}
+        \large
+        \textbf{Promotor:}\\
+        dr inż. Krzysztof Augustynek\\
+    \end{flushleft}
+    \vfill
+    {\large 13 czerwca 2025}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\pagenumbering{arabic}
+
+\section*{Wstęp}
+
+Rozwój usług cyfrowych w sektorze małych i średnich organizacji wytwarza potrzebę uporządkowanego zarządzania powtarzalnymi czynnościami. W praktyce biznesowej wiele operacji realizowanych jest ręcznie, na podstawie nieformalnych list zadań lub rozproszonych notatek. Taka forma pracy utrudnia kontrolę zależności, powoduje pomijanie kroków i ogranicza możliwość audytu. Niniejsza praca dotyczy zaprojektowania i wykonania aplikacji webowej Flowforge, która umożliwia definiowanie, uruchamianie i monitorowanie prostych przepływów pracy. Temat obejmuje przygotowanie pełnego rozwiązania: od modelu danych i logiki biznesowej w ASP.NET Core, po interaktywny interfejs użytkownika w React, dostosowany do osób bez zaawansowanych kompetencji technicznych.
+
+Zakres projektu obejmuje cztery ściśle określone obszary. Po pierwsze, konstrukcję modelu domenowego opisującego procesy, zadania, ich zależności oraz stany, wraz z mechanizmem wersjonowania definicji. Po drugie, implementację usług API umożliwiających rejestrowanie nowych przepływów, ich modyfikację, uruchamianie i zatrzymywanie, a także bieżące odczytywanie stanu instancji. Po trzecie, przygotowanie warstwy frontendu pozwalającej użytkownikowi tworzyć i edytować procesy w sposób deklaratywny, wizualizować przebieg wykonania oraz reagować na sytuacje błędowe. Po czwarte, wprowadzenie elementów zapewnienia jakości: testów jednostkowych dla kluczowych przypadków użycia, walidacji danych wejściowych, logowania zdarzeń oraz podstawowych metryk wykonania. Projekt celowo pomija integrację z zewnętrznymi orkiestratorami kontenerów oraz automatyczne skalowanie obciążenia, aby zachować prostotę wdrożenia w małych środowiskach.
+
+Głównym celem pracy jest dostarczenie prototypu aplikacji, który obniża próg wejścia do automatyzacji procesów w zespołach pozbawionych dedykowanego działu IT. Aplikacja ma umożliwić: deklaratywne definiowanie przepływów pracy, egzekwowanie zależności pomiędzy zadaniami, harmonogramowanie uruchomień oraz obserwację stanu wykonania w czasie rzeczywistym. Cele szczegółowe obejmują: (1) zdefiniowanie spójnego modelu danych dla sekwencji zadań, warunków przejść i parametrów wywołań; (2) implementację warstwy usługowej obsługującej pełny cykl życia przepływu, wraz z mechanizmami rejestrowania błędów i wznawiania przerwanych instancji; (3) zaprojektowanie interfejsu webowego, który umożliwia intuicyjną edycję procesów oraz prezentację zdarzeń wykonania; (4) opracowanie zestawu testów jednostkowych i scenariuszy manualnych weryfikujących poprawność kluczowych funkcji. Motywacja wynika z obserwacji, że dostępne narzędzia klasy enterprise są kosztowne i wymagają specjalistycznej konfiguracji, a proste listy zadań nie zapewniają kontroli przepływu ani przejrzystości postępu.
+
+Problem, który aplikacja ma rozwiązać, polega na braku lekkiego narzędzia pozwalającego małym zespołom modelować i śledzić procesy bez konieczności stosowania rozbudowanych platform BPMN. W realiach niewielkich organizacji procesy są często improwizowane, a wiedza o kolejności czynności pozostaje w głowach pracowników lub w niespójnych dokumentach. Prowadzi to do częstych pominięć kroków, opóźnień oraz trudności w wyciąganiu wniosków z przebiegu pracy. Flowforge wypełnia tę lukę, oferując możliwość opisania procesu jako uporządkowanej sekwencji zadań z jasno zdefiniowanymi warunkami wejścia i wyjścia, rejestrowania zdarzeń wykonania z obsługą błędów i prostymi powiadomieniami oraz wglądu w historię i podstawowe metryki. Oczekiwanym efektem jest zmniejszenie liczby błędów proceduralnych, skrócenie czasu realizacji powtarzalnych czynności i ułatwienie audytu przebiegu pracy.
+
+W dalszych rozdziałach omówiono podstawy teoretyczne modelowania przepływów pracy, uzasadnienie doboru technologii oraz architekturę aplikacji. Przedstawiono strukturę kodu, kluczowe moduły serwera, warstwę prezentacji oraz zastosowane techniki testowania. Zaprezentowany prototyp stanowi bazę do kolejnych iteracji funkcjonalnych i ewentualnych integracji z systemami zewnętrznymi, przy zachowaniu prostoty wdrożenia wymaganej przez niewielkie zespoły.
+
+\section{Analiza wymagań}
+\subsection{Problem i grupa docelowa}
+Adresowany problem to brak prostego narzędzia do definiowania i uruchamiania skryptów wieloetapowych, które zachowuje historię wersji i wyników. W praktyce pojedynczy deweloper lub mały zespół często potrzebuje lokalnego odpowiednika systemów klasy Airflow: edytora kroków, prostego harmonogramu, historii uruchomień i możliwości cofnięcia zmian, bez utrzymywania klastra, kolejki zadań ani zewnętrznej bazy. Głównym odbiorcą Flowforge jest niewielki zespół lub jedna osoba pracująca w środowisku deweloperskim lub testowym, dysponująca ograniczonym budżetem infrastrukturalnym.
+
+\bigskip
+
+\subsection{Analiza istniejących rozwiązań}
+Krajobraz narzędzi do orkiestracji jest szeroki:
+\begin{itemize}
+    \item \textbf{Apache Airflow, Prefect, Dagster}: pełnoprawne systemy DAG z rozproszonym schedulerem; wymagają zewnętrznej bazy, brokera i dodatkowych usług. Oferują bogate integracje, ale są ciężkie do lokalnego uruchomienia.
+    \item \textbf{Node-RED, n8n, Zapier}: edytory node-based do automatyzacji, często nastawione na integracje SaaS. Zapier działa w chmurze; n8n i Node-RED można uruchomić lokalnie, lecz mają własny model pluginów i inny schemat wersjonowania.
+    \item \textbf{UI oparte na grafach}: społeczność React Flow \cite{reactflow} pokazuje liczne edytory BPMN, pipeline ETL i narzędzia low-code. Wiele wewnętrznych systemów korzysta z podejścia node editor zamiast klasycznych formularzy.
+\end{itemize}
+Airflow, Prefect i Dagster sprawdzają się w środowiskach produkcyjnych, gdy potrzebne są kolejki, retry, SLA, alertowanie i orkiestracja w chmurze, lecz ich koszt wejścia jest wysoki. Flowforge odpowiada na sytuację odwrotną: mały zespół bez zaplecza DevOps potrzebuje czegoś pomiędzy skryptem ad hoc a ciężkim systemem DAG. Świadomie rezygnuje z rozproszonego schedulera i integracji chmurowych, stawiając na prosty REST, lokalną bazę, automatyczne migawki i historię uruchomień. Użytkownik zyskuje szybkie uruchomienie i niski narzut utrzymaniowy kosztem braku skalowania, metryk i autoryzacji.
+
+\bigskip
+
+\subsection{Przykłady zastosowań edytorów grafowych}
+Biblioteka React Flow jest stosowana w wielu klasach aplikacji: edytory BPMN, kreatory przepływów ETL, konfiguratory integracji API, mapowanie zależności usług, kreatory formularzy warunkowych. Typowe scenariusze to projektowanie DAG z wizualnym ustawianiem zależności, automatyzacje if-this-then-that (podobne do n8n/Node-RED) oraz mapowanie przepływu zdarzeń między serwisami. Wspólnym motywem jest szybkie prototypowanie logiki i natychmiastowy feedback wizualny. Flowforge korzysta z React Flow do odwzorowania modelu domenowego (bloki, krawędzie, zmienne) z walidacją cykli i zgodności typów na poziomie UI, co ogranicza błędy przy zapisie i wykonaniu.
+
+\bigskip
+
+\subsection{Scenariusze użytkownika}
+Aby zweryfikować wymagania, przyjęto trzy scenariusze reprezentatywne:
+\begin{itemize}
+    \item \textbf{Szybki pipeline ETL lokalnie}: użytkownik rysuje liniowy przepływ (pobierz dane \textrightarrow{} przetwórz \textrightarrow{} wyślij wynik), zapisuje go i uruchamia ręcznie, sprawdzając wynik w historii Executions.
+    \item \textbf{Prosty harmonogram cykliczny}: użytkownik ustawia tryb \textit{Interval} (np. co 10 minut), obserwuje aktualizację \texttt{NextRun} w kaflu Scheduler i sprawdza wykonania w historii; oczekuje poprawnej konwersji UTC na czas lokalny.
+    \item \textbf{Regresja konfiguracji}: użytkownik zapisuje przepływ, modyfikuje go, zauważa błąd i z modala Versions przywraca poprzednią wersję, następnie uruchamia przepływ ponownie, porównując wyniki w Executions.
+\end{itemize}
+Scenariusze kształtują wymagania funkcjonalne (edytor, harmonogram, wersje, historia) oraz niefunkcjonalne (czas w UTC, prosty deploy, brak zależności na brokery/workerów).
+
+\bigskip
+
+\subsection{Wymagania funkcjonalne}
+\begin{itemize}
+    \item Modelowanie przepływu jako grafu bloków i krawędzi (React Flow) z walidacją połączeń i blokadą cykli.
+    \item Automatyczne wersjonowanie definicji przy każdym zapisie oraz podgląd, przywracanie i usuwanie wersji.
+    \item Uruchamianie przepływu ręcznie lub według harmonogramu (\textit{Once}, \textit{Interval}, \textit{Daily}) oraz zapis historii uruchomień.
+    \item Podgląd logów i wyników w widoku Executions; spójne prezentowanie czasu lokalnego (UTC w bazie).
+    \item Brak funkcji autoryzacji; aplikacja działa w trybie zaufanego użytkownika.
+    \item Brak systemu metryk i alertów; diagnoza opiera się na historii uruchomień.
+\end{itemize}
+
+\bigskip
+
+\subsection{Wymagania niefunkcjonalne}
+\begin{itemize}
+    \item Lekka instalacja deweloperska: ASP.NET Core \cite{aspnetcore} + SQLite \cite{sqlite}, frontend Vite/React \cite{react, vite}.
+    \item Prostota UI z jasnym i ciemnym motywem; zielony akcent wizualny spójny w całej aplikacji.
+    \item Utrzymywanie historii i integralności danych przez migracje EF Core \cite{efcore} oraz automatyczne migawki.
+    \item Brak monitoringu metryk i śledzenia rozproszonego; logowanie ograniczone do domyślnego serwera i historii uruchomień.
+    \item Testowalność: testy jednostkowe w NUnit \cite{nunit}; brak testów integracyjnych i E2E.
+    \item Przewidywalność czasu: przechowywanie dat w UTC, prezentacja w czasie lokalnym po stronie UI.
+\end{itemize}
+
+\section{Przegląd technologii}
+Frontend: React z Vite i biblioteką React Flow \cite{reactflow} do edycji grafów, własne komponenty stylowane CSS. Backend: ASP.NET Core \cite{aspnetcore} z Entity Framework Core \cite{efcore} i bazą SQLite \cite{sqlite} w środowisku deweloperskim. Testy: NUnit \cite{nunit}. Kontrola wersji: Git. Zestaw dobrano pod kątem szybkości iteracji i niskiego progu wejścia.
+
+\section{Projekt architektury aplikacji}
+System ma architekturę klient–serwer: warstwa API udostępnia kontrolery REST, a frontend komunikuje się poprzez żądania HTTP.
+\subsection{Komponenty i przepływ danych}
+\begin{itemize}
+    \item \textbf{UI}: edytor workflowów, lista wersji (modal), widoki Executions i Scheduler. React Flow odwzorowuje model bloków i połączeń.
+    \item \textbf{API}: kontrolery ASP.NET Core obsługujące Workflow (CRUD, \texttt{POST /api/Workflow/\{id\}/run}), WorkflowRevision (lista, \texttt{POST /api/WorkflowRevision/workflow/\{id\}}, \texttt{POST /api/WorkflowRevision/\{id\}/restore}), WorkflowSchedule (CRUD, \texttt{POST /api/WorkflowSchedule/\{id\}/run}), WorkflowExecution (odczyt historii).
+    \item \textbf{Scheduler}: prosty \texttt{BackgroundService} odpytywany co kilkadziesiąt sekund, oblicza \texttt{NextRunAtUtc} i uruchamia zadania; brak rozproszonego job runnera.
+    \item \textbf{Dane}: encje \texttt{Workflow}, \texttt{Block}, \texttt{BlockConnection}, \texttt{WorkflowRevision}, \texttt{WorkflowSchedule}, \texttt{WorkflowExecution}, \texttt{WorkflowVariable}.
+\end{itemize}
+\subsection{Model danych}
+\begin{itemize}
+    \item \texttt{Workflow}: definicja procesu; powiązania 1:N do bloków, rewizji, harmonogramów i wykonań.
+    \item \texttt{WorkflowRevision}: migawka definicji (JSON) z metadanymi (\texttt{Label}, \texttt{IsActive}, \texttt{AppliedAt}); tworzona automatycznie przy zapisie.
+    \item \texttt{WorkflowSchedule}: tryb \textit{Once}/\textit{Interval}/\textit{Daily}, pola \texttt{NextRunAtUtc}/\texttt{LastRunAtUtc}, możliwość ręcznego startu.
+    \item \texttt{WorkflowExecution}: wejście, wynik, ścieżka bloków i akcje zapisane dla każdego uruchomienia.
+\end{itemize}
+\subsection{Interfejs i UX}
+Widok edytora wykorzystuje React Flow do interaktywnej edycji grafu i walidacji połączeń. Lista workflowów zawiera modal z historią wersji (przywracanie, usuwanie). Scheduler stylistycznie nawiązuje do Executions: formularz ze switchami i wyszarzaniem pól zależnie od trybu, kafle z podglądem stanu i akcją \enquote{Uruchom teraz}. W nagłówku edytora dodano ikonę powrotu do strony głównej. Tworzenie migawek odbywa się automatycznie.
+
+\section{Implementacja}
+\subsection{Warstwa API}
+Kontrolery korzystają z serwisów i repozytoriów EF Core. Kluczowe operacje to uruchomienie workflowu (\texttt{POST /api/Workflow/\{id\}/run}), tworzenie i przywracanie rewizji, zarządzanie harmonogramami oraz ręczne uruchomienie harmonogramu (\texttt{POST /api/WorkflowSchedule/\{id\}/run}). Walidacja ogranicza się do poprawności danych wejściowych; brak autoryzacji i ról.
+\subsection{Warstwa frontend}
+Stan przechowywany jest lokalnie w komponentach. Edytor mapuje encje na węzły i krawędzie React Flow, pilnuje unikalnych identyfikatorów i blokuje niespójne połączenia. Widok wersji prezentuje listę rewizji w modalu; możliwe jest przywrócenie lub usunięcie wersji. Scheduler zawiera przełącznik aktywności, wybór trybu oraz pola widoczne tylko dla danej opcji (interwał, termin dzienny).
+\subsection{Wersjonowanie}
+Rewizje (\texttt{WorkflowRevision}) powstają automatycznie przy zapisie przepływu; zawierają pełną definicję bloków, połączeń i zmiennych. UI udostępnia modal \enquote{Versions} z listą i akcjami przywrócenia lub usunięcia.
+\subsection{Harmonogram}
+Obsługiwane tryby to \textit{Once}, \textit{Interval} i \textit{Daily}. Czasy przechowywane są w UTC; UI prezentuje czas lokalny. Ręczne \enquote{Uruchom teraz} aktualizuje \texttt{LastRunAtUtc} i wyznacza kolejny \texttt{NextRunAtUtc}. Implementacja wykorzystuje pojedynczą usługę \texttt{BackgroundService}; brak odporności na awarie wielu instancji.
+\subsection{Historia uruchomień}
+Widok Executions pokazuje listę wykonań z datą, wynikiem i szczegółami kroków. Dane pochodzą z tabeli \texttt{WorkflowExecution}. Historia pełni rolę podstawowego mechanizmu audytu; brak osobnego systemu logów aplikacyjnych.
+
+\section{Testowanie}
+\begin{itemize}
+    \item \textbf{Jednostkowe}: projekt \texttt{flowforge.nunit}; testy serwisów (m.in. wyliczanie \texttt{NextRunAtUtc} dla schedulera), kontrolerów z mockami repozytoriów i modeli.
+    \item \textbf{Brakujące}: testy integracyjne API, testy E2E/UI, testy hostowanej usługi schedulera.
+    \item \textbf{Uruchamianie}: \texttt{dotnet test flowforge.nunit/Flowforge.NUnit.csproj}.
+\end{itemize}
+
+\section{Wyzwania i rozwiązania}
+\begin{itemize}
+    \item \textbf{Strefy czasowe}: pierwotnie daty schedulera prezentowały się z przesunięciem; ujednolicono przechowywanie w UTC i konwersję na czas lokalny w UI.
+    \item \textbf{Spójność wersji}: nadmiarowe akcje tworzenia migawek zastąpiono automatycznym snapshotem przy zapisie i modalem do zarządzania historią.
+    \item \textbf{Prostota schedulera}: zrezygnowano z zewnętrznego job runnera; użyto pojedynczego \texttt{BackgroundService}. Ograniczenie: brak skalowania i wysokiej dostępności.
+    \item \textbf{Brak monitoringu i autoryzacji}: świadoma decyzja zakresowa; pozostawiono jako praca przyszła, wyraźnie zaznaczona w dokumentacji.
+\end{itemize}
+
+\section{Podsumowanie i wnioski}
+Flowforge spełnia główne cele: umożliwia budowanie i uruchamianie przepływów jako grafów, zachowuje wersje i historię wykonań oraz pozwala planować zadania prostym harmonogramem. Ograniczenia to brak autoryzacji, metryk i logów aplikacyjnych oraz nieskalowalny scheduler. Dalsze prace obejmują integrację z systemem uwierzytelniania, dodanie metryk i centralnego logowania, rozproszony job runner z kolejką zadań, testy E2E i integracyjne oraz eksport/import przepływów między środowiskami.
+
+\section{Załączniki}
+\begin{itemize}
+    \item Repozytorium źródłowe: \texttt{https://github.com/\dots} (lokalnie \texttt{/home/kfirlej/git/Flowforge}).
+    \item Zrzuty ekranu: widok edytora (React Flow), modal wersji, widok Executions, widok Scheduler.
+\end{itemize}
+
+\section*{Bibliografia}
+\begin{thebibliography}{99}
+\bibitem{aspnetcore}
+Microsoft, \textit{ASP.NET Core documentation}, https://learn.microsoft.com/aspnet/core, dostęp 2024-05-15.
+\bibitem{efcore}
+Microsoft, \textit{Entity Framework Core documentation}, https://learn.microsoft.com/ef/core, dostęp 2024-05-15.
+\bibitem{nunit}
+NUnit Project, \textit{NUnit Documentation}, https://docs.nunit.org, dostęp 2024-05-15.
+\bibitem{react}
+React Contributors, \textit{React Documentation}, https://react.dev, dostęp 2024-05-15.
+\bibitem{vite}
+Evan You, \textit{Vite Guide}, https://vitejs.dev/guide, dostęp 2024-05-15.
+\bibitem{reactflow}
+React Flow Team, \textit{React Flow Documentation}, https://reactflow.dev/docs, dostęp 2024-05-15.
+\bibitem{sqlite}
+SQLite Consortium, \textit{SQLite Documentation}, https://www.sqlite.org/docs.html, dostęp 2024-05-15.
+\bibitem{airflow}
+Apache Software Foundation, \textit{Apache Airflow Documentation}, https://airflow.apache.org/docs/, dostęp 2024-05-15.
+\bibitem{prefect}
+Prefect Technologies, \textit{Prefect Documentation}, https://docs.prefect.io, dostęp 2024-05-15.
+\bibitem{bpmn}
+W. M. P. van der Aalst, \textit{Business Process Management: Concepts, Languages, Architectures}, Springer, 2016.
+\bibitem{beam}
+T. Akidau, R. Bradshaw, C. Chambers i in., \textit{The Dataflow Model: A Practical Approach to Balancing Correctness, Latency, and Cost in Massive-Scale, Unbounded, Out-of-Order Data Processing}, Communications of the ACM, 2015.
+\bibitem{designpatterns}
+E. Gamma, R. Helm, R. Johnson, J. Vlissides, \textit{Design Patterns: Elements of Reusable Object-Oriented Software}, Addison-Wesley, 1994.
+\bibitem{cleanarchitecture}
+R. C. Martin, \textit{Clean Architecture: A Craftsman's Guide to Software Structure and Design}, Prentice Hall, 2017.
+\end{thebibliography}
+
+\end{document}
