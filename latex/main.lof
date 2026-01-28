@@ -1,0 +1,17 @@
+\babel@toc {polish}{}\relax 
+\contentsline {figure}{\numberline {1}{\ignorespaces Warstwa frontendowa: HTML/CSS oraz stos Vite + React + TypeScript.}}{4}{figure.1}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Warstwa serwerowa i stos testów: ASP.NET Core/EF Core oraz NUnit.}}{6}{figure.2}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Magazyn danych w trybie deweloperskim: SQLite.}}{7}{figure.3}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Kontrola wersji: Git w układzie monorepo.}}{8}{figure.4}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Szkic ERD kluczowych encji systemu: workflow jest centralną encją, do której należą rewizje, harmonogramy, wykonania, bloki, połączenia i zmienne.}}{13}{figure.5}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Edytor grafu workflowu (React Flow)}}{15}{figure.6}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Widok modala wersji}}{15}{figure.7}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Formularz harmonogramu}}{16}{figure.8}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Historia uruchomień workflowu (widok 1)}}{16}{figure.9}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Historia uruchomień workflowu (widok 2)}}{17}{figure.10}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Menu kontekstowe oraz toolbar edytora}}{17}{figure.11}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Panel konfiguracji bloku}}{18}{figure.12}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Edycja zmiennych przepływu}}{18}{figure.13}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Stylistyka i motyw interfejsu – motyw jasny}}{19}{figure.14}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Stylistyka i motyw interfejsu – motyw ciemny}}{19}{figure.15}%
+\contentsline {figure}{\numberline {16}{\ignorespaces Graficzny schemat relacji w bazie \texttt {flowforge.db}.}}{21}{figure.16}%

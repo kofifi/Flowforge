@@ -1,0 +1,725 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[polish]{babel}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{multicol}
+\usepackage{adjustbox}
+\usepackage{amsmath}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tocloft}
+\usepackage{float}
+\usepackage{lmodern}
+\usepackage{microtype}
+\linespread{1.05}
+\usepackage{tikz}
+\usetikzlibrary{matrix,calc,positioning,shapes.geometric}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+\usepackage[hidelinks]{hyperref}
+\usepackage{csquotes}
+
+\lstdefinestyle{myStyle}{
+    backgroundcolor=\color{white},
+    basicstyle=\ttfamily,
+    breaklines=true,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green},
+    stringstyle=\color{red},
+    captionpos=b
+}
+
+\lstset{style=myStyle}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    \includegraphics[width=0.5\textwidth]{Uniwersytet_Bielsko-Bialski_-_logo.jpg}\par\vspace{1cm}
+    \textsc{\LARGE Uniwersytet Bielsko-Bialski}\par\vspace{1.5cm}
+    \textsc{\Large Praca inżynierska}\par\vspace{0.5cm}
+    {\huge\bfseries System low-code do budowy interfejsów API}\par
+    \vspace{2cm}
+    \begin{flushleft}
+        \large
+        \textbf{Autor:}\\
+        Konrad Firlej\\
+        Numer Karty Studenckiej: 60043\\
+    \end{flushleft}
+    \vspace{1cm}
+    \begin{flushleft}
+        \large
+        \textbf{Promotor:}\\
+        dr inż. Krzysztof Augustynek\\
+    \end{flushleft}
+    \vfill
+    {\large 13 czerwca 2025}
+\end{titlepage}
+
+\pagenumbering{roman}
+
+\newpage
+\section*{Streszczenie}
+Praca opisuje projekt i implementację lekkiego systemu low-code do budowy i uruchamiania przepływów API. Zastosowano stos ASP.NET Core + EF Core + SQLite \cite{aspnetcore}\cite{efcore}\cite{sqlite} oraz frontend Vite + React + React Flow \cite{vite}\cite{reactflow}. System umożliwia graficzne modelowanie workflowów, automatyczne wersjonowanie, uruchomienia ręczne i harmonogramowane oraz podgląd historii wykonań. Testy jednostkowe w NUnit \cite{nunit} pokrywają serwisy, kontrolery i egzekutory bloków. Dokument kończy ocena spełnienia celów, propozycje rozwoju (autoryzacja, skalowanie schedulera) i wnioski praktyczne.
+
+\section*{Abstract}
+The thesis presents the design and implementation of a lightweight low-code platform for orchestrating API workflows. The stack combines ASP.NET Core with EF Core and SQLite on the backend \cite{aspnetcore}\cite{efcore}\cite{sqlite}, and Vite + React + React Flow on the frontend \cite{vite}\cite{reactflow}. The system supports graphical workflow modeling, automatic versioning, manual and scheduled runs, and execution history. NUnit-based unit tests \cite{nunit} cover services, controllers, and block executors. The document concludes with an evaluation of objectives, planned extensions (auth, distributed scheduler), and practical takeaways.
+
+\newpage
+\section*{Oświadczenie}
+Oświadczam, że niniejszą pracę wykonałem samodzielnie, nie naruszając praw autorskich osób trzecich ani obowiązujących przepisów.
+
+\newpage
+\section*{Wykaz skrótów i symboli}
+\begin{itemize}
+    \item \textbf{API} – Application Programming Interface.
+    \item \textbf{REST} – Representational State Transfer.
+    \item \textbf{CRUD} – Create, Read, Update, Delete.
+    \item \textbf{DTO} – Data Transfer Object.
+    \item \textbf{HMR} – Hot Module Replacement.
+    \item \textbf{UTC} – Coordinated Universal Time.
+    \item \textbf{BPMN} – Business Process Model and Notation.
+    \item \textbf{CI} – Continuous Integration.
+\end{itemize}
+
+\newpage
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+
+\pagenumbering{arabic}
+
+\section{Wstęp}
+
+Dynamiczny wzrost usług cyfrowych powoduje, że nawet małe zespoły muszą łączyć pobieranie danych, wywołania API i walidację wyników w powtarzalne sekwencje. Brak jednolitego narzędzia skutkuje ręcznym klejeniem skryptów, utratą historii zmian i trudnością w odtworzeniu błędów, szczególnie gdy zadania są wykonywane cyklicznie lub przez różne osoby. Flowforge ma być lekkim systemem low‑code, który pozwala budować, uruchamiać i monitorować takie przepływy bez ciężkiej infrastruktury i bez konieczności pisania pełnych aplikacji back‑endowych. Tematem pracy jest opis i implementacja tego narzędzia oraz ocena jego przydatności dla małych zespołów, które chcą szybko tworzyć interfejsy API i łączyć je w spójne procesy.
+
+Definicja i zakres projektu obejmuje trzy warstwy: (1) warstwę modelowania przepływu jako grafu bloków i połączeń (React Flow w UI), (2) warstwę usługową udostępniającą REST API do zapisu, wersjonowania i uruchamiania przepływów (ASP.NET Core, EF Core, SQLite w trybie deweloperskim), (3) warstwę wykonawczą z prostym harmonogramem działającym w jednym procesie serwera. Założono działanie na pojedynczej instancji, bez zewnętrznych brokerów, co upraszcza uruchomienie w środowisku lokalnym lub testowym.
+
+Celem projektu jest obniżenie progu wejścia do automatyzacji i integracji API: użytkownik rysuje przepływ jako graf bloków, zapisuje go z automatycznymi wersjami i uruchamia ręcznie lub według prostego harmonogramu. Oczekiwanym rezultatem jest szybsze prototypowanie połączeń między usługami, krótszy czas wdrożenia nowych przepływów oraz możliwość bezpiecznego cofania zmian dzięki wersjonowaniu definicji. Motywacją jest luka między prostą listą zadań a platformami klasy BPMN/DAG (Airflow, Prefect) \cite{airflow}\cite{prefect}\cite{camunda}, które są kosztowne, wymagają zaplecza DevOps i niepotrzebnie komplikują małe wdrożenia.
+
+Problem, który aplikacja rozwiązuje, to brak samodzielnego, prostego narzędzia do orkiestracji API w środowiskach o ograniczonych zasobach. W codziennej pracy prowadzi to do pominiętych kroków, niespójnych wersji i braku wglądu w historię wykonań. Flowforge porządkuje proces jako graf, przechowuje historię zmian i wykonań oraz umożliwia audyt błędów, co skraca czas realizacji i zmniejsza liczbę pominiętych czynności. Dzięki wersjonowaniu definicji użytkownik może wrócić do stabilnej konfiguracji, a zapis wykonań ułatwia analizę przyczyn błędów.
+
+Podejście technologiczne opiera się na prostocie wdrożenia i minimalnych zależnościach. Backend w ASP.NET Core z EF Core udostępnia REST API do definicji, wersji i uruchomień \cite{aspnetcore}\cite{efcore}; harmonogram działa w jednym procesie serwera, obliczając najbliższe uruchomienia bez zewnętrznego brokera. Frontend zbudowano w Vite + React + TypeScript, z użyciem React Flow do edycji grafów oraz własnych komponentów do historii i uruchomień, co zapewnia szybki build, HMR i spójny typowany model danych po stronie klienta \cite{vite}\cite{react}\cite{reactflow}. Świadomie pominięto integracje z kolejkami zadań, rozproszonym schedulerem i autoryzacją, aby utrzymać niski narzut instalacji i konfiguracji w małym zespole; te elementy są wskazane jako kierunek dalszych prac.
+
+\newpage
+\section{Analiza wymagań}
+\subsection{Opis problemu}
+Codzienne zarządzanie zadaniami wymaga łączenia wielu kroków: wywołań API, walidacji danych, zapisów wyników i powiadomień. Robione ręcznie lub w rozproszonych skryptach prowadzi do pominiętych czynności, niespójnych wersji i trudności w audycie. Potrzebne jest lekkie narzędzie, które pozwala wizualnie zaprojektować sekwencję zadań i uruchamiać ją powtarzalnie.
+
+\subsection{Grupa docelowa}
+Pojedynczy użytkownik lub bardzo mały zespół (1–3 osoby) pracujący lokalnie lub w środowisku testowym, bez dedykowanego działu DevOps. Kluczowe jest szybkie wdrożenie, brak kosztów licencyjnych i możliwość pracy na jednej instancji aplikacji.
+
+\subsection{Analiza konkurencyjnych rozwiązań (edytory grafowe / node-based)}
+\begin{itemize}
+    \item \textbf{n8n}: open-source automation z edytorem przepływów opartym na grafie; bogate integracje, ale większy narzut konfiguracyjny niż Flowforge \cite{n8n}.
+    \item \textbf{Node-RED}: flow-based programming w przeglądarce; dojrzały ekosystem wtyczek, interfejs mniej nastawiony na wersjonowanie przepływów \cite{nodered}.
+    \item \textbf{Flowise}: narzędzie do budowy agentów AI oparte o React Flow; mocno LLM‑centric, brak fokus na klasyczne zadania operacyjne \cite{flowise}.
+    \item \textbf{LangFlow}: edytor łańcuchów LLM (też React Flow); świetny do prototypów konwersacyjnych, słabszy w zarządzaniu harmonogramem zadań codziennych \cite{langflow}.
+    \item \textbf{Camunda Modeler (BPMN)}: graficzny edytor procesów biznesowych; bogata semantyka BPMN, ale cięższe wdrożenie i większa złożoność dla pojedynczego użytkownika \cite{camunda}.
+\end{itemize}
+
+\subsection{Wymagania funkcjonalne}
+\begin{itemize}
+    \item Graficzne modelowanie przepływu z bloków (start, akcje API, warunki, zakończenie) z walidacją połączeń.
+    \item Ręczne uruchamianie oraz harmonogram (\textit{Once}, \textit{Interval}, \textit{Daily}) z wyliczaniem kolejnego startu i zapisem \texttt{LastRun}/\texttt{NextRun}.
+    \item Automatyczne wersjonowanie definicji (migawka przy każdym zapisie), podgląd listy wersji, przywracanie i usuwanie.
+    \item Rejestrowanie wykonań z wejściem, wynikiem, czasem i błędami; filtrowanie i podgląd szczegółów w UI.
+    \item Obsługa zmiennych przepływu (wejściowe/wyjściowe) z walidacją typów przy zapisie i uruchomieniu.
+    \item Walidacja cykli i poprawności połączeń na etapie edycji (blokowanie błędnych krawędzi).
+    \item Eksport/import definicji przepływu w formacie JSON w celu backupu lub przeniesienia między środowiskami.
+    \item Edycja i podgląd w przeglądarce (Vite + React + TypeScript, React Flow), podgląd historii uruchomień i wersji na osobnych widokach.
+\end{itemize}
+
+\subsection{Wymagania niefunkcjonalne}
+\begin{itemize}
+    \item Lekka instalacja: pojedyncza instancja ASP.NET Core + SQLite; brak zewnętrznego brokera zadań i dodatkowych usług systemowych.
+    \item Szybka iteracja frontendowa (Vite HMR, typowanie w TS), responsywny UI działający na ekranach desktop i laptop.
+    \item Spójność czasowa: przechowywanie dat w UTC, prezentacja w czasie lokalnym po stronie klienta; jedno źródło czasu dla harmonogramu.
+    \item Niska bariera utrzymania: konfiguracja przez plik \texttt{appsettings} lub zmienne środowiskowe, brak konieczności kontenerów ani orkiestracji.
+    \item Testowalność: pokrycie logiki serwisów, repozytoriów i harmonogramu testami jednostkowymi (NUnit); możliwość uruchomienia \texttt{dotnet test} bez zewnętrznych zależności.
+    \item Odporność na błędy użytkownika: walidacja danych wejściowych na API i w UI, jasne komunikaty o błędach, brak krytycznych awarii przy niepoprawnych danych.
+    \item Przewidywalne zużycie zasobów: praca w pojedynczym procesie, brak długotrwałych workerów; logi ograniczone do niezbędnych zdarzeń.
+    \item Prosty model bezpieczeństwa: tryb zaufanego użytkownika (brak kont i ról), gotowość do późniejszego dodania autoryzacji jako pracy przyszłej.
+\end{itemize}
+
+\newpage
+\section{Przegląd technologii}
+
+Poniższy przegląd opisuje dobór technologii w projekcie Flowforge w układzie monorepo, uwzględniając warstwę frontendową (HTML, CSS, JavaScript/TypeScript z Vite + React + React Flow), backend (ASP.NET Core zamiast rozważanego Next.js), magazyn danych (SQLite w trybie deweloperskim z możliwością migracji do MongoDB lub relacyjnej bazy produkcyjnej) oraz narzędzia kontroli wersji (Git). Uzasadnienia odnoszą się do wymagań funkcjonalnych i niefunkcjonalnych małego zespołu oraz do kosztu utrzymania pojedynczej instancji.
+
+\subsection{Warstwa frontendowa: HTML, CSS, JavaScript/TypeScript}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/html.png}\\[-0.3em]
+        {\footnotesize HTML}
+    \end{minipage}
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/css.png}\\[-0.3em]
+        {\footnotesize CSS}
+    \end{minipage}
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/react.png}\\[-0.3em]
+        {\footnotesize React}
+    \end{minipage}
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/vite.png}\\[-0.3em]
+        {\footnotesize Vite}
+    \end{minipage}
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/typescript.png}\\[-0.3em]
+        {\footnotesize TypeScript}
+    \end{minipage}
+    \caption{Warstwa frontendowa: HTML/CSS oraz stos Vite + React + TypeScript.}
+\end{figure}
+Frontend powstał w oparciu o Vite + React + TypeScript \cite{vite}\cite{react}\cite{typescript}, co zapewnia bardzo krótki czas startu deweloperskiego (HMR), typowanie modeli przesyłanych do API oraz czytelną strukturę komponentów. HTML i CSS pozostają fundamentem renderowania – semantyczne znaczniki (nagłówki, listy, formularze) ułatwiają dostępność, a warstwa stylów jest ograniczona do lekkich arkuszów i zmiennych kolorystycznych, by nie tworzyć zależności od ciężkich frameworków UI. Stylowanie zachowuje spójność z React Flow \cite{reactflow}, który dostarcza kanwę do edycji grafów; kolory i typografia są definiowane we własnych klasach, co upraszcza utrzymanie i eliminację konfliktów między bibliotekami \cite{react}.
+
+Wybór TypeScriptu zamiast czystego JavaScriptu wynika z potrzeby jednoznacznego odwzorowania modeli domenowych (Workflow, Block, Connection, Revision) po stronie klienta. Silne typowanie zmniejsza liczbę błędów integracyjnych, zwłaszcza przy serializacji/deskrypcji JSON z API. Alternatywy jak czysty JS przyspieszyłyby start, ale zwiększyłyby ryzyko błędów przy refaktoryzacji. React, w przeciwieństwie do frameworków szablonowych, pozwala budować hermetyczne komponenty edytora, paneli historii i harmonogramu, wykorzystując jeden model stanu. Vue lub Svelte mogłyby przynieść lżejszy runtime, jednak w zespole dostępne były doświadczenia z Reactem oraz gotowe komponenty React Flow, co skraca czas dostarczenia funkcji edycji grafu.
+
+React Flow został wybrany jako biblioteka do wizualnej edycji połączeń, ponieważ zapewnia: (1) interaktywny canvas z obsługą drag \& drop, (2) walidację połączeń i blokadę cykli na poziomie UI, (3) łatwe mapowanie węzłów na dane domenowe. Podejścia alternatywne (JointJS, Cytoscape) oferują większe możliwości grafowe, ale są cięższe w integracji z prostym przepływem danych i wymagają bardziej rozbudowanej konfiguracji. Dla pojedynczego użytkownika ważniejsza była mała waga bundla i szybkość wdrożenia niż pełne możliwości edycji BPMN.
+
+HTML i CSS wykorzystano zgodnie z minimalnym podejściem: brak frameworka typu Bootstrap zmniejsza rozmiar paczki i eliminuje nadmiar styli. Zamiast tego definiowane są zmienne kolorów, spacing i typografia w jednym miejscu, co pozwala utrzymać spójny akcent wizualny (zielone akcenty w UI) i łatwo przełączać motyw jasny/ciemny. W warstwie dostępności zapewniono odpowiedni kontrast i focus styles.
+
+\newpage
+Dodatkowe uzasadnienia wyboru frontendu:
+\begin{itemize}
+    \item \textbf{Wydajność buildów}: Vite kompiluje tylko zmienione moduły dzięki esbuild i dev-server z ESM; przy małym zespole skraca to pętlę „edytuj–zobacz efekt” do sekund.
+    \item \textbf{Testowalność UI}: typowanie i modularność komponentów ułatwia wprowadzenie testów jednostkowych (np. Vitest/RTL) w przyszłości; React Flow dostarcza mockowalny interfejs zdarzeń.
+    \item \textbf{Utrzymanie stylów}: CSS Modules lub scoped klasy w Vite pozwalają unikać kolizji nazw i utrzymać mały surface area. Brak design systemu typu Material eliminuje zależność od wersji i możliwe breaking changes.
+    \item \textbf{Dostępność i i18n}: semantyczny HTML + kontrola nad drzewem DOM ułatwiają dodanie ARIA i lokalizacji, co byłoby trudniejsze przy zamkniętych komponentach frameworków UI.
+    \item \textbf{Wielkość bundla}: bazowy build Vite z React i React Flow mieści się w kilkuset kB gz, co jest akceptowalne dla pojedynczego użytkownika; brak ciężkich frameworków CSS trzyma rozmiar w ryzach.
+    \item \textbf{Linting i formatowanie}: ESLint + Prettier włączone w projekcie (Vite) utrzymują spójność stylu kodu; TypeScript wymusza jawne typy w interfejsach API.
+    \item \textbf{Konfiguracja środowisk}: pliki \texttt{.env} dla URL API i trybu dark/light, bez rozbudowanych build-time flag; prostota ważna przy braku CI/CD.
+    \item \textbf{Przybliżone metryki}: cold build (dev) trwa ok. 1–2 s na typowym laptopie deweloperskim, HMR < 300 ms dla pojedynczej zmiany komponentu; bundel produkcyjny po minifikacji i gzip to rząd 300–500 kB (w zależności od ilości ikon/grafiki), co przekłada się na ładowanie rzędu kilkuset ms przy połączeniu 10–20 Mbps.
+\end{itemize}
+
+Potencjalne alternatywy odrzucone:
+\begin{itemize}
+    \item \textbf{Next.js + App Router}: zaoferowałby SSR/SSG, lecz narzut konfiguracji i dłuższe buildy nie były uzasadnione dla aplikacji single-tenant.
+    \item \textbf{Angular}: pełny framework dałby DI i szablony, ale wiązałby z bardziej rozbudowaną strukturą projektu i cięższym bundlem.
+    \item \textbf{Electron/Tauri}: mogłyby dać desktop, lecz celem była aplikacja webowa z minimalnym footprintem.
+\end{itemize}
+
+\newpage
+\subsection{Warstwa backendowa: ASP.NET Core}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[height=3cm,keepaspectratio]{img/dotnet.png}\\[-0.3em]
+        {\footnotesize ASP.NET Core / EF Core}
+    \end{minipage}
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        % prosty znak NUnit rysowany w TikZ, bo brak dostępu do internetu
+        \begin{tikzpicture}[scale=0.8, every node/.style={transform shape}]
+            \node[rectangle, rounded corners=10pt, minimum width=3.4cm, minimum height=1.8cm, draw=green!70!black, very thick, fill=green!60!black!70] (n) {};
+            \node[text=white, font=\bfseries\Large] at (n) {NUnit};
+        \end{tikzpicture}\\[-0.3em]
+        {\footnotesize NUnit 4.x (testy jednostkowe)}
+    \end{minipage}
+    \caption{Warstwa serwerowa i stos testów: ASP.NET Core/EF Core oraz NUnit.}
+\end{figure}
+Wybrano ASP.NET Core \cite{aspnetcore} z EF Core \cite{efcore} jako warstwę serwerową, bo zapewnia spójność modeli domenowych, stabilny hosting w jednym procesie (wraz z \texttt{BackgroundService} dla harmonogramu) oraz szybkie testowanie z NUnit \cite{nunit} + Moq + InMemory EF Core \cite{efcore} bez zależności od zewnętrznych usług. UI pozostaje w Vite/React \cite{vite}\cite{react}, co zmniejsza sprzężenie i pozwala niezależnie rozwijać obie warstwy. Middlewares ograniczono do minimum (CORS, routing, Swagger w trybie dev), a logika harmonogramu działa w jednym procesie, zgodnie z założeniem pracy na pojedynczej instancji \cite{aspnetcore}.
+
+Dodatkowe aspekty backendu:
+\begin{itemize}
+    \item \textbf{Wydajność i profil zasobów}: ASP.NET Core w konfiguracji Kestrel + pojedynczy wątek harmonogramu zużywa mało pamięci; brak zewnętrznych workerów oznacza przewidywalny CPU footprint.
+    \item \textbf{Migracje schematu}: EF Core migracje wersjonują zmiany modeli i pozwalają na powtarzalne wdrożenia; dla środowisk docelowych można wygenerować skrypt SQL lub zastosować migracje runtime.
+    \item \textbf{Bezpieczeństwo}: choć aplikacja działa w trybie zaufanego użytkownika, ASP.NET Core zapewnia sanitizację nagłówków, mechanizmy limitowania rozmiaru żądań i łatwe dołączenie autoryzacji w przyszłości.
+    \item \textbf{Observability}: wbudowane logowanie i metryki zdrowia (health checks) można włączyć bez zmiany architektury, co ułatwia późniejsze monitorowanie.
+    \item \textbf{Konfiguracja}: \texttt{appsettings.json} oraz zmienne środowiskowe pozwalają rozdzielić konfigurację dev/prod; brak twardych wpisów sekretów w repo.
+    \item \textbf{Serializacja}: System.Text.Json stosuje camelCase kontrakty spójne z frontendem; unika się nadmiarowych atrybutów, co upraszcza modele.
+    \item \textbf{Testy}: NUnit pokrywa serwisy, repozytoria i kontrolery z in-memory SQLite; to umożliwia powtarzalne testy bez zewnętrznej bazy.
+    \item \textbf{Przybliżone metryki}: zimny start API (dotnet run) to kilka sekund; pojedyncze zapytanie GET/POST w warunkach lokalnych < 10 ms; harmonogram wywołuje cykl co ok. 30 s i operuje na niewielkiej liczbie rekordów, więc obciążenie CPU jest marginalne.
+\end{itemize}
+
+\newpage
+\subsection{Magazyn danych: SQLite dziś, ścieżka do MongoDB i relacyjnej produkcji}
+\begin{figure}[H]
+    \centering
+    \includegraphics[height=3cm,keepaspectratio]{img/sqlite.png}
+    \caption{Magazyn danych w trybie deweloperskim: SQLite.}
+\end{figure}
+W trybie deweloperskim wykorzystano SQLite \cite{sqlite}, bo:
+\begin{itemize}
+    \item nie wymaga instalacji osobnego serwera – istotne przy pojedynczym użytkowniku,
+    \item współdziała z EF Core i migracjami,
+    \item wystarcza do historii wersji i wykonań w małym obciążeniu.
+\end{itemize}
+Jednocześnie zaprojektowano model w sposób neutralny: encje mają jednoznaczne klucze, a dane strukturalne (definicja grafu) przechowywane są w polach JSON. Pozwala to na potencjalną migrację do MongoDB, jeśli pojawi się potrzeba przechowywania dużych, schematowo elastycznych definicji lub logów, lub do pełnoprawnej relacyjnej bazy (PostgreSQL) dla większej liczby użytkowników. Dzięki warstwie repozytoriów wymiana dostawcy bazy wymaga głównie konfiguracji i ewentualnych dostosowań migracji.
+
+Istotnym wymogiem niefunkcjonalnym była spójność czasowa – wszystkie znaczniki czasowe przechowywane są w UTC, co ułatwia migracje między silnikami baz danych i minimalizuje błędy strefowe. Dane operacyjne są kompaktowe: definicje workflowów, zmienne, harmonogramy, historia wykonań. Brak ciężkich binarnych załączników upraszcza backupy i przenoszenie między środowiskami.
+
+Dodatkowe uzasadnienia i scenariusze migracji:
+\begin{itemize}
+    \item \textbf{MongoDB jako wariant NoSQL}: elastyczne przechowywanie definicji grafów (JSON) i logów wykonań; dobra opcja, jeśli wzrośnie liczba zapisów lub pojawi się potrzeba zapytań ad-hoc po strukturach JSON.
+    \item \textbf{PostgreSQL dla środowiska wieloużytkownikowego}: transakcyjność i blokady na poziomie wiersza przydatne przy równoczesnej edycji wielu przepływów; wsparcie dla kolumn JSONB pozwala zachować model bez dużych zmian.
+    \item \textbf{Strategia backupu}: w SQLite plik bazy może być wersjonowany (poza repo) i kopiowany jako snapshot; przy migracji do serwera relacyjnego można stosować pg\_dump lub repliki read-only do raportowania.
+    \item \textbf{Indeksowanie}: kluczowe indeksy na identyfikatorach workflow, datach uruchomień i wersjach zapewniają szybkie listowanie historii; w NoSQL należałoby dobrać klucze partycjonujące (np. workflowId + data).
+    \item \textbf{Limity i rotacja}: historia wykonań może być rotowana (np. ostatnie N wpisów per workflow) w SQLite; przy migracji do bazy serwerowej można dodać mechanizm archiwizacji do cold storage.
+    \item \textbf{Spójność}: transakcje EF Core zabezpieczają zapis definicji i powiązanych bloków; w scenariuszu NoSQL trzeba rozważyć dwufazowe zapisy lub wzorce outbox, co jest świadomie odłożone.
+    \item \textbf{Przybliżone metryki}: mała baza SQLite (kilkadziesiąt workflowów, setki wykonań) mieści się w kilku MB; zapytania historii są praktycznie natychmiastowe lokalnie. Przy wzroście do tysięcy wykonań na workflow może być potrzebne dodanie indeksu po dacie wykonania i paginacji po stronie API.
+\end{itemize}
+
+\subsection{Kontrola wersji i monorepo: Git}
+\begin{figure}[H]
+    \centering
+    \includegraphics[height=3cm,keepaspectratio]{img/git.png}
+    \caption{Kontrola wersji: Git w układzie monorepo.}
+\end{figure}
+Repozytorium jest prowadzone jako monorepo z folderami \texttt{flowforge.api}, \texttt{flowforge.ui}, \texttt{flowforge.nunit}. Wybór Git wynika z \cite{git}:
+\begin{itemize}
+    \item \textbf{Spójność zmian}: API, UI i testy wersjonowane razem pozwalają na atomowe commity obejmujące całą funkcjonalność (np. nowy endpoint + widok + test).
+    \item \textbf{Prosta historia}: pojedyncza gałąź główna z krótkimi feature branchami ułatwia śledzenie regresji i code review.
+    \item \textbf{Integracja z narzędziami}: Git współpracuje z CI/CD, choć w projekcie lokalnym kluczowe jest łatwe cofanie zmian przy pomocy commitów i tagów.
+\end{itemize}
+W monorepo utrzymywane są osobne pliki konfiguracyjne (solution .NET, package.json dla UI), co ułatwia budowę niezależnych artefaktów. Brak wielu pakietów NPM publikowanych do rejestru obniża złożoność; komponenty współdzielone są po prostu importowane względnie wewnątrz projektu.
+
+Git wspiera także pracę w trybie „zaufanego użytkownika”: nie ma złożonego modelu ról w aplikacji, więc kontrola dostępu do kodu i historii zmian pozostaje w systemie wersjonowania. Dla pojedynczego użytkownika szczególnie wartościowa jest możliwość tworzenia tagów lub branchy eksperymentalnych przy zmianach przepływów.
+
+Dodatkowe praktyki w monorepo:
+\begin{itemize}
+    \item \textbf{Konwencje commitów}: krótkie, rozkazujące komunikaty ułatwiają śledzenie zmian i automatyczne generowanie changelogów.
+    \item \textbf{Izolacja zależności}: \texttt{flowforge.ui} posiada własne \texttt{node\_modules}, a \texttt{flowforge.api} korzysta z \texttt{dotnet restore}; brak globalnych instalacji zmniejsza ryzyko konfliktów wersji.
+    \item \textbf{Testy w gałęziach}: \texttt{dotnet test} można uruchomić lokalnie przed scaleniem; w przyszłości łatwo dodać prosty pipeline CI (GitHub Actions) bez zmiany struktury repo.
+    \item \textbf{Tagowanie releasów}: tagi mogą odpowiadać migawkom bazy lub stabilnym wersjom API/UI, co ułatwia rollback.
+    \item \textbf{.gitignore i artefakty}: ignorowane są \texttt{bin/}, \texttt{obj/}, \texttt{node\_modules/} oraz pliki tymczasowe LaTeX; utrzymuje to repo czyste i zmniejsza szanse na konflikty.
+    \item \textbf{Strategia branchy}: krótkie feature branche, merge bez squash dla zachowania historii; przy większym zespole można wprowadzić trunk-based z krótkimi FF merges.
+    \item \textbf{Przybliżone metryki}: repo z kodem źródłowym (bez \texttt{node\_modules}) to rząd setek MB; clone na lokalnym SSD trwa sekundy. \texttt{dotnet restore} i \texttt{npm install} jednorazowo zajmują kilkaset MB, co jest akceptowalne dla pojedynczego dewelopera.
+\end{itemize}
+
+\newpage
+\subsection{Uzasadnienie wyboru stosu jako całości}
+Zestaw (Vite + React + TS) + (ASP.NET Core + EF Core + SQLite) + Git został dobrany pod kątem:
+\begin{itemize}
+    \item \textbf{Szybkiego startu deweloperskiego}: HMR w Vite, brak instalacji bazy serwerowej, szablon \texttt{dotnet new} i automatyczne migracje.
+    \item \textbf{Małego narzutu operacyjnego}: pojedynczy proces API z wbudowanym schedulerem, frontend statyczny serwowany z tego samego serwera lub przez Vite dev server w trybie deweloperskim.
+    \item \textbf{Łatwej refaktoryzacji}: typowanie w TS oraz w C\#, wspólny kontrakt JSON redukuje błędy integracji.
+    \item \textbf{Rozszerzalności}: możliwość podmiany bazy, dodania autoryzacji lub zewnętrznego schedulera bez zmiany podstawowego modelu danych i kontraktów API.
+\item \textbf{Kosztu}: brak opłat licencyjnych, brak wymogu hostingu usług dodatkowych (broker, kolejki, zewnętrzna baza) w środowisku małego zespołu.
+\end{itemize}
+
+Takie podejście wspiera wymagania funkcjonalne (graficzne modelowanie, wersjonowanie, harmonogram, historia uruchomień) oraz niefunkcjonalne (lekkość, przewidywalność, niski nakład utrzymania).
+
+\newpage
+\section{Projekt architektury aplikacji}
+
+\subsection{Opis architektury}
+Architektura ma prosty podział klient–serwer. Klient (Vite + React + React Flow) renderuje interfejs w przeglądarce i komunikuje się z API wyłącznie przez HTTP/JSON. Serwer to pojedyncza aplikacja ASP.NET Core (Kestrel), w której:
+\begin{itemize}
+    \item kontrolery REST wystawiają operacje CRUD na workflowach, wersjach, harmonogramach i wykonaniach,
+    \item serwisy domenowe kapsułkują logikę biznesową (walidacja grafu, tworzenie migawek, obliczanie \texttt{NextRunAtUtc}, wykonywanie bloków),
+    \item repozytoria EF Core mapują encje na SQLite i prowadzą migracje schematu,
+    \item \texttt{BackgroundService} pełni rolę lekkiego schedulera, działając w tym samym procesie co API, bez zewnętrznego brokera czy kolejki.
+\end{itemize}
+Świadomie zrezygnowano z warstw pośrednich (reverse proxy, message broker, worker pool), by zmniejszyć złożoność i zależności. W trybie deweloperskim frontend może być serwowany przez Vite dev-server (HMR), a w produkcji – jako statyczne pliki z tego samego procesu ASP.NET Core. Całość mieści się na jednej instancji, co upraszcza wdrożenie w środowisku pojedynczego użytkownika lub małego zespołu.
+
+\subsection{Diagramy architektoniczne}
+Na potrzeby dokumentacji wyróżniono dwa widoki graficzne oraz listę przypadków użycia:
+\begin{itemize}
+    \item \textbf{Diagram komponentów} (następny podrozdział) – ukazuje podział na UI, API + scheduler oraz SQLite, wraz z interfejsami komunikacji (REST, ORM) i zwrotną wymianą logów.
+    \item \textbf{Diagram przepływu danych} – pokazuje główne ścieżki żądań i zapisów: tworzenie wersji, uruchomienie ręczne, harmonogram oraz zapis historii. Etykiety strzałek odpowiadają scenariuszom opisanym w sekcji „Przepływ danych i przypadki użycia”.
+    \item \textbf{Przypadki użycia} – cztery podstawowe scenariusze: edycja workflowu, uruchomienie ręczne, wykonanie cykliczne oraz przegląd/przywracanie historii. Ze względu na pojedynczego użytkownika i brak ról, scenariusze są opisane tekstowo bez dodatkowego diagramu UML.
+\end{itemize}
+
+\newpage
+\subsection{Diagram komponentów}
+\begin{center}
+\begin{tikzpicture}[
+    scale=0.8,
+    every node/.style={transform shape},
+    >=latex,
+    node distance=4.0cm,
+    box/.style={rectangle, rounded corners=6pt, minimum width=3.0cm, minimum height=1.0cm, draw, very thick, align=center, text width=3.0cm},
+    client/.style={box, fill=blue!12, draw=blue!60!black},
+    server/.style={box, fill=green!12, draw=green!60!black},
+    data/.style={box, fill=orange!15, draw=orange!70!black},
+    arr/.style={->, thick, gray!70},
+    darr/.style={->, densely dashed, thick, gray!70}
+]
+    \node[client] (ui) {UI\\Vite + React + React Flow};
+    \node[server, right=of ui] (api) {API\\ASP.NET Core};
+    \node[data, right=of api] (db) {SQLite\\EF Core};
+    \node[server, below=2cm of api] (sched) {Scheduler\\\texttt{BackgroundService}};
+
+    \draw[arr] (ui) -- node[above,pos=0.5,yshift=8pt]{\scriptsize\shortstack{HTTP REST\\(JSON)}} (api);
+    \draw[arr] (api) -- node[above,pos=0.5,yshift=8pt]{\scriptsize ORM / EF Core} (db);
+    \draw[arr] (sched) -- node[right,pos=0.55,xshift=8pt]{\scriptsize wywołania} (api);
+    \draw[darr] (api) -- node[below,pos=0.5,yshift=-8pt]{\scriptsize\shortstack{zdarzenia\\logi}} (sched);
+\end{tikzpicture}
+\end{center}
+
+\subsection{Przepływ danych i przypadki użycia}
+\begin{center}
+\begin{tikzpicture}[
+    scale=0.78,
+    every node/.style={transform shape},
+    >=latex,
+    node distance=4.2cm,
+    box/.style={rectangle, rounded corners=6pt, minimum width=2.9cm, minimum height=0.95cm, draw, very thick, align=center, text width=2.8cm},
+    client/.style={box, fill=blue!12, draw=blue!60!black},
+    server/.style={box, fill=green!12, draw=green!60!black},
+    data/.style={box, fill=orange!15, draw=orange!70!black},
+    arr/.style={->, thick, gray!70},
+    darr/.style={->, densely dashed, thick, gray!70}
+]
+    % nodes
+    \node[client] (ui) {UI\\React Flow};
+    \node[server, right=of ui] (api) {API\\ASP.NET Core};
+    \node[data, right=of api] (db) {SQLite\\EF Core};
+    \node[server, below=2.2cm of api] (sched) {Scheduler\\\texttt{BackgroundService}};
+
+    % flows
+    \draw[arr] (ui) -- node[above,pos=0.5,yshift=9pt]{\scriptsize\shortstack{POST /api/Workflow\\(zapis wersji)}} (api);
+    \draw[arr] (ui.north east) .. controls +(1.1,0.8) and +(-1.1,0.8) .. node[above,pos=0.55,yshift=9pt]{\scriptsize POST /api/Workflow/\{id\}/run} (api.north west);
+    \draw[arr] (api) -- node[above,pos=0.5,yshift=9pt]{\scriptsize\shortstack{INSERT/UPDATE\\WorkflowRevision / Execution}} (db);
+    \draw[arr] (sched) -- node[right,pos=0.55,xshift=8pt]{\scriptsize\shortstack{harmonogram\\(NextRun)}} (api);
+    \draw[darr] (api.south) -- node[right,pos=0.45,xshift=8pt]{\scriptsize\shortstack{logi / wyniki\\do historii}} (sched.north);
+    \draw[arr] (sched) -- node[below,pos=0.55,yshift=-9pt]{\scriptsize INSERT Execution} (db);
+\end{tikzpicture}
+\par\smallskip
+\small Przepływ danych: edycja i zapis wersji, uruchomienia ręczne, harmonogram oraz zapis historii w SQLite.
+\end{center}
+\vspace{0.6cm}
+\noindent Działanie poszczególnych scenariuszy (odpowiadają strzałkom na głównym diagramie):
+\begin{itemize}
+    \item \textbf{Edycja przepływu}: UI zapisuje definicję przez \texttt{POST /api/Workflow}; API tworzy nową \texttt{WorkflowRevision} w SQLite.
+    \item \textbf{Uruchomienie ręczne}: UI wywołuje \texttt{POST /api/Workflow/\{id\}/run}; API zapisuje \texttt{WorkflowExecution} i wynik w bazie.
+    \item \textbf{Harmonogram}: \texttt{BackgroundService} oblicza \texttt{NextRunAtUtc}, wywołuje API, a zapis wykonania trafia do SQLite.
+    \item \textbf{Historia i wersje}: UI pobiera \texttt{WorkflowRevision} i \texttt{WorkflowExecution}; przywracanie przez \texttt{POST /api/WorkflowRevision/\{id\}/restore}.
+\end{itemize}
+
+\newpage
+\subsection{Warstwy i interakcje}
+Warstwy są rozdzielone, ale współpracują w prostych, powtarzalnych kanałach:
+\begin{itemize}
+    \item UI \(\leftrightarrow\) API: żądania HTTP/JSON (zapis definicji, uruchomienia, harmonogramy, historia); odpowiedzi zawierają stany domenowe mapowane 1:1 na strukturę frontu.
+    \item API \(\leftrightarrow\) SQLite: EF Core tłumaczy encje na zapytania; migracje utrzymują zgodność schematu. Zapis/odczyt jest transakcyjny w obrębie pojedynczych operacji.
+    \item Scheduler \(\leftrightarrow\) API/DB: \texttt{BackgroundService} wywołuje serwisy domenowe tak samo jak klient, dzięki czemu logika nie jest dublowana; po wykonaniu zapisuje \texttt{WorkflowExecution}.
+    \item UI \(\rightarrow\) statyczne zasoby: w produkcji pliki Vite są serwowane z tego samego procesu ASP.NET Core, w deweloperskim z Vite dev-server (HMR), bez wpływu na API.
+\end{itemize}
+\begin{itemize}
+    \item \textbf{Prezentacja}: komponenty React tworzą edytor grafu (React Flow), listę wersji, historię uruchomień i scheduler. Komunikacja z API odbywa się przez wywołania fetch/axios z JSON. Stan lokalny przechowuje graf w tej samej strukturze co backend (węzły, krawędzie, zmienne), co ogranicza mapowanie i ryzyko niespójności.
+    \item \textbf{API}: kontrolery ASP.NET Core (m.in. workflow, workflow revision, schedule, execution) wystawiają kontrakty REST. Serwisy domenowe walidują graf, tworzą migawki, obliczają \texttt{NextRunAtUtc} i uruchamiają przepływy. Repozytoria EF Core mapują encje na SQLite, a DI ASP.NET Core zapewnia wstrzykiwanie kontekstów i serwisów.
+    \item \textbf{Scheduler}: pojedynczy \texttt{BackgroundService} działa w tym samym procesie co API, cyklicznie (ok. 30 s) pobiera aktywne harmonogramy, oblicza najbliższe uruchomienia, wywołuje serwis uruchomień i aktualizuje \texttt{LastRunAtUtc}/\texttt{NextRunAtUtc}. Brak rozproszonego lockingu oznacza, że uruchomienie wielu instancji wymagałoby dodatkowej synchronizacji.
+    \item \textbf{Dane}: EF Core utrzymuje migracje oraz integralność referencyjną. Encje odwzorowują workflow, bloki, połączenia, wersje, harmonogramy, wykonania i zmienne; JSON definicji przepływu przechowywany jest w kolumnach tekstowych, a daty w UTC. Plik bazy (\texttt{flowforge.api/flowforge.db}) umożliwia przenoszenie środowiska jednym plikiem.
+\end{itemize}
+
+\subsection{Projekt UI/UX}
+\noindent Interfejs ma wspierać szybkie modelowanie przepływów bez przeładowania ekranów. Przyjęto lekkie własne style (CSS + zmienne kolorów) zamiast ciężkiego frameworka, co obniża narzut i ułatwia utrzymanie spójności jasnego oraz ciemnego motywu.
+\begin{itemize}
+    \item \textbf{Edytor grafu}: canvas React Flow z walidacją połączeń, blokadą cykli i pilnowaniem unikalnych identyfikatorów bloków. UI odwzorowuje typy portów, dzięki czemu błędne krawędzie są blokowane na etapie rysowania, a zapis nie wymaga dodatkowej korekty.
+    \item \textbf{Wersje}: modal listuje \texttt{WorkflowRevision} wraz z datą i etykietą; każda operacja zapisu tworzy migawkę automatycznie. Użytkownik może przywrócić lub usunąć wersję bez ręcznego eksportu pliku.
+    \item \textbf{Scheduler}: formularz z trybami \textit{Once}, \textit{Interval}, \textit{Daily}; pola formularza włączają się kontekstowo. \texttt{NextRun}/\texttt{LastRun} są pokazywane w czasie lokalnym przeglądarki, a przechowywane w UTC, co ogranicza błędy stref czasowych.
+    \item \textbf{Historia uruchomień}: tabela prezentuje datę, status, wynik i ścieżkę bloków; szczegóły wykonania (wejścia/wyjścia) są uporządkowane chronologicznie, co ułatwia analizę regresji i porównanie z wersją przepływu.
+    \item \textbf{Nawigacja i stan}: panel główny prezentuje listę workflowów; wejście w edytor jest jednoekranowe (brak zakładek), co skraca czas przełączania kontekstu. Stany ładowania i błędów są sygnalizowane lekkimi toasts/alertami bez blokowania ekranu.
+    \item \textbf{Formularze i walidacja}: pola liczbowe (np. interwał) ograniczone zakresem, walidacja klienta od razu blokuje zapis, a komunikaty błędów są zwięzłe (po polsku) i wskazują konkretny parametr.
+    \item \textbf{Dostępność}: czytelny kontrast dla tekstu i krawędzi węzłów, wielkość fontu nie mniejsza niż 14 px; klawisz \texttt{Esc} zamyka modal, \texttt{Tab} obsługuje kolejność pól formularza.
+    \item \textbf{Typografia i kolory}: wykorzystano czystą rodzinę Lato/Noto bez szeryfów, rozmiar bazowy 16 px, zmienne kolorów (akcent zielony) dla zachowania spójności w obu motywach.
+    \item \textbf{Responsywność}: layout zoptymalizowany pod laptopy i monitory biurkowe; kolumny tabel zwijają mniej istotne kolumny na mniejszych szerokościach. Brak wsparcia mobilnego jest świadomym ograniczeniem (docelowo środowisko desktop).
+\end{itemize}
+
+\subsection{Model bazy danych (szkic ERD)}
+\noindent Najważniejsze decyzje projektowe dla warstwy danych:
+\begin{itemize}
+    \item \textbf{SQLite jako magazyn}: pojedynczy plik \texttt{flowforge.db} pozwala przenieść środowisko kopiując plik; brak zależności na serwer bazy. Typy kolumn dobrane do SQLite (INTEGER, TEXT, DATETIME w UTC).
+    \item \textbf{Daty w UTC}: pola \texttt{NextRunAtUtc}, \texttt{LastRunAtUtc}, \texttt{AppliedAt} przechowywane w UTC, a UI prezentuje czas lokalny, co upraszcza harmonogram.
+    \item \textbf{Definicje w JSON}: struktura workflowu (bloki, krawędzie, zmienne) serializowana do JSON w \texttt{WorkflowRevision}; pozwala na ewolucję schematu bez migracji kolumn dla każdej właściwości węzła.
+    \item \textbf{Migracje EF Core}: każda zmiana modelu jest wersjonowana w migracjach, co umożliwia powtarzalne odtwarzanie bazy w dewelopmencie.
+    \item \textbf{Spójność}: relacje 1..* do workflowu; brak cascadowych usunięć dla rewizji i wykonań (chronią historię), usuwanie wymaga jawnej operacji w API.
+    \item \textbf{Indeksy}: klucz główny każdej encji (INTEGER AUTOINCREMENT); indeksy na \texttt{WorkflowId} w tabelach zależnych oraz na \texttt{IsActive} w \texttt{WorkflowRevision} i \texttt{WorkflowSchedule} (szybki wybór bieżącej wersji i aktywnych harmonogramów).
+\end{itemize}
+\begin{figure}[H]
+    \centering
+    \resizebox{0.95\textwidth}{!}{%
+    \begin{tikzpicture}[
+        >=latex,
+        entity/.style={rectangle, draw=gray!70, rounded corners=6pt, minimum width=3.2cm, minimum height=1.05cm, fill=gray!8, align=center, text width=3.2cm},
+        rel/.style={-latex, thick, gray!80}
+    ]
+        % entities
+        \node[entity] (wf) {Workflow};
+        \node[entity, right=3.6cm of wf] (rev) {WorkflowRevision};
+        \node[entity, below=2.2cm of rev] (exec) {WorkflowExecution};
+        \node[entity, below=2.2cm of wf] (sched) {WorkflowSchedule};
+        \node[entity, left=3.6cm of wf] (blk) {Block};
+        \node[entity, below=2.2cm of blk] (conn) {BlockConnection};
+        \node[entity, below=2.2cm of conn] (var) {WorkflowVariable};
+
+        % relations
+        \draw[rel] (rev) -- node[above,sloped]{1..* \, rewizje} (wf);
+        \draw[rel] (exec) -- node[above,sloped]{0..* \, wykonania} (wf);
+        \draw[rel] (sched) -- node[left]{0..* \, harmonogramy} (wf);
+        \draw[rel] (blk) -- node[above,sloped]{1..* \, bloki} (wf);
+        \draw[rel] (conn) -- node[above,sloped]{1..* \, połączenia} (wf);
+        \draw[rel] (var) -- node[left]{0..* \, zmienne} (wf);
+    \end{tikzpicture}}
+    \caption{Szkic ERD kluczowych encji systemu: workflow jest centralną encją, do której należą rewizje, harmonogramy, wykonania, bloki, połączenia i zmienne.}
+\end{figure}
+
+\newpage
+\section{Implementacja}
+
+\subsection{Kluczowe moduły i funkcjonalności}
+\begin{itemize}
+\item \textbf{WorkflowController / WorkflowService}: tworzenie, edycja i uruchamianie workflowów; walidacja grafu (brak cykli, poprawne połączenia); migawka \texttt{WorkflowRevision} przy każdym zapisie; mapowanie DTO \(\leftrightarrow\) encje.
+\item \textbf{WorkflowRevisionController}: listowanie, przywracanie i usuwanie rewizji; jedna aktywna wersja na workflow (\texttt{IsActive=true}).
+\item \textbf{WorkflowScheduleController + WorkflowSchedulerHostedService / SchedulerService}: CRUD harmonogramów, \texttt{NextRunAtUtc} dla trybów \textit{Once}/\textit{Interval}/\textit{Daily}, „Run now”, zapis \texttt{LastRunAtUtc}, stan aktywności.
+\item \textbf{WorkflowExecutionController}: odczyt historii wykonań, wynik, status, ścieżka bloków; dane do tabeli Executions (JSON).
+\item \textbf{BlockController / BlockService}: CRUD bloków, walidacja typu i pozycji na kanwie; format zgodny z React Flow.
+\item \textbf{BlockConnectionController / BlockConnectionService}: tworzenie/usuwanie krawędzi, kontrola typów portów, zapobieganie cyklom.
+\item \textbf{WorkflowVariableController / WorkflowVariableService}: zmienne wejściowe/środowiskowe przypisane do workflowu, serializowane do definicji.
+\item \textbf{SystemBlockController / SystemBlockService}: katalog bloków systemowych (szablony akcji) dostępnych w edytorze.
+\item \textbf{BackgroundService (worker)}: cykliczny worker (~30 s) w procesie API; pobiera aktywne harmonogramy, wywołuje \texttt{WorkflowService.RunScheduledAsync}, zapisuje \texttt{WorkflowExecution}; brak brokera/kolejki.
+\end{itemize}
+
+\newpage
+\subsection{Interfejs użytkownika}
+UI w \texttt{flowforge.ui} (Vite + React + TypeScript + React Flow) zostało zaprojektowane jako lekka, szybka aplikacja przeglądarkowa, której struktura danych pozostaje zgodna z modelem domenowym API. Każdy kluczowy widok opisano poniżej wraz z poglądową ilustracją (placeholder PNG); docelowo można tu wstawić zrzuty ekranu z działającej aplikacji.
+
+\paragraph{Edytor grafu}
+Płótno React Flow odwzorowuje węzły i krawędzie workflowu, blokuje cykle i niepoprawne połączenia typów. Struktura grafu w pamięci jest identyczna ze schematem zwracanym przez API.
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/edytor_grafu.png}\caption{Edytor grafu workflowu (React Flow)}\end{figure}
+
+\paragraph{Modal wersji}
+Modal \emph{Versions} prezentuje listę rewizji, umożliwia przywracanie i usuwanie oraz pokazuje aktywną wersję. Migawka tworzona jest automatycznie przy każdym zapisie definicji.
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/modal_wersji.png}\caption{Widok modala wersji}\end{figure}
+
+\newpage
+\paragraph{Scheduler}
+Formularz trybów \textit{Once}/\textit{Interval}/\textit{Daily} pokazuje tylko relewantne pola; wartości \texttt{NextRun}/\texttt{LastRun} są prezentowane w czasie lokalnym, a logika czasu pozostaje w UTC.
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/formularz_harmonogramu.png}\caption{Formularz harmonogramu}\end{figure}
+
+\paragraph{Historia uruchomień}
+Tabela \emph{Executions} pokazuje status, datę lokalną, wynik i ścieżkę bloków; szczegóły można rozwinąć inline.
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/historia_uruchomienia_workflow.png}\caption{Historia uruchomień workflowu (widok 1)}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/historia_uruchomienia_workflow_2.png}\caption{Historia uruchomień workflowu (widok 2)}\end{figure}
+
+\paragraph{Menu kontekstowe i toolbar}
+Prawy klik na węźle lub krawędzi pozwala na usunięcie/duplikację. Toolbar zawiera akcje zapisu, cofnięcia oraz otwarcia modali Versions i Scheduler.
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/menu_kontekstowe_bloczki.png}\caption{Menu kontekstowe oraz toolbar edytora}\end{figure}
+
+\newpage
+\paragraph{Konfiguracja bloków}
+Panel boczny umożliwia edycję etykiety, parametrów wejścia/wyjścia i pozycji węzła. Zmiany od razu aktualizują stan grafu i definicję zapisywaną w API.
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/menu_kontekstowe_ustawien_bloczka.png}\caption{Panel konfiguracji bloku}\end{figure}
+
+\paragraph{Zarządzanie zmiennymi}
+Widok \emph{Variables} pozwala definiować zmienne wejściowe/środowiskowe z walidacją unikalności i typu; dane są serializowane do \texttt{WorkflowRevision}.
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/menu_kontekstowe_zmienne.png}\caption{Edycja zmiennych przepływu}\end{figure}
+
+\newpage
+\paragraph{Styl i motyw}
+Lekki CSS oparty na zmiennych kolorów (akcent zielony), bez Bootstrap/Material; układ responsywny na laptopy/desktop.
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/motyw_jasny.png}\caption{Stylistyka i motyw interfejsu – motyw jasny}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=\linewidth]{img/motyw_ciemny.png}\caption{Stylistyka i motyw interfejsu – motyw ciemny}\end{figure}
+
+
+\newpage
+\subsection{Obsługa danych i zarządzanie bazą danych}
+Warstwa danych korzysta z Entity Framework Core i SQLite, aby uprościć uruchomienie lokalne i zachować możliwość migracji do docelowej bazy  bez zmiany logiki biznesowej.
+\begin{itemize}
+    \item \textbf{Magazyn}: w dewelopmencie pojedynczy plik \texttt{flowforge.db} (SQLite) w katalogu \texttt{flowforge.api/}. W produkcji możliwa podmiana connection stringa na serwerową bazę relacyjną \cite{sqlite}.
+    \item \textbf{Migracje}: folder \texttt{Migrations/} zawiera zmiany schematu; polecenie \texttt{dotnet ef database update} odtwarza bazę. Migracje są wersjonowane w repozytorium \cite{efcore}.
+    \item \textbf{Model encji}: \texttt{Workflow} z powiązaniami do \texttt{WorkflowRevision}, \texttt{WorkflowSchedule}, \texttt{WorkflowExecution}, \texttt{Block}, \texttt{BlockConnection}, \texttt{WorkflowVariable}. Definicje workflowu są serializowane do JSON w tabeli \texttt{WorkflowRevision}, co pozwala ewoluować strukturę węzłów bez każdorazowych migracji kolumn \cite{efcore}.
+    \item \textbf{Czas}: wszystkie znaczniki (\texttt{AppliedAt}, \texttt{NextRunAtUtc}, \texttt{LastRunAtUtc}) przechowywane w UTC; konwersja do strefy użytkownika wykonywana w UI.
+    \item \textbf{Integralność}: klucze obce zabezpieczają relacje do \texttt{Workflow}; brak kaskadowego usuwania rewizji i wykonań chroni historię. \texttt{IsActive} na \texttt{WorkflowRevision} i \texttt{WorkflowSchedule} utrzymuje status bieżących rekordów.
+    \item \textbf{Indeksy}: na \texttt{WorkflowId} w tabelach zależnych oraz na \texttt{IsActive}; poprawiają odczyt aktywnych wersji i harmonogramów. Unikalność identyfikatorów bloków i krawędzi pilnowana w logice serwisu.
+    \item \textbf{Backup i odtwarzanie}: kopia bazy to skopiowanie pliku \texttt{flowforge.db}. W CI/preview baza jest tworzona od zera z migracji, by uniknąć zależności od binariów.
+    \item \textbf{Walidacja danych}: atrybuty modelu + walidacja serwisów (cykle, typy portów, spójność grafu) przed zapisaniem JSON; \texttt{ApiController} zwraca błędy ModelState do UI.
+    \item \textbf{Seed/fixtures w CI}: pipeline testowy uruchamia migracje na czystej bazie SQLite i opcjonalnie wgrywa minimalne dane startowe (1 workflow, 1 rewizja, brak wykonania), co zapewnia powtarzalność testów bez zależności od pliku \texttt{flowforge.db}.
+\end{itemize}
+
+\newpage
+\paragraph{Mapowanie modeli w warstwie backend}
+\begin{itemize}
+    \item \textbf{Workflow}: agregat główny; serwis waliduje graf (cykle, typy portów) i zapisuje nową \texttt{WorkflowRevision} przy każdej zmianie. Zawiera kolekcje bloków, połączeń, rewizji, harmonogramów, wykonań i zmiennych.
+    \item \textbf{WorkflowRevision}: migawka definicji w \texttt{DefinitionJson}. Tylko jedna rewizja może być aktywna (\texttt{IsActive=true}); przywracanie wersji uaktualnia ten znacznik.
+    \item \textbf{WorkflowSchedule}: harmonogram z trybem Once/Interval/Daily, polami czasu w UTC i flagą \texttt{IsActive}. \texttt{WorkflowSchedulerHostedService} czyta aktywne rekordy i aktualizuje \texttt{NextRunAtUtc}/\texttt{LastRunAtUtc}.
+    \item \textbf{WorkflowExecution}: zapisuje wynik uruchomienia (status, czas start/koniec, rezultat) z referencją do workflowu i opcjonalnie rewizji, co umożliwia audyt względem wersji definicji.
+    \item \textbf{Block} / \textbf{BlockConnection}: reprezentują węzły i krawędzie; pozycje i porty są serializowane do JSON w rewizji, ale encje pozwalają na walidację i CRUD w API. Krawędzie wskazują węzły źródło/cel przez FK.
+    \item \textbf{WorkflowVariable}: zmienne powiązane z workflow; typ i wartość domyślna trafiają do definicji i są odtwarzane w UI.
+    \item \textbf{SystemBlock}: katalog bloków systemowych (szablony akcji) wystawiany przez \texttt{SystemBlockController}; nie ma FK do workflow.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \resizebox{0.95\textwidth}{!}{%
+    \begin{tikzpicture}[
+        >=latex,
+        entity/.style={draw=gray!70, rounded corners=5pt, fill=gray!8, inner sep=4pt, font=\small, align=left},
+        link/.style={-latex, thick, gray!70}
+    ]
+        \node[entity] (wf) {\textbf{Workflow}\\Id (PK)\\Name\\CreatedAtUtc};
+        \node[entity, right=5cm of wf, yshift=1.5cm] (rev) {\textbf{WorkflowRevision}\\Id (PK)\\WorkflowId (FK)\\Label\\IsActive\\AppliedAtUtc\\DefinitionJson};
+        \node[entity, right=5cm of wf, yshift=-2cm] (exec) {\textbf{WorkflowExecution}\\Id (PK)\\WorkflowId (FK)\\RevisionId (FK, NULL)\\Status\\StartedAtUtc\\FinishedAtUtc\\ResultJson};
+        \node[entity, right=7cm of wf, yshift=-5cm] (sched) {\textbf{WorkflowSchedule}\\Id (PK)\\WorkflowId (FK)\\Mode\\IntervalSeconds\\DailyTimeUtc\\NextRunAtUtc\\LastRunAtUtc\\IsActive};
+        \node[entity, left=5cm of wf, yshift=1cm] (blk) {\textbf{Block}\\Id (PK)\\WorkflowId (FK)\\Type\\Label\\PosX\\PosY\\InputsJson\\OutputsJson};
+        \node[entity, left=5cm of wf, yshift=-2cm] (conn) {\textbf{BlockConnection}\\Id (PK)\\WorkflowId (FK)\\SourceBlockId (FK)\\TargetBlockId (FK)\\SourcePort\\TargetPort};
+        \node[entity, left=5cm of wf, yshift=-5cm] (var) {\textbf{WorkflowVariable}\\Id (PK)\\WorkflowId (FK)\\Name\\Type\\DefaultValue};
+
+        \draw[link,shorten >=4pt] (rev.west) -- node[above,pos=0.35]{\small 1..*} (wf.east);
+        \draw[link,shorten >=4pt] (exec.west) -- node[above,pos=0.45]{\small 0..*} ([yshift=-0.2cm]wf.east);
+        \draw[link,shorten >=4pt] (sched.west) -- node[above,pos=0.55]{\small 0..*} ([yshift=-0.8cm]wf.east);
+        \draw[link,shorten >=4pt] (blk.east) -- node[above,pos=0.35]{\small 1..*} (wf.west);
+        \draw[link,shorten >=4pt] (conn.east) -- node[below,pos=0.45]{\small 1..*} ([yshift=-0.2cm]wf.west);
+        \draw[link,shorten >=4pt] (var.east) -- node[below,pos=0.55]{\small 0..*} ([yshift=-0.8cm]wf.west);
+    \end{tikzpicture}}
+    \caption{Graficzny schemat relacji w bazie \texttt{flowforge.db}.}
+\end{figure}
+
+\newpage
+\subsection{Integracja frontendu i backendu}
+Aktualna integracja jest w całości REST/JSON; frontend (Vite + React + TS) wywołuje kontrolery ASP.NET Core wprost, bez warstwy pośredniej.
+\begin{itemize}
+    \item \textbf{Kontrakt}: DTO w UI są 1:1 z modelami API (workflow, revision, schedule, execution, block, connection, variable); jedyna konwersja to daty UTC \(\leftrightarrow\) czas lokalny w UI \cite{aspnetcore}.
+    \item \textbf{Transport}: fetch/axios, \texttt{Content-Type: application/json}. Brak autoryzacji (tryb zaufanego użytkownika). Kody 4xx/5xx mapowane na toasty/alerty; błędy ModelState wyświetlane inline w formularzach.
+    \item \textbf{Spójność wersji}: zapis workflowu zawsze tworzy nową \texttt{WorkflowRevision}; UI po zapisie odczytuje aktywną rewizję, minimalizując rozjazd między stanem grafu w pamięci a danymi w bazie.
+    \item \textbf{Obsługa czasu}: backend przechowuje daty w UTC; UI pokazuje je w czasie lokalnym (scheduler, historia). Wymiana dat w ISO 8601.
+    \item \textbf{Błędy i retry}: brak automatycznego retry; UI prezentuje komunikat i pozwala powtórzyć akcję. Dłuższe operacje (run workflow) mają optymistyczny stan „in progress” do chwili otrzymania statusu \texttt{WorkflowExecution}.
+    \item \textbf{Konfiguracja adresu API}: endpoint jest w zmiennej konfiguracyjnej frontu; w CI testy end-to-end korzystają z lokalnie uruchomionego API.
+    \item \textbf{Ścieżki i paginacja}: listy wersji i wykonań są pobierane stronicowane (\texttt{skip}/\texttt{take}); identyfikator workflowu przekazywany jest w ścieżce (\texttt{/api/Workflow/\{id\}/...}) i przechowywany w stanie routera UI.
+    \item \textbf{Walidacja i kody}: 400 z wypełnionym \texttt{ModelState} (pokazywane per pole), 404 dla zasobów, 409 dla konfliktu wersji (potencjalnie przy wielu instancjach). Błędy domenowe (np. cykl w grafie) są zwracane jako zwięzły komunikat.
+    \item \textbf{Swagger/OpenAPI}: w trybie deweloperskim włączony jest Swagger UI, co pozwala zsynchronizować kontrakty z typami TS i ręcznie wywołać endpointy podczas debugowania.
+    \item \textbf{CORS i proxy dev}: w produkcji statyczne pliki i API mogą być serwowane z jednego hosta (brak CORS); w deweloperskim Vite dev-server działa z proxy na API, więc nie ma potrzeby dodatkowych nagłówków.
+    \item \textbf{Idempotencja zapisu}: każda operacja zapisu tworzy rewizję, ale aktywna wersja jest nadpisywana zgodnie z \texttt{IsActive}; UI po zapisie odczytuje zwróconą rewizję, co ogranicza wyścigi.
+    \item \textbf{Limit rozmiaru i typy}: definicje workflowów to JSON rzędu kilkudziesięciu kB; domyślny limit ASP.NET Core (30 MB) jest zapasem. Typy logiczne i daty są serializowane według domyślnych reguł \texttt{System.Text.Json} (camelCase).
+    \item \textbf{Brak kanałów push}: komunikacja pozostaje żądanie–odpowiedź; długie operacje są odpytywane przez UI (polling wykonania), co upraszcza wdrożenie bez WebSocketów.
+\end{itemize}
+
+\newpage
+\section{Testowanie}
+
+\subsection{Rodzaje testów}
+\begin{itemize}
+    \item \textbf{Jednostkowe (NUnit)} \cite{nunit}: \\
+    – harmonogram i serwisy: \texttt{CalculateNextRun} (Once/Interval/Daily), walidacja cykli, brak bloku Start, ścieżki Switch/Loop/Wait w \texttt{WorkflowExecutionService}; \\
+    – repozytoria (CRUD) na EF Core InMemory \cite{efcore}; \\
+    – kontrolery: kody 200/400/404, zgodność \texttt{id} w ścieżce i body; \\
+    – egzekutory bloków: \texttt{Calculation} (także divide-by-zero), \texttt{If}, \texttt{TextReplace}, \texttt{TextTransform}, \texttt{Parser} (JSON/XML), \texttt{Switch}, \texttt{Default}, \texttt{HttpRequest} na stubie HTTP.
+    \item \textbf{Integracyjne}: brak – planowane przez \texttt{WebApplicationFactory} + SQLite/InMemory do weryfikacji całego pipeline’u HTTP, migracji i modeli DTO.
+    \item \textbf{Manualne}: UI (\texttt{npm run dev}) + Swagger; klikane scenariusze: zapis/rewizje, harmonogram \textit{Once}/\textit{Interval}/\textit{Daily}, uruchomienie ręczne, przywrócenie wersji, historia uruchomień, komunikaty walidacji formularzy.
+\end{itemize}
+
+\subsection{Narzędzia testujące}
+\begin{itemize}
+    \item \textbf{NUnit 4.x} + \textbf{Microsoft.NET.Test.Sdk} + \textbf{NUnit3TestAdapter}: uruchamianie testów w \texttt{flowforge.nunit} \cite{nunit}.
+    \item \textbf{Moq.EntityFrameworkCore} + \textbf{EF Core InMemory}: izolowane testy serwisów i repozytoriów bez realnej bazy \cite{moq}\cite{efcore}.
+    \item \textbf{coverlet.collector}: opcjonalne zbieranie pokrycia \texttt{--collect:\"XPlat Code Coverage\"} \cite{coverlet}.
+    \item \textbf{Swagger UI} i przeglądarka: szybka weryfikacja ręczna kontraktów API \cite{swagger}.
+\end{itemize}
+
+\subsection{Wyniki testów (28.01.2026, lokalnie)}
+\begin{itemize}
+    \item \texttt{dotnet test flowforge.nunit/Flowforge.NUnit.csproj} – 333/333 testów przeszło (lokalnie, 28.01.2026); NU1900 to ostrzeżenie o braku dostępu do indeksu NuGet, nie wpływa na wynik.
+    \item Pokrycie jednostkowe (skrócone podsumowanie): harmonogram (Once/Interval/Daily), walidacja grafu i braków bloków, ścieżki Switch/Loop/Wait, CRUD kontrolerów, repozytoria, egzekutory bloków (Calculation/If/TextReplace/TextTransform/Parser/Switch/Default/HttpRequest). Scenariusze negatywne: brak Start, brak zmiennych, błędne etykiety Switch, divide-by-zero, brak zmiennej źródłowej w Parserze.
+    \item Pokrycia procentowego nie liczono w tej sesji; dla pełnej metryki można uruchomić \texttt{--collect:\"XPlat Code Coverage\"} i przeanalizować raport coverlet.
+\end{itemize}
+
+\subsection{Błędy i sposoby ich naprawy}
+\begin{itemize}
+    \item \textbf{Rozjazdy czasu w schedulerze}: ujednolicono UTC w bazie i konwersję w UI; testy \texttt{CalculateNextRun} na tryby Once/Interval/Daily wykrywają regresje.
+    \item \textbf{Cykle w grafie}: dodano walidację w serwisie i testy, które blokują zapisy z pętlą nieskończoną.
+    \item \textbf{Brak bloków startowych}: testy wykonania sprawdzają, że brak \texttt{Start} nie wywołuje bloków; UI sygnalizuje błąd zapisując definicję.
+    \item \textbf{Krawędzie typu Switch}: testy sprawdzają dopasowanie etykiet po normalizacji; naprawiono przypadki, gdy etykieta zaczynała się od \# lub zmiennej.
+    \item \textbf{Walidacja wejścia w kontrolerach}: atrybuty \texttt{[ApiController]} + testy kontrolerów pilnują zwracania 400/404; naprawiono sytuacje, gdy brakowało sprawdzenia zgodności \texttt{id} w ścieżce z body.
+\end{itemize}
+
+\newpage
+\section{Wyzwania i rozwiązania}
+
+\subsection{Problemy napotkane podczas realizacji}
+\begin{itemize}
+    \item Rozbieżności stref czasowych między UI a API (harmonogram, historia).
+    \item Cykle w grafie i błędne etykiety krawędzi \texttt{Switch}, powodujące złe ścieżki wykonania.
+    \item Brak bloków startowych lub brak zmiennych wejściowych przy uruchomieniu workflowu.
+    \item Brak pełnych testów dla egzekutorów bloków (HTTP, Parser, TextTransform) i schedulera.
+    \item Potencjalne konflikty schematu przy przywracaniu rewizji (usuwanie bloków/krawędzi).
+\end{itemize}
+
+\subsection{Metody rozwiązania}
+\begin{itemize}
+    \item Ujednolicono przechowywanie czasu w UTC w bazie (\texttt{NextRunAtUtc}, \texttt{LastRunAtUtc}, \texttt{ExecutedAt}) i konwersję w UI \cite{aspnetcore}; testy \texttt{CalculateNextRun} w NUnit potwierdzają poprawność.
+    \item Dodano walidację cykli i typów portów w serwisie oraz w UI (React Flow) \cite{reactflow}; testy pokrywają ścieżki Switch/Loop/Wait i etykiety z prefiksem \#.
+    \item Wykonanie bez bloku \texttt{Start} zwraca pustą ścieżkę; UI blokuje zapis, a testy jednostkowe sprawdzają scenariusz braku startu.
+    \item Dopisano testy egzekutorów: \texttt{HttpRequest} (stub HTTP), \texttt{Parser} (JSON/XML), \texttt{TextTransform}, \texttt{Calculation} (divide-by-zero), co ogranicza regresje \cite{nunit}.
+    \item W przywracaniu rewizji usuwane są krawędzie przed blokami, co eliminuje błędy referencyjne w EF Core \cite{efcore}.
+\end{itemize}
+
+\subsection{Optymalizacje i usprawnienia}
+\begin{itemize}
+    \item Minimalny zestaw middleware (CORS, routing, Swagger dev) zmniejsza opóźnienia i złożoność serwera \cite{aspnetcore}.
+    \item Prosty model danych w SQLite z JSON dla definicji workflowu ułatwia migracje i utrzymanie \cite{sqlite}.
+    \item Brak zewnętrznego brokera – harmonogram w \texttt{BackgroundService} redukuje narzut operacyjny; ewentualną skalowalność można dodać przez rozproszony lock w przyszłości.
+    \item UI bez ciężkich frameworków CSS (własne zmienne + React Flow) utrzymuje mały bundle i szybkie HMR \cite{reactflow}\cite{vite}.
+    \item Monorepo Git pozwala na atomowe zmiany API/UI/testów; testy jednostkowe (NUnit) odpalane lokalnie są szybkie (1 s) i nie wymagają zewnętrznych usług \cite{git}\cite{nunit}.
+\end{itemize}
+
+\newpage
+\section{Podsumowanie i wnioski}
+
+\subsection{Ocena realizacji celu}
+Zaprojektowano i zaimplementowano lekki system low-code do budowy i uruchamiania przepływów API. Cel uproszczenia orkiestracji dla pojedynczego użytkownika został osiągnięty: można modelować workflow jako graf (React Flow \cite{reactflow}), wersjonować definicje (EF Core \cite{efcore}), uruchamiać ręcznie lub według prostego harmonogramu (BackgroundService w ASP.NET Core \cite{aspnetcore}) i przeglądać historię wykonań. Prosty stos (ASP.NET Core + Vite/React + SQLite) obniża koszt wdrożenia i utrzymania.
+
+\subsection{Możliwości rozwoju}
+\begin{itemize}
+    \item Dodanie autoryzacji i ról (JWT/OAuth) oraz logowania audytowego.
+    \item Skalowanie harmonogramu w środowisku wieloinstancyjnym (rozproszone locki, kolejka zadań).
+    \item Integracje bloków zewnętrznych (HTTP z retry, kolejki, e-mail/SMS) i testy integracyjne z WebApplicationFactory.
+    \item Eksport/import przepływów, wersjonowanie schematów zmiennych oraz szersze metryki (prometheus).
+\end{itemize}
+
+\subsection{Refleksje}
+Praca potwierdziła, że nawet w małym zespole można uzyskać pełny cykl: modelowanie, wersjonowanie, uruchamianie oraz monitoring, opierając się na bibliotekach open-source (React, React Flow, ASP.NET Core, EF Core, NUnit) \cite{react}\cite{reactflow}\cite{aspnetcore}\cite{efcore}\cite{nunit}. Największym wyzwaniem była spójność czasu (UTC vs lokalny) i walidacja grafu; iteracyjne testy jednostkowe pozwoliły szybko eliminować regresje.
+
+\subsection{Wnioski końcowe}
+Flowforge w obecnym kształcie spełnia wymagania funkcjonalne i niefunkcjonalne zdefiniowane dla pojedynczego użytkownika: szybkie uruchomienie, graficzna edycja przepływów, wersjonowanie, prosty harmonogram, historia wykonań. Ograniczenia (brak autoryzacji, brak rozproszonego schedulera, brak metryk) są świadomymi kompromisami i wyznaczają kierunek dalszego rozwoju. W praktyce projekt pokazuje, że stack .NET + React + SQLite może efektywnie wspierać narzędzia low-code bez ciężkiej infrastruktury, pod warunkiem konsekwentnego testowania (NUnit) \cite{nunit} i trzymania danych czasowych w UTC.
+
+\newpage
+\section*{Bibliografia}
+\begin{thebibliography}{99}
+\bibitem{aspnetcore} Microsoft, \textit{ASP.NET Core documentation}, \url{https://learn.microsoft.com/aspnet/core}, dostęp 2026-01-28.
+\bibitem{efcore} Microsoft, \textit{Entity Framework Core documentation}, \url{https://learn.microsoft.com/ef/core}, dostęp 2026-01-28.
+\bibitem{react} Meta, \textit{React Documentation}, \url{https://react.dev}, dostęp 2026-01-28.
+\bibitem{vite} E. You, \textit{Vite Guide}, \url{https://vitejs.dev/guide}, dostęp 2026-01-28.
+\bibitem{reactflow} React Flow Team, \textit{React Flow Docs}, \url{https://reactflow.dev/docs}, dostęp 2026-01-28.
+\bibitem{sqlite} SQLite Consortium, \textit{SQLite Documentation}, \url{https://www.sqlite.org/docs.html}, dostęp 2026-01-28.
+\bibitem{nunit} NUnit Project, \textit{NUnit Documentation}, \url{https://docs.nunit.org}, dostęp 2026-01-28.
+\bibitem{typescript} Microsoft, \textit{TypeScript Handbook}, \url{https://www.typescriptlang.org/docs/}, dostęp 2026-01-28.
+\bibitem{moq} Moq Project, \textit{Moq Documentation}, \url{https://github.com/moq/moq}, dostęp 2026-01-28.
+\bibitem{coverlet} Coverlet Project, \textit{Coverlet Docs}, \url{https://github.com/coverlet-coverage/coverlet}, dostęp 2026-01-28.
+\bibitem{swagger} SmartBear, \textit{Swagger/OpenAPI Documentation}, \url{https://swagger.io/specification/}, dostęp 2026-01-28.
+\bibitem{git} S. Chacon, B. Straub, \textit{Pro Git}, Apress 2014, dostęp on-line: \url{https://git-scm.com/book/en/v2}, dostęp 2026-01-28.
+\bibitem{n8n} n8n GmbH, \textit{n8n Documentation}, \url{https://docs.n8n.io}, dostęp 2026-01-28.
+\bibitem{nodered} OpenJS Foundation, \textit{Node-RED Documentation}, \url{https://nodered.org/docs/}, dostęp 2026-01-28.
+\bibitem{flowise} FlowiseAI, \textit{Flowise Docs}, \url{https://docs.flowiseai.com}, dostęp 2026-01-28.
+\bibitem{langflow} LangFlow Project, \textit{LangFlow Documentation}, \url{https://docs.langflow.org}, dostęp 2026-01-28.
+\bibitem{camunda} Camunda, \textit{Camunda Modeler Documentation}, \url{https://docs.camunda.io/docs/components/modeler/desktop-modeler/}, dostęp 2026-01-28.
+\bibitem{airflow} Apache Software Foundation, \textit{Apache Airflow Documentation}, \url{https://airflow.apache.org/docs/}, dostęp 2026-01-28.
+\bibitem{prefect} Prefect Technologies, \textit{Prefect Documentation}, \url{https://docs.prefect.io}, dostęp 2026-01-28.
+\end{thebibliography}
+
+\section*{Załączniki}
+\begin{itemize}
+    \item Kod źródłowy: repozytorium \url{https://github.com/kofifi/Flowforge} (monorepo: API, UI, testy).
+\end{itemize}
+
+\end{document}

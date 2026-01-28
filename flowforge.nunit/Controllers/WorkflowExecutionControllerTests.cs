@@ -45,7 +45,7 @@ public class WorkflowExecutionControllerTests
 
         Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
         var ok = (OkObjectResult)result.Result!;
-        Assert.That(ok.Value, Is.EqualTo(executions));
+        Assert.That(ok.Value, Is.InstanceOf<List<Flowforge.DTOs.WorkflowExecutionDto>>());
     }
 
     [Test]
@@ -58,7 +58,8 @@ public class WorkflowExecutionControllerTests
 
         Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
         var ok = (OkObjectResult)result.Result!;
-        Assert.That(ok.Value, Is.EqualTo(execution));
+        var dto = ok.Value as Flowforge.DTOs.WorkflowExecutionDto;
+        Assert.That(dto!.Id, Is.EqualTo(execution.Id));
     }
 
     [Test]

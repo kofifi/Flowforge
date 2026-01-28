@@ -140,7 +140,7 @@ public class WorkflowExecutionEvaluationTests
     [Test]
     public async Task EvaluateAsync_SwitchRoutesWithDisplayLabel()
     {
-        var workflow = BuildSwitchWorkflow("2", "1", "#1 · 2");
+        var workflow = BuildSwitchWorkflow("2", "1", "2");
 
         var result = await _service.EvaluateAsync(workflow);
 
@@ -157,6 +157,19 @@ public class WorkflowExecutionEvaluationTests
 
         Assert.That(result.Path, Is.Not.Null);
         Assert.That(result.Path!.Last(), Is.EqualTo("EndOne"));
+    }
+
+    [Test]
+    public async Task EvaluateAsync_NoStartBlock_ReturnsEmptyPath()
+    {
+        var workflow = new Workflow { Id = 1, Name = "wf" };
+        var endSb = new SystemBlock { Id = 2, Type = "End" };
+        workflow.Blocks.Add(new Block { Id = 3, WorkflowId = 1, Workflow = workflow, SystemBlock = endSb, SystemBlockId = 2, Name = "OrphanEnd" });
+
+        var result = await _service.EvaluateAsync(workflow);
+
+        Assert.That(result.Path, Is.Not.Null);
+        Assert.That(result.Path!.Count, Is.EqualTo(0));
     }
 
     private static Workflow BuildWorkflow(

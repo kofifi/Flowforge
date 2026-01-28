@@ -49,7 +49,9 @@ public class WorkflowRevisionControllerTests
 
         Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
         var ok = result.Result as OkObjectResult;
-        Assert.That(ok!.Value, Is.EqualTo(revision));
+        var dto = ok!.Value as WorkflowRevisionDto;
+        Assert.That(dto, Is.Not.Null);
+        Assert.That(dto!.Id, Is.EqualTo(revision.Id));
     }
 
     [Test]
@@ -124,7 +126,9 @@ public class WorkflowRevisionControllerTests
 
         Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
         var ok = result.Result as OkObjectResult;
-        Assert.That(ok!.Value, Is.EqualTo(revision));
+        var dto = ok!.Value as WorkflowRevisionDto;
+        Assert.That(dto, Is.Not.Null);
+        Assert.That(dto!.Id, Is.EqualTo(revision.Id));
     }
 
     [Test]

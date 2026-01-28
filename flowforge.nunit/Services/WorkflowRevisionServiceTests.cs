@@ -60,6 +60,8 @@ public class WorkflowRevisionServiceTests
         var workflow = await SeedWorkflowAsync();
         var revision = await _service.CreateSnapshotAsync(workflow.Id, "first");
 
+        var conns = _context.BlockConnections.Where(c => c.SourceBlock!.WorkflowId == workflow.Id || c.TargetBlock!.WorkflowId == workflow.Id).ToList();
+        _context.BlockConnections.RemoveRange(conns);
         var blocks = _context.Blocks.Where(b => b.WorkflowId == workflow.Id).ToList();
         _context.Blocks.RemoveRange(blocks);
         await _context.SaveChangesAsync();
