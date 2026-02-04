@@ -7,6 +7,7 @@ type EditorTopbarProps = {
   saving: boolean
   workflowLoading: boolean
   theme: 'light' | 'dark'
+  onBack: () => void
   onToggleTheme: () => void
   onSave: () => void
   onRun: () => void
@@ -19,12 +20,22 @@ function EditorTopbar({
   saving,
   workflowLoading,
   theme,
+  onBack,
   onToggleTheme,
   onSave,
   onRun,
 }: EditorTopbarProps) {
   return (
     <header className="editor-topbar">
+      <button
+        type="button"
+        className="ghost"
+        onClick={onBack}
+        aria-label="Back"
+        style={{ justifySelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+      >
+        <span style={{ fontSize: 16 }}>←</span>
+      </button>
       <div className="editor-title">
         <h1>{workflowName}</h1>
         <p className="subtitle">{subtitle}</p>

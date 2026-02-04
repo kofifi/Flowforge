@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { requestJson, withJson } from '../../api/http'
+import { requestJson } from '../../api/http'
 import type { WorkflowRevisionDto } from '../../api/types'
 
 type RevisionPanelProps = {

@@ -2083,29 +2083,18 @@ function WorkflowEditorInner() {
       ) : (
           <div className="editor-body">
           <Suspense fallback={<div className="editor-topbar" />}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', alignItems: 'center', gap: 12 }}>
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => navigate('/')}
-                style={{ justifySelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                aria-label="Back"
-              >
-                <span style={{ fontSize: 16 }}>←</span>
-              </button>
-              <EditorTopbar
-                workflowName={workflow?.name ?? editorCopy.untitled}
-                subtitle={editorCopy.subtitle}
-                saveStatus={saveStatus}
-                saving={saving}
-                workflowLoading={workflowLoading}
-                theme={theme}
-                onToggleTheme={toggleTheme}
-                onSave={saveWorkflow}
-                onRun={openRunPanel}
-                onBack={() => navigate('/')}
-              />
-            </div>
+            <EditorTopbar
+              workflowName={workflow?.name ?? editorCopy.untitled}
+              subtitle={editorCopy.subtitle}
+              saveStatus={saveStatus}
+              saving={saving}
+              workflowLoading={workflowLoading}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              onSave={saveWorkflow}
+              onRun={openRunPanel}
+              onBack={() => navigate('/')}
+            />
           </Suspense>
           <div className="editor-main">
             <Suspense fallback={<div className="editor-sidebar" />}>
