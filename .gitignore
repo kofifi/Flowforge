@@ -1,6 +1,18 @@
-bin/
-obj/
-/packages/
+**/bin/
+**/obj/
+**/packages/
+**/.idea/
+**/.vscode/
+**/.DS_Store
+**/*.user
+**/*.suo
+**/*.DotSettings.user
 riderModule.iml
 /_ReSharper.Caches/
-flowforge.ui/.idea/*
+
+# Frontend
+flowforge.ui/node_modules/
+flowforge.ui/dist/
+
+# Backend
+flowforge.api/flowforge.db*
