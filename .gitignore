@@ -7,12 +7,29 @@
 **/*.user
 **/*.suo
 **/*.DotSettings.user
+.vs/
+TestResult*/
+*.coverage
+*.coveragejson
 riderModule.iml
 /_ReSharper.Caches/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+.npm/
+.env
+.env.*
 
 # Frontend
 flowforge.ui/node_modules/
 flowforge.ui/dist/
+flowforge.ui/.eslintcache
+flowforge.ui/.turbo
+flowforge.ui/.parcel-cache
+flowforge.ui/playwright-report/
+flowforge.ui/test-results/
+flowforge.ui/tests/e2e/artifacts/
 
 # Backend
 flowforge.api/flowforge.db*

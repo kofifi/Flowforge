@@ -8,6 +8,7 @@ type IconName =
   | 'rows'
   | 'rows-wide'
   | 'gear'
+  | 'chevron-down'
 
 type IconProps = {
   name: IconName

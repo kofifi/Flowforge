@@ -55,6 +55,39 @@ function normalizeDataMap(record: Record<string, string> | null | undefined) {
   )
 }
 
+function looksLikeXml(value: string) {
+  const trimmed = value.trim()
+  return trimmed.startsWith('<') && trimmed.endsWith('>')
+}
+
+function prettyXml(raw: string) {
+  const normalized = raw.replace(/>\\s+</g, '><').trim()
+  const tokens = normalized.split(/(?=<)/g).map((t) => t.trim()).filter(Boolean)
+  let indent = 0
+  const lines: string[] = []
+  tokens.forEach((token) => {
+    const isClosing = token.startsWith('</')
+    if (isClosing) indent = Math.max(indent - 2, 0)
+    lines.push(`${' '.repeat(indent)}${token}`)
+    const opens = token.startsWith('<') && !token.startsWith('</') && !token.endsWith('/>')
+    if (opens) indent += 2
+  })
+  return lines.join('\n')
+}
+
+function formatValue(value: unknown) {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') {
+    if (looksLikeXml(value)) return prettyXml(value)
+    return value
+  }
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+
 export default function ExecutionDetailsPage() {
   const { id } = useParams()
   const executionId = Number(id)
@@ -122,6 +155,11 @@ export default function ExecutionDetailsPage() {
       })),
     [actionsList, pathList],
   )
+
+  const outputEntries = useMemo(() => {
+    const map = normalizeDataMap(execution?.resultData)
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
+  }, [execution?.resultData])
 
   return (
     <div className="app-shell">
@@ -231,11 +269,29 @@ export default function ExecutionDetailsPage() {
                   {language === 'pl' ? 'Zmienne wyjściowe wygenerowane przez workflow.' : 'Output variables produced by the workflow.'}
                 </p>
               </div>
-              <div className="drawer-empty">
-                <pre className="meta">
-                  {JSON.stringify(normalizeDataMap(execution?.resultData), null, 2)}
-                </pre>
-              </div>
+              {outputEntries.length === 0 ? (
+                <div className="state">
+                  {language === 'pl' ? 'Brak wyników.' : 'No results.'}
+                </div>
+              ) : (
+                <div className="result-list">
+                  {outputEntries.map(([key, value]) => {
+                    const formatted = formatValue(value)
+                    const formattedStr = typeof formatted === 'string' ? formatted : String(formatted)
+                    const isLong = formattedStr.length > 280
+                    const preview = isLong ? `${formattedStr.slice(0, 280)}…` : formattedStr
+                    return (
+                      <details key={key} className="result-card" open={!isLong}>
+                        <summary className="result-card__top">
+                          <span className="label">{key}</span>
+                          {isLong && <span className="pill">{language === 'pl' ? 'rozwiń' : 'expand'}</span>}
+                        </summary>
+                        <pre className="meta">{isLong ? formattedStr : preview}</pre>
+                      </details>
+                    )
+                  })}
+                </div>
+              )}
             </section>
 
             <section className="panel">

@@ -43,6 +43,8 @@ export default function SchedulerPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState<ScheduleForm | null>(null)
   const [form, setForm] = useState<ScheduleForm>({
     name: '',
     description: '',
@@ -149,6 +151,69 @@ export default function SchedulerPage() {
     }
   }
 
+  function toInputDate(value?: string | null) {
+    if (!value) return ''
+    try {
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) return ''
+      return date.toISOString().slice(0, 16)
+    } catch {
+      return ''
+    }
+  }
+
+  function toIsoUtc(input: string) {
+    if (!input) return new Date().toISOString()
+    const date = new Date(input)
+    return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
+  }
+
+  function startEdit(schedule: WorkflowScheduleDto) {
+    setEditingId(schedule.id)
+    setEditForm({
+      name: schedule.name,
+      description: schedule.description ?? '',
+      workflowId: schedule.workflowId,
+      triggerType: (schedule.triggerType as ScheduleForm['triggerType']) ?? 'Interval',
+      startAt: toInputDate(schedule.startAtUtc),
+      intervalMinutes: schedule.intervalMinutes ?? 60,
+      isActive: schedule.isActive,
+    })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditForm(null)
+  }
+
+  async function saveEdit(event: FormEvent) {
+    event.preventDefault()
+    if (editingId === null || !editForm || saving || !editForm.workflowId || !editForm.name.trim()) return
+    setSaving(true)
+    setError(null)
+    try {
+      const payload = {
+        workflowId: editForm.workflowId,
+        name: editForm.name.trim(),
+        description: editForm.description.trim() || null,
+        triggerType: editForm.triggerType,
+        startAtUtc: toIsoUtc(editForm.startAt),
+        intervalMinutes: editForm.triggerType === 'Interval' ? editForm.intervalMinutes : null,
+        isActive: editForm.isActive,
+      }
+      const updated = await requestJson<WorkflowScheduleDto>(
+        `/api/WorkflowSchedule/${editingId}`,
+        withJson(payload, { method: 'PUT' }),
+      )
+      setSchedules((current) => current.map((item) => (item.id === editingId ? updated : item)))
+      cancelEdit()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Nie udało się zaktualizować harmonogramu')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -218,41 +283,47 @@ export default function SchedulerPage() {
                 />
               </label>
 
-              <label className="filter-group">
+              <label className="filter-group custom-select">
                 <span>Workflow</span>
-                <select
-                  value={form.workflowId ?? ''}
-                  onChange={(event) =>
-                    setForm((curr) => ({
-                      ...curr,
-                      workflowId: Number(event.target.value) || null,
-                    }))
-                  }
-                >
-                  <option value="">Wybierz...</option>
-                  {workflows.map((wf) => (
-                    <option key={wf.id} value={wf.id}>
-                      {wf.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="select-shell">
+                  <select
+                    value={form.workflowId ?? ''}
+                    onChange={(event) =>
+                      setForm((curr) => ({
+                        ...curr,
+                        workflowId: Number(event.target.value) || null,
+                      }))
+                    }
+                  >
+                    <option value="">Wybierz...</option>
+                    {workflows.map((wf) => (
+                      <option key={wf.id} value={wf.id}>
+                        {wf.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Icon name="chevron-down" size={16} />
+                </div>
               </label>
 
-              <label className="filter-group">
+              <label className="filter-group custom-select">
                 <span>Typ</span>
-                <select
-                  value={form.triggerType}
-                  onChange={(event) =>
-                    setForm((curr) => ({
-                      ...curr,
-                      triggerType: event.target.value as ScheduleForm['triggerType'],
-                    }))
-                  }
-                >
-                  <option value="Interval">Interval</option>
-                  <option value="Once">Once</option>
-                  <option value="Daily">Daily (godzina)</option>
-                </select>
+                <div className="select-shell">
+                  <select
+                    value={form.triggerType}
+                    onChange={(event) =>
+                      setForm((curr) => ({
+                        ...curr,
+                        triggerType: event.target.value as ScheduleForm['triggerType'],
+                      }))
+                    }
+                  >
+                    <option value="Interval">Interval</option>
+                    <option value="Once">Once</option>
+                    <option value="Daily">Daily (godzina)</option>
+                  </select>
+                  <Icon name="chevron-down" size={16} />
+                </div>
               </label>
 
               <label className="filter-group" style={{ opacity: form.triggerType === 'Once' || form.triggerType === 'Daily' ? 0.4 : 1, pointerEvents: form.triggerType === 'Once' || form.triggerType === 'Daily' ? 'none' : 'auto' }}>
@@ -322,49 +393,192 @@ export default function SchedulerPage() {
           </div>
           {statusLabel && <p className="muted">{statusLabel}</p>}
           {!statusLabel && (
-            <div className="execution-grid">
+            <div className="execution-grid scheduler-grid">
               {schedules.map((sched) => (
                 <div
                   key={sched.id}
-                  className="workflow-card"
+                  className="workflow-card scheduler-card"
                   style={{
                     alignItems: 'flex-start',
                     borderLeft: sched.isActive ? '4px solid #2f9e68' : '4px solid var(--border-soft)',
                     boxShadow: '0 12px 26px rgba(0,0,0,0.08)',
+                    position: 'relative',
                   }}
                 >
-                  <div style={{ display: 'grid', gap: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span className="pill" style={{ background: 'rgba(47,158,104,0.12)', color: '#2f9e68' }}>
-                        Harmonogram
-                      </span>
-                      <span className="pill muted">{sched.triggerType}</span>
-                      {sched.intervalMinutes ? (
-                        <span className="pill muted">{sched.intervalMinutes} min</span>
-                      ) : null}
-                      {!sched.isActive && <span className="pill muted">Inactive</span>}
-                    </div>
-                    <h3 style={{ margin: '2px 0 0' }}>{sched.name}</h3>
-                    <p className="meta" style={{ margin: 0 }}>Workflow #{sched.workflowId}</p>
-                    <p className="muted" style={{ margin: '4px 0' }}>
-                      Następne: {formatDate(sched.nextRunAtUtc) || '—'}
-                    </p>
-                    <p className="muted" style={{ margin: '0 0 4px' }}>
-                      Ostatnie: {formatDate(sched.lastRunAtUtc) || '—'}
-                    </p>
+                  <div
+                    className="card-actions"
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      justifyContent: 'flex-end',
+                    }}
+                  >
+                    {editingId === sched.id && editForm ? (
+                      <button type="button" className="ghost" onClick={cancelEdit}>
+                        Anuluj
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="ghost" onClick={() => runScheduleNow(sched.id)}>
+                          Uruchom teraz
+                        </button>
+                        <button type="button" className="ghost" onClick={() => startEdit(sched)}>
+                          Edytuj
+                        </button>
+                        <button type="button" className="ghost danger" onClick={() => deleteSchedule(sched.id)}>
+                          Usuń
+                        </button>
+                      </>
+                    )}
                   </div>
-                  <div className="card-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      className="ghost"
-                      onClick={() => runScheduleNow(sched.id)}
-                    >
-                      Uruchom teraz
-                    </button>
-                    <button type="button" className="ghost danger" onClick={() => deleteSchedule(sched.id)}>
-                      Usuń
-                    </button>
-                  </div>
+                  {editingId === sched.id && editForm ? (
+                    <form style={{ display: 'grid', gap: 10, width: '100%' }} onSubmit={saveEdit}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span className="pill" style={{ background: 'rgba(47,158,104,0.12)', color: '#2f9e68' }}>
+                          Edycja
+                        </span>
+                        <span className="pill muted">ID {sched.id}</span>
+                      </div>
+                      <label className="filter-group">
+                        <span>Nazwa</span>
+                        <input
+                          value={editForm.name}
+                          onChange={(e) => setEditForm((curr) => curr && ({ ...curr, name: e.target.value }))}
+                          required
+                        />
+                      </label>
+                      <label className="filter-group custom-select">
+                        <span>Workflow</span>
+                        <div className="select-shell">
+                          <select
+                            value={editForm.workflowId ?? ''}
+                            onChange={(e) =>
+                              setEditForm((curr) => curr && ({
+                                ...curr,
+                                workflowId: Number(e.target.value) || null,
+                              }))
+                            }
+                          >
+                            <option value="">Wybierz...</option>
+                            {workflows.map((wf) => (
+                              <option key={wf.id} value={wf.id}>
+                                {wf.name}
+                              </option>
+                            ))}
+                          </select>
+                          <Icon name="chevron-down" size={16} />
+                        </div>
+                      </label>
+                      <label className="filter-group custom-select">
+                        <span>Typ</span>
+                        <div className="select-shell">
+                          <select
+                            value={editForm.triggerType}
+                            onChange={(e) =>
+                              setEditForm((curr) => curr && ({
+                                ...curr,
+                                triggerType: e.target.value as ScheduleForm['triggerType'],
+                              }))
+                            }
+                          >
+                            <option value="Interval">Interval</option>
+                            <option value="Once">Once</option>
+                            <option value="Daily">Daily (godzina)</option>
+                          </select>
+                          <Icon name="chevron-down" size={16} />
+                        </div>
+                      </label>
+                      <label className="filter-group" style={{ opacity: editForm.triggerType === 'Once' || editForm.triggerType === 'Daily' ? 0.4 : 1, pointerEvents: editForm.triggerType === 'Once' || editForm.triggerType === 'Daily' ? 'none' : 'auto' }}>
+                        <span>Interwał (min)</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={editForm.intervalMinutes}
+                          onChange={(e) =>
+                            setEditForm((curr) => curr && ({
+                              ...curr,
+                              intervalMinutes: Number(e.target.value) || 1,
+                            }))
+                          }
+                          disabled={editForm.triggerType === 'Once' || editForm.triggerType === 'Daily'}
+                        />
+                      </label>
+                      <label className="filter-group">
+                        <span>Start (UTC)</span>
+                        <input
+                          type="datetime-local"
+                          value={editForm.startAt}
+                          onChange={(e) =>
+                            setEditForm((curr) => curr && ({
+                              ...curr,
+                              startAt: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="filter-group">
+                        <span>Opis</span>
+                        <input
+                          type="text"
+                          value={editForm.description}
+                          onChange={(e) =>
+                            setEditForm((curr) => curr && ({
+                              ...curr,
+                              description: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="filter-group" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span>Aktywny</span>
+                        <span className="toggle">
+                          <input
+                            type="checkbox"
+                            checked={editForm.isActive}
+                            onChange={(e) =>
+                              setEditForm((curr) => curr && ({
+                                ...curr,
+                                isActive: e.target.checked,
+                              }))
+                            }
+                          />
+                          <span className="slider" />
+                        </span>
+                      </label>
+                      <div className="card-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                        <button type="submit" disabled={saving || !editForm.workflowId || !editForm.name.trim()}>
+                          {saving ? 'Zapisywanie...' : 'Zapisz'}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span className="pill" style={{ background: 'rgba(47,158,104,0.12)', color: '#2f9e68' }}>
+                            Harmonogram
+                          </span>
+                          <span className="pill muted">{sched.triggerType}</span>
+                          {sched.intervalMinutes ? (
+                            <span className="pill muted">{sched.intervalMinutes} min</span>
+                          ) : null}
+                          {!sched.isActive && <span className="pill muted">Inactive</span>}
+                        </div>
+                        <h3 style={{ margin: '2px 0 0' }}>{sched.name}</h3>
+                        <p className="meta" style={{ margin: 0 }}>Workflow #{sched.workflowId}</p>
+                        <p className="muted" style={{ margin: '4px 0' }}>
+                          Następne: {formatDate(sched.nextRunAtUtc) || '—'}
+                        </p>
+                        <p className="muted" style={{ margin: '0 0 4px' }}>
+                          Ostatnie: {formatDate(sched.lastRunAtUtc) || '—'}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

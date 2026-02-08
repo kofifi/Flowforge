@@ -1,6 +1,7 @@
 using Flowforge.Models;
 using System.Collections.Generic;
 using System;
+using System.Text;
 
 namespace Flowforge.Services;
 
@@ -30,21 +31,26 @@ public class TextTransformBlockExecutor : IBlockExecutor
                 var cfg = System.Text.Json.JsonSerializer.Deserialize<Config>(block.JsonConfig);
                 if (cfg != null)
                 {
+                    var literalInput = cfg.Input ?? string.Empty;
+
                     var opString = (cfg.Operation ?? string.Empty).Trim();
                     if (!string.IsNullOrWhiteSpace(opString) && Enum.TryParse<Operation>(opString, true, out var parsedOp))
                     {
                         operation = parsedOp;
                     }
-                    resultVariable = string.IsNullOrWhiteSpace(cfg.ResultVariable) ? "result" : cfg.ResultVariable!;
+                    resultVariable = string.IsNullOrWhiteSpace(cfg.ResultVariable)
+                        ? "result"
+                        : cfg.ResultVariable!;
 
                     if (!string.IsNullOrWhiteSpace(cfg.InputVariable))
                     {
                         var key = cfg.InputVariable!.Trim().TrimStart('$');
-                        input = variables.GetValueOrDefault(key, string.Empty);
+                        var fromVariables = variables.GetValueOrDefault(key, string.Empty);
+                        input = string.IsNullOrEmpty(fromVariables) ? literalInput : fromVariables;
                     }
-                    else if (cfg.Input != null)
+                    else
                     {
-                        input = cfg.Input;
+                        input = literalInput;
                     }
                 }
             }
@@ -58,12 +64,37 @@ public class TextTransformBlockExecutor : IBlockExecutor
         {
             Operation.Lower => input.ToLowerInvariant(),
             Operation.Upper => input.ToUpperInvariant(),
-            _ => input.Trim()
+            _ => RemoveAllWhitespace(input)
         };
 
-        variables[resultVariable] = output;
+        var resultKey = resultVariable.Trim().TrimStart('$');
+        if (string.IsNullOrWhiteSpace(resultKey))
+        {
+            resultKey = "result";
+        }
 
-        var description = $"TextTransform {operation} -> {resultVariable}";
+        variables[resultKey] = output;
+
+        var description = $"TextTransform {operation} -> {resultKey}";
         return new BlockExecutionResult(description, false);
+    }
+
+    private static string RemoveAllWhitespace(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        // Usuń wszystkie znaki białe (spacja, tab, CR/LF itd.).
+        var builder = new StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            if (!char.IsWhiteSpace(ch))
+            {
+                builder.Append(ch);
+            }
+        }
+        return builder.ToString();
     }
 }

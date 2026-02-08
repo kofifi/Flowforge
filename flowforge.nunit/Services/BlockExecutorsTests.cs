@@ -113,6 +113,41 @@ public class BlockExecutorsTests
     }
 
     [Test]
+    public void TextTransform_TrimStoresResultWithoutDollar()
+    {
+        var block = new Block
+        {
+            SystemBlock = new SystemBlock { Type = "TextTransform" },
+            JsonConfig = """{ "Input": "  hello  ", "Operation": "Trim", "ResultVariable": "$trimmed" }"""
+        };
+        var vars = new Dictionary<string, string>();
+        var executor = new TextTransformBlockExecutor();
+
+        var result = executor.Execute(block, vars);
+
+        Assert.That(result.Error, Is.False);
+        Assert.That(vars.ContainsKey("trimmed"), Is.True);
+        Assert.That(vars["trimmed"], Is.EqualTo("hello"));
+    }
+
+    [Test]
+    public void TextTransform_TrimLiteralWhitespaceIsRemoved()
+    {
+        var block = new Block
+        {
+            SystemBlock = new SystemBlock { Type = "TextTransform" },
+            JsonConfig = """{ "Input": "   Ala   ma   kota   ", "Operation": "Trim", "ResultVariable": "out" }"""
+        };
+        var vars = new Dictionary<string, string>();
+        var executor = new TextTransformBlockExecutor();
+
+        var result = executor.Execute(block, vars);
+
+        Assert.That(result.Error, Is.False);
+        Assert.That(vars["out"], Is.EqualTo("Alamakota"));
+    }
+
+    [Test]
     public void Parser_ExtractsJsonPath()
     {
         var block = new Block

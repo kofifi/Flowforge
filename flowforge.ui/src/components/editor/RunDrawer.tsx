@@ -34,14 +34,59 @@ type RunDrawerProps = {
   onClose: () => void
 }
 
+function parseJsonString(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return value
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return value
+  }
+}
+
+function looksLikeXml(value: string) {
+  const trimmed = value.trim()
+  return trimmed.startsWith('<') && trimmed.endsWith('>')
+}
+
+function prettyXml(raw: string) {
+  const normalized = raw.replace(/>\\s+</g, '><').trim()
+  const tokens = normalized.split(/(?=<)/g).map((t) => t.trim()).filter(Boolean)
+  let indent = 0
+  const lines: string[] = []
+  tokens.forEach((token) => {
+    const isClosing = token.startsWith('</')
+    if (isClosing) indent = Math.max(indent - 2, 0)
+    lines.push(`${' '.repeat(indent)}${token}`)
+    const opens = token.startsWith('<') && !token.startsWith('</') && !token.endsWith('/>')
+    if (opens) indent += 2
+  })
+  return lines.join('\n')
+}
+
 function normalizeDataMap(data?: Record<string, unknown> | null) {
   if (!data || typeof data !== 'object') return {}
   return Object.fromEntries(
-    Object.entries(data).map(([key, value]) => [
-      key,
-      typeof value === 'string' ? value : JSON.stringify(value, null, 2),
-    ]),
+    Object.entries(data).map(([key, value]) => {
+      if (typeof value === 'string') {
+        return [key, parseJsonString(value)]
+      }
+      return [key, value]
+    }),
   )
+}
+
+function formatValue(value: unknown) {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') {
+    if (looksLikeXml(value)) return prettyXml(value)
+    return value
+  }
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
 }
 
 function formatMs(ms: number) {
@@ -75,6 +120,29 @@ const RunDrawer = ({
 }: RunDrawerProps) => {
   const [snipExpanded, setSnipExpanded] = useState(showRunSnippet)
   const [inputsExpanded, setInputsExpanded] = useState(showRunInputs)
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+        return
+      }
+    } catch {
+      // fallback below
+    }
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    try {
+      document.execCommand('copy')
+    } finally {
+      document.body.removeChild(textarea)
+    }
+  }
 
   return (
     <>
@@ -195,7 +263,7 @@ const RunDrawer = ({
           </div>
           {inputsExpanded && (
             <form
-              className="drawer-form"
+              className="drawer-form run-inputs"
               onSubmit={(event) => {
                 event.preventDefault()
                 onRun()
@@ -281,7 +349,55 @@ const RunDrawer = ({
             </div>
             <div className="drawer-empty">
               <p className="label">Output variables</p>
-              <pre className="meta">{JSON.stringify(normalizeDataMap(runResult.resultData), null, 2)}</pre>
+              {Object.keys(runResult.resultData ?? {}).length === 0 ? (
+                <p className="muted">No outputs.</p>
+              ) : (
+                <div className="result-grid">
+                  {Object.entries(normalizeDataMap(runResult.resultData))
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([key, val]) => {
+                      const formatted = formatValue(val)
+                      const formattedStr = typeof formatted === 'string' ? formatted : String(formatted)
+                      const isLong = formattedStr.length > 280
+                      const preview = isLong ? `${formattedStr.slice(0, 280)}…` : formattedStr
+                      const showFull = expandedKeys.has(key)
+                      return (
+                        <div key={key} className="result-card">
+                          <div className="result-card__top">
+                            <span className="label">{key}</span>
+                            <div className="result-card__actions">
+                              {isLong && (
+                                <button
+                                  type="button"
+                                  className="ghost small"
+                                  onClick={() =>
+                                    setExpandedKeys((current) => {
+                                      const next = new Set(current)
+                                      if (next.has(key)) next.delete(key)
+                                      else next.add(key)
+                                      return next
+                                    })
+                                  }
+                                >
+                                  {showFull ? 'Collapse' : 'Expand'}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="ghost small"
+                                onClick={() => copyToClipboard(formattedStr)}
+                                aria-label={`Copy value of ${key}`}
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          </div>
+                          <pre className="meta">{showFull || !isLong ? formattedStr : preview}</pre>
+                        </div>
+                      )
+                    })}
+                </div>
+              )}
             </div>
           </section>
         )}

@@ -279,6 +279,34 @@ body.editor-wide .editor-body {
   min-width: 0;
 }
 
+.custom-select .select-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.custom-select select {
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  padding: 10px 12px;
+  padding-right: 36px;
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-color);
+}
+
+.custom-select .select-shell svg,
+.custom-select .select-shell [data-icon],
+.custom-select .select-shell use {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
 .filter-group span {
   font-size: 0.9rem;
 }
@@ -492,6 +520,59 @@ body.editor-wide .editor-body {
   font-size: 0.85rem;
 }
 
+.result-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.result-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.result-card {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 6px 18px rgba(24, 30, 28, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.result-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.result-card__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.result-card .label {
+  font-weight: 700;
+  color: var(--primary-strong);
+  margin: 0;
+}
+
+.result-card pre.meta {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--surface-contrast);
+  border: 1px dashed var(--border-soft);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+}
+
 .flow-lane {
   display: flex;
   gap: 1rem;
@@ -664,6 +745,16 @@ body.editor-wide .editor-body {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.scheduler-grid {
+  grid-template-columns: 1fr;
+}
+
+.scheduler-card {
+  flex-direction: column;
+  align-items: stretch;
+  padding-top: 2.75rem; /* więcej miejsca na akcje w prawym górnym rogu */
+}
+
 .workflow-card {
   display: flex;
   align-items: center;
@@ -713,6 +804,12 @@ body.editor-wide .editor-body {
   background: transparent;
   color: var(--muted);
   border-color: rgba(33, 33, 28, 0.2);
+}
+
+.ghost.small {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.85rem;
+  border-radius: 10px;
 }
 
 button.tiny {
@@ -1523,6 +1620,22 @@ button.tiny {
 .drawer-form {
   display: grid;
   gap: 0.75rem;
+}
+
+.drawer-form.run-inputs {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+
+.drawer-form.run-inputs .combo {
+  background: var(--surface-soft);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+}
+
+.drawer-form.run-inputs .drawer-label {
+  margin-bottom: 4px;
 }
 
 .combo {

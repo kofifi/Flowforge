@@ -1,0 +1,187 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{lmodern}
+\usepackage{tikz}
+\usetikzlibrary{backgrounds,calc}
+
+\usetheme{Madrid}
+\useoutertheme{infolines}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{itemize items}[circle]
+\setbeamersize{text margin left=8mm,text margin right=8mm}
+\setbeamercolor{frametitle}{bg=}
+\setbeamertemplate{frametitle}{\vspace{2pt}\begin{flushleft}\insertframetitle\end{flushleft}\vspace{-4pt}}
+
+\definecolor{ffBase}{RGB}{248,249,250}
+\definecolor{ffGreenSoft}{RGB}{214,232,222}
+\definecolor{ffGreenStrong}{RGB}{47,158,104}
+\definecolor{ffGraphite}{RGB}{32,42,40}
+\definecolor{ffBlueGlow}{RGB}{86,120,205}
+
+\newcommand{\backgroundcanvas}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \path [fill=ffBase!80!white,opacity=0.9]
+      (current page.south west) rectangle (current page.north east);
+    \fill [ffGreenSoft,opacity=0.40] ($(current page.north east)+(-1.1,-0.9)$) circle (3.0);
+    \fill [ffBlueGlow!28,opacity=0.32] ($(current page.south west)+(0.8,0.6)$) circle (2.6);
+  \end{tikzpicture}%
+}
+\setbeamertemplate{background}{\backgroundcanvas}
+
+\graphicspath{{light/}}
+\title{Flowforge UI \textendash{} system low-code do budowy interfejsów API}
+\subtitle{Tryb jasny}
+\author{Konrad Firlej \\ Promotor: dr inż. Krzysztof Augustynek}
+\date{Luty 2026}
+\titlegraphic{\vspace{-6mm}\includegraphics[height=1.4cm]{Uniwersytet_Bielsko-Bialski_-_logo.jpg}}
+
+\newcommand{\shot}[2]{%
+  \begin{center}
+    \includegraphics[height=0.7\textheight,keepaspectratio]{#1}\\[4pt]
+    \parbox{0.9\linewidth}{\centering\small #2}
+  \end{center}
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Agenda}
+  \begin{itemize}
+    \item Widoki główne (Workflows)
+    \item Akcje na workflow (More \textrightarrow{} Versions/Rename/Import)
+    \item Konfiguracja bloków (If, Switch, Calculation, HTTP itp.)
+    \item Edytor workflow (canvas, palette, variables)
+    \item Run drawer (open, result)
+    \item Widoki główne (Executions)
+    \item Detale wykonania (Execution details)
+    \item Widoki główne (Scheduler)
+    \item Harmonogram (create/edit)
+    \item Widoki główne (Blocks)
+  \end{itemize}
+\end{frame}
+
+% --- Widoki główne (Workflows) ---
+\begin{frame}{Workflows}
+  \shot{workflows.png}{Lista projektów workflow}
+\end{frame}
+
+% --- Akcje workflow ---
+\begin{frame}{Workflow actions \textendash{} More}
+  \shot{workflows-actions-01b-more-open.png}{Menu akcji \textquotedbl More\textquotedbl}
+\end{frame}
+
+\begin{frame}{Workflow actions \textendash{} Versions}
+  \shot{workflows-actions-02-versions.png}{Lista wersji workflow}
+\end{frame}
+
+\begin{frame}{Workflow actions \textendash{} Rename}
+  \shot{workflows-actions-03-rename-form.png}{Formularz zmiany nazwy}
+\end{frame}
+
+\begin{frame}{Workflow actions \textendash{} Import}
+  \shot{workflows-actions-04-import.png}{Import workflow z pliku}
+\end{frame}
+
+% --- Konfiguracja bloków ---
+\begin{frame}{If block}
+  \shot{workflow-editor-config-if.png}{Konfiguracja bloku If}
+\end{frame}
+
+\begin{frame}{Switch block}
+  \shot{workflow-editor-config-switch.png}{Konfiguracja bloku Switch}
+\end{frame}
+
+\begin{frame}{Calculation block}
+  \shot{workflow-editor-config-calculation.png}{Konfiguracja bloku Calculation}
+\end{frame}
+
+\begin{frame}{Text Transform block}
+  \shot{workflow-editor-config-texttransform.png}{Konfiguracja bloku Text Transform}
+\end{frame}
+
+\begin{frame}{Text Replace block}
+  \shot{workflow-editor-config-textreplace.png}{Konfiguracja bloku Text Replace}
+\end{frame}
+
+\begin{frame}{HTTP request block}
+  \shot{workflow-editor-config-httprequest.png}{Konfiguracja bloku HTTP request}
+\end{frame}
+
+\begin{frame}{Parser block}
+  \shot{workflow-editor-config-parser.png}{Konfiguracja bloku Parser}
+\end{frame}
+
+\begin{frame}{Loop block}
+  \shot{workflow-editor-config-loop.png}{Konfiguracja bloku Loop}
+\end{frame}
+
+\begin{frame}{Wait block}
+  \shot{workflow-editor-config-wait.png}{Konfiguracja bloku Wait}
+\end{frame}
+
+% --- Edytor workflow ---
+\begin{frame}{Workflow editor}
+  \shot{workflow-editor.png}{Początkowy widok edytora z blokami Start/End}
+\end{frame}
+
+\begin{frame}{Palette}
+  \shot{workflow-editor-add-blocks.png}{Paleta dodawania bloków}
+\end{frame}
+
+\begin{frame}{Variables}
+  \shot{workflow-editor-variables.png}{Lista zmiennych (dodawanie)}
+\end{frame}
+
+\begin{frame}{Variables \textendash{} edycja}
+  \shot{workflow-editor-variables-edit.png}{Formularz edycji zmiennej w drawerze}
+\end{frame}
+
+% --- Run drawer ---
+\begin{frame}{Run \textendash{} panel danych}
+  \shot{run-drawer-open.png}{Panel Run z rozwiniętymi danymi wejściowymi i snippetem API}
+\end{frame}
+
+\begin{frame}{Run \textendash{} wynik uruchomienia}
+  \shot{run-drawer-result.png}{Panel Run po wykonaniu workflow \textendash{} widoczne wyniki i logi}
+\end{frame}
+
+% --- Widoki główne (Executions) ---
+\begin{frame}{Executions}
+  \shot{executions.png}{Historia wykonania skryptów}
+\end{frame}
+
+% --- Execution details ---
+\begin{frame}{Execution details}
+  \shot{execution-details.png}{Pełne szczegóły przebiegu wykonania}
+\end{frame}
+
+% --- Widoki główne (Scheduler) ---
+\begin{frame}{Scheduler}
+  \shot{scheduler.png}{Lista zaplanowanych zadań}
+\end{frame}
+
+% --- Scheduler actions ---
+\begin{frame}{Scheduler action \textendash{} create}
+  \shot{scheduler-actions-01-create.png}{Tworzenie wpisu schedulera}
+\end{frame}
+
+\begin{frame}{Scheduler action \textendash{} edit}
+  \shot{scheduler-actions-02-edit.png}{Edycja istniejącego wpisu}
+\end{frame}
+
+% --- Widoki główne (Blocks) ---
+\begin{frame}{Blocks}
+  \shot{blocks.png}{Widok bloków systemowych}
+\end{frame}
+
+\end{document}
