@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.1.28)  8 FEB 2026 02:11
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.1.28)  8 FEB 2026 13:27
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1036,55 +1036,55 @@ line 56.
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texmf/fonts/enc/
 dvips/lm/lm-ec.enc} <./Uniwersytet_Bielsko-Bialski_-_logo.jpg>]
 LaTeX Font Info:    Trying to load font information for OT1+lmss on input line 
-71.
+76.
 
 (/usr/share/texmf/tex/latex/lm/ot1lmss.fd
 File: ot1lmss.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OML+lmm on input line 7
-1.
+6.
 
 (/usr/share/texmf/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-71.
+76.
 
 (/usr/share/texmf/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-71.
+76.
 
 (/usr/share/texmf/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10.95> on input line 71.
+(Font)              <10.95> on input line 76.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 71.
+(Font)              <8> on input line 76.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 71.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 71.
+(Font)              <6> on input line 76.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 76.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 71.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 76.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <10.95> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 71.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 76.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <8> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 71.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 76.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <6> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 71.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 76.
 LaTeX Font Info:    Trying to load font information for TS1+lmss on input line 
-71.
+76.
 
 (/usr/share/texmf/tex/latex/lm/ts1lmss.fd
 File: ts1lmss.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -1094,284 +1094,304 @@ File: ts1lmss.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 
 {/usr/share/texmf/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/share/texmf/fonts/enc/
 dvips/lm/lm-ts1.enc}]
-<light/workflows.png, id=42, 1927.2pt x 1092.08pt>
-File: light/workflows.png Graphic file (type png)
-<use light/workflows.png>
-Package pdftex.def Info: light/workflows.png  used on input line 76.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
-
 
 [3
 
- <./light/workflows.png>]
-<light/workflows-actions-01b-more-open.png, id=50, 1927.2pt x 1092.08pt>
-File: light/workflows-actions-01b-more-open.png Graphic file (type png)
-<use light/workflows-actions-01b-more-open.png>
-Package pdftex.def Info: light/workflows-actions-01b-more-open.png  used on inp
-ut line 81.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
-
+]
 
 [4
 
- <./light/workflows-actions-01b-more-open.png>]
-<light/workflows-actions-02-versions.png, id=57, 1927.2pt x 1092.08pt>
-File: light/workflows-actions-02-versions.png Graphic file (type png)
-<use light/workflows-actions-02-versions.png>
-Package pdftex.def Info: light/workflows-actions-02-versions.png  used on input
- line 85.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
-
+]
 
 [5
 
- <./light/workflows-actions-02-versions.png>]
-<light/workflows-actions-03-rename-form.png, id=64, 1927.2pt x 1092.08pt>
-File: light/workflows-actions-03-rename-form.png Graphic file (type png)
-<use light/workflows-actions-03-rename-form.png>
-Package pdftex.def Info: light/workflows-actions-03-rename-form.png  used on in
-put line 89.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
-
+]
 
 [6
 
- <./light/workflows-actions-03-rename-form.png>]
-<light/workflows-actions-04-import.png, id=71, 1927.2pt x 1203.49625pt>
-File: light/workflows-actions-04-import.png Graphic file (type png)
-<use light/workflows-actions-04-import.png>
-Package pdftex.def Info: light/workflows-actions-04-import.png  used on input l
-ine 93.
-(pdftex.def)             Requested size: 273.12912pt x 170.57161pt.
+]
+<light/workflows.png, id=63, 1927.2pt x 1092.08pt>
+File: light/workflows.png Graphic file (type png)
+<use light/workflows.png>
+Package pdftex.def Info: light/workflows.png  used on input line 127.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [7
 
- <./light/workflows-actions-04-import.png>]
-<light/workflow-editor-config-if.png, id=79, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-if.png Graphic file (type png)
-<use light/workflow-editor-config-if.png>
-Package pdftex.def Info: light/workflow-editor-config-if.png  used on input lin
-e 98.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+ <./light/workflows.png>]
+<light/workflows-actions-01b-more-open.png, id=72, 1927.2pt x 1092.08pt>
+File: light/workflows-actions-01b-more-open.png Graphic file (type png)
+<use light/workflows-actions-01b-more-open.png>
+Package pdftex.def Info: light/workflows-actions-01b-more-open.png  used on inp
+ut line 132.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [8
 
- <./light/workflow-editor-config-if.png>]
-<light/workflow-editor-config-switch.png, id=86, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-switch.png Graphic file (type png)
-<use light/workflow-editor-config-switch.png>
-Package pdftex.def Info: light/workflow-editor-config-switch.png  used on input
- line 102.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+ <./light/workflows-actions-01b-more-open.png>]
+<light/workflows-actions-02-versions.png, id=79, 1927.2pt x 1092.08pt>
+File: light/workflows-actions-02-versions.png Graphic file (type png)
+<use light/workflows-actions-02-versions.png>
+Package pdftex.def Info: light/workflows-actions-02-versions.png  used on input
+ line 136.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [9
 
- <./light/workflow-editor-config-switch.png>]
-<light/workflow-editor-config-calculation.png, id=93, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-calculation.png Graphic file (type png)
-<use light/workflow-editor-config-calculation.png>
-Package pdftex.def Info: light/workflow-editor-config-calculation.png  used on 
-input line 106.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+ <./light/workflows-actions-02-versions.png>]
+<light/workflows-actions-03-rename-form.png, id=86, 1927.2pt x 1092.08pt>
+File: light/workflows-actions-03-rename-form.png Graphic file (type png)
+<use light/workflows-actions-03-rename-form.png>
+Package pdftex.def Info: light/workflows-actions-03-rename-form.png  used on in
+put line 140.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [10
 
- <./light/workflow-editor-config-calculation.png>]
-<light/workflow-editor-config-texttransform.png, id=100, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-texttransform.png Graphic file (type png)
-<use light/workflow-editor-config-texttransform.png>
-Package pdftex.def Info: light/workflow-editor-config-texttransform.png  used o
-n input line 110.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+ <./light/workflows-actions-03-rename-form.png>]
+<light/workflows-actions-04-import.png, id=93, 1927.2pt x 1203.49625pt>
+File: light/workflows-actions-04-import.png Graphic file (type png)
+<use light/workflows-actions-04-import.png>
+Package pdftex.def Info: light/workflows-actions-04-import.png  used on input l
+ine 144.
+(pdftex.def)             Requested size: 273.12912pt x 170.57161pt.
 
 
 [11
 
- <./light/workflow-editor-config-texttransform.png>]
-<light/workflow-editor-config-textreplace.png, id=107, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-textreplace.png Graphic file (type png)
-<use light/workflow-editor-config-textreplace.png>
-Package pdftex.def Info: light/workflow-editor-config-textreplace.png  used on 
-input line 114.
+ <./light/workflows-actions-04-import.png>]
+<light/workflow-editor-config-if.png, id=100, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-if.png Graphic file (type png)
+<use light/workflow-editor-config-if.png>
+Package pdftex.def Info: light/workflow-editor-config-if.png  used on input lin
+e 149.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [12
 
- <./light/workflow-editor-config-textreplace.png>]
-<light/workflow-editor-config-httprequest.png, id=114, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-httprequest.png Graphic file (type png)
-<use light/workflow-editor-config-httprequest.png>
-Package pdftex.def Info: light/workflow-editor-config-httprequest.png  used on 
-input line 118.
+ <./light/workflow-editor-config-if.png>]
+<light/workflow-editor-config-switch.png, id=107, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-switch.png Graphic file (type png)
+<use light/workflow-editor-config-switch.png>
+Package pdftex.def Info: light/workflow-editor-config-switch.png  used on input
+ line 153.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [13
 
- <./light/workflow-editor-config-httprequest.png>]
-<light/workflow-editor-config-parser.png, id=122, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-parser.png Graphic file (type png)
-<use light/workflow-editor-config-parser.png>
-Package pdftex.def Info: light/workflow-editor-config-parser.png  used on input
- line 122.
+ <./light/workflow-editor-config-switch.png>]
+<light/workflow-editor-config-calculation.png, id=115, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-calculation.png Graphic file (type png)
+<use light/workflow-editor-config-calculation.png>
+Package pdftex.def Info: light/workflow-editor-config-calculation.png  used on 
+input line 157.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [14
 
- <./light/workflow-editor-config-parser.png>]
-<light/workflow-editor-config-loop.png, id=129, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-loop.png Graphic file (type png)
-<use light/workflow-editor-config-loop.png>
-Package pdftex.def Info: light/workflow-editor-config-loop.png  used on input l
-ine 126.
+ <./light/workflow-editor-config-calculation.png>]
+<light/workflow-editor-config-texttransform.png, id=122, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-texttransform.png Graphic file (type png)
+<use light/workflow-editor-config-texttransform.png>
+Package pdftex.def Info: light/workflow-editor-config-texttransform.png  used o
+n input line 161.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [15
 
- <./light/workflow-editor-config-loop.png>]
-<light/workflow-editor-config-wait.png, id=136, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-config-wait.png Graphic file (type png)
-<use light/workflow-editor-config-wait.png>
-Package pdftex.def Info: light/workflow-editor-config-wait.png  used on input l
-ine 130.
+ <./light/workflow-editor-config-texttransform.png>]
+<light/workflow-editor-config-textreplace.png, id=129, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-textreplace.png Graphic file (type png)
+<use light/workflow-editor-config-textreplace.png>
+Package pdftex.def Info: light/workflow-editor-config-textreplace.png  used on 
+input line 165.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [16
 
- <./light/workflow-editor-config-wait.png>]
-<light/workflow-editor.png, id=143, 1927.2pt x 1084.05pt>
-File: light/workflow-editor.png Graphic file (type png)
-<use light/workflow-editor.png>
-Package pdftex.def Info: light/workflow-editor.png  used on input line 135.
+ <./light/workflow-editor-config-textreplace.png>]
+<light/workflow-editor-config-httprequest.png, id=136, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-httprequest.png Graphic file (type png)
+<use light/workflow-editor-config-httprequest.png>
+Package pdftex.def Info: light/workflow-editor-config-httprequest.png  used on 
+input line 169.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [17
 
- <./light/workflow-editor.png>]
-<light/workflow-editor-add-blocks.png, id=150, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-add-blocks.png Graphic file (type png)
-<use light/workflow-editor-add-blocks.png>
-Package pdftex.def Info: light/workflow-editor-add-blocks.png  used on input li
-ne 139.
+ <./light/workflow-editor-config-httprequest.png>]
+<light/workflow-editor-config-parser.png, id=143, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-parser.png Graphic file (type png)
+<use light/workflow-editor-config-parser.png>
+Package pdftex.def Info: light/workflow-editor-config-parser.png  used on input
+ line 173.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [18
 
- <./light/workflow-editor-add-blocks.png>]
-<light/workflow-editor-variables.png, id=157, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-variables.png Graphic file (type png)
-<use light/workflow-editor-variables.png>
-Package pdftex.def Info: light/workflow-editor-variables.png  used on input lin
-e 143.
+ <./light/workflow-editor-config-parser.png>]
+<light/workflow-editor-config-loop.png, id=150, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-loop.png Graphic file (type png)
+<use light/workflow-editor-config-loop.png>
+Package pdftex.def Info: light/workflow-editor-config-loop.png  used on input l
+ine 177.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [19
 
- <./light/workflow-editor-variables.png>]
-<light/workflow-editor-variables-edit.png, id=165, 1927.2pt x 1084.05pt>
-File: light/workflow-editor-variables-edit.png Graphic file (type png)
-<use light/workflow-editor-variables-edit.png>
-Package pdftex.def Info: light/workflow-editor-variables-edit.png  used on inpu
-t line 147.
+ <./light/workflow-editor-config-loop.png>]
+<light/workflow-editor-config-wait.png, id=158, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-config-wait.png Graphic file (type png)
+<use light/workflow-editor-config-wait.png>
+Package pdftex.def Info: light/workflow-editor-config-wait.png  used on input l
+ine 181.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [20
 
- <./light/workflow-editor-variables-edit.png>]
-<light/run-drawer-open.png, id=172, 1927.2pt x 1084.05pt>
-File: light/run-drawer-open.png Graphic file (type png)
-<use light/run-drawer-open.png>
-Package pdftex.def Info: light/run-drawer-open.png  used on input line 152.
+ <./light/workflow-editor-config-wait.png>]
+<light/workflow-editor.png, id=165, 1927.2pt x 1084.05pt>
+File: light/workflow-editor.png Graphic file (type png)
+<use light/workflow-editor.png>
+Package pdftex.def Info: light/workflow-editor.png  used on input line 186.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [21
 
- <./light/run-drawer-open.png>]
-<light/run-drawer-result.png, id=179, 1927.2pt x 1084.05pt>
-File: light/run-drawer-result.png Graphic file (type png)
-<use light/run-drawer-result.png>
-Package pdftex.def Info: light/run-drawer-result.png  used on input line 156.
+ <./light/workflow-editor.png>]
+<light/workflow-editor-add-blocks.png, id=172, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-add-blocks.png Graphic file (type png)
+<use light/workflow-editor-add-blocks.png>
+Package pdftex.def Info: light/workflow-editor-add-blocks.png  used on input li
+ne 190.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [22
 
- <./light/run-drawer-result.png>]
-<light/executions.png, id=186, 1927.2pt x 1092.08pt>
-File: light/executions.png Graphic file (type png)
-<use light/executions.png>
-Package pdftex.def Info: light/executions.png  used on input line 161.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
+ <./light/workflow-editor-add-blocks.png>]
+<light/workflow-editor-variables.png, id=179, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-variables.png Graphic file (type png)
+<use light/workflow-editor-variables.png>
+Package pdftex.def Info: light/workflow-editor-variables.png  used on input lin
+e 194.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [23
 
- <./light/executions.png>]
-<light/execution-details.png, id=194, 1927.2pt x 1550.79375pt>
-File: light/execution-details.png Graphic file (type png)
-<use light/execution-details.png>
-Package pdftex.def Info: light/execution-details.png  used on input line 166.
-(pdftex.def)             Requested size: 211.96324pt x 170.57161pt.
+ <./light/workflow-editor-variables.png>]
+<light/workflow-editor-variables-edit.png, id=187, 1927.2pt x 1084.05pt>
+File: light/workflow-editor-variables-edit.png Graphic file (type png)
+<use light/workflow-editor-variables-edit.png>
+Package pdftex.def Info: light/workflow-editor-variables-edit.png  used on inpu
+t line 198.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [24
 
- <./light/execution-details.png>]
-<light/scheduler.png, id=201, 1927.2pt x 1092.08pt>
-File: light/scheduler.png Graphic file (type png)
-<use light/scheduler.png>
-Package pdftex.def Info: light/scheduler.png  used on input line 171.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
+ <./light/workflow-editor-variables-edit.png>]
+<light/run-drawer-open.png, id=194, 1927.2pt x 1084.05pt>
+File: light/run-drawer-open.png Graphic file (type png)
+<use light/run-drawer-open.png>
+Package pdftex.def Info: light/run-drawer-open.png  used on input line 203.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [25
 
- <./light/scheduler.png>]
-<light/scheduler-actions-01-create.png, id=209, 1927.2pt x 1280.785pt>
-File: light/scheduler-actions-01-create.png Graphic file (type png)
-<use light/scheduler-actions-01-create.png>
-Package pdftex.def Info: light/scheduler-actions-01-create.png  used on input l
-ine 176.
-(pdftex.def)             Requested size: 256.63197pt x 170.57161pt.
+ <./light/run-drawer-open.png>]
+<light/run-drawer-result.png, id=202, 1927.2pt x 1084.05pt>
+File: light/run-drawer-result.png Graphic file (type png)
+<use light/run-drawer-result.png>
+Package pdftex.def Info: light/run-drawer-result.png  used on input line 207.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [26
 
- <./light/scheduler-actions-01-create.png>]
-<light/scheduler-actions-02-edit.png, id=216, 1927.2pt x 1732.4725pt>
-File: light/scheduler-actions-02-edit.png Graphic file (type png)
-<use light/scheduler-actions-02-edit.png>
-Package pdftex.def Info: light/scheduler-actions-02-edit.png  used on input lin
-e 180.
-(pdftex.def)             Requested size: 189.73181pt x 170.57161pt.
+ <./light/run-drawer-result.png>]
+<light/executions.png, id=209, 1927.2pt x 1092.08pt>
+File: light/executions.png Graphic file (type png)
+<use light/executions.png>
+Package pdftex.def Info: light/executions.png  used on input line 212.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [27
 
- <./light/scheduler-actions-02-edit.png>]
-<light/blocks.png, id=223, 1927.2pt x 1449.415pt>
-File: light/blocks.png Graphic file (type png)
-<use light/blocks.png>
-Package pdftex.def Info: light/blocks.png  used on input line 185.
-(pdftex.def)             Requested size: 226.78421pt x 170.57161pt.
+ <./light/executions.png>]
+<light/execution-details.png, id=216, 1927.2pt x 1550.79375pt>
+File: light/execution-details.png Graphic file (type png)
+<use light/execution-details.png>
+Package pdftex.def Info: light/execution-details.png  used on input line 217.
+(pdftex.def)             Requested size: 211.96324pt x 170.57161pt.
 
 
 [28
 
+ <./light/execution-details.png>]
+<light/scheduler.png, id=223, 1927.2pt x 1092.08pt>
+File: light/scheduler.png Graphic file (type png)
+<use light/scheduler.png>
+Package pdftex.def Info: light/scheduler.png  used on input line 222.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
+
+
+[29
+
+ <./light/scheduler.png>]
+<light/scheduler-actions-01-create.png, id=230, 1927.2pt x 1280.785pt>
+File: light/scheduler-actions-01-create.png Graphic file (type png)
+<use light/scheduler-actions-01-create.png>
+Package pdftex.def Info: light/scheduler-actions-01-create.png  used on input l
+ine 227.
+(pdftex.def)             Requested size: 256.63197pt x 170.57161pt.
+
+
+[30
+
+ <./light/scheduler-actions-01-create.png>]
+<light/scheduler-actions-02-edit.png, id=237, 1927.2pt x 1732.4725pt>
+File: light/scheduler-actions-02-edit.png Graphic file (type png)
+<use light/scheduler-actions-02-edit.png>
+Package pdftex.def Info: light/scheduler-actions-02-edit.png  used on input lin
+e 231.
+(pdftex.def)             Requested size: 189.73181pt x 170.57161pt.
+
+
+[31
+
+ <./light/scheduler-actions-02-edit.png>]
+<light/blocks.png, id=245, 1927.2pt x 1449.415pt>
+File: light/blocks.png Graphic file (type png)
+<use light/blocks.png>
+Package pdftex.def Info: light/blocks.png  used on input line 236.
+(pdftex.def)             Requested size: 226.78421pt x 170.57161pt.
+
+
+[32
+
  <./light/blocks.png>]
+
+[33
+
+]
 \tf@nav=\write6
 \openout6 = `presentation-light.nav'.
 
@@ -1390,20 +1410,21 @@ Package rerunfilecheck Info: File `presentation-light.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 26901 strings out of 475143
- 535570 string characters out of 5765663
- 875444 words of memory out of 5000000
- 49312 multiletter control sequences out of 15000+600000
- 597231 words of font info for 65 fonts, out of 8000000 for 9000
+ 26933 strings out of 475143
+ 535989 string characters out of 5765663
+ 877620 words of memory out of 5000000
+ 49333 multiletter control sequences out of 15000+600000
+ 599999 words of font info for 66 fonts, out of 8000000 for 9000
  34 hyphenation exceptions out of 8191
  101i,11n,107p,420b,604s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf/fonts/type1/public/lm/lmss10.pfb></usr/share/texmf/fonts/ty
 pe1/public/lm/lmss12.pfb></usr/share/texmf/fonts/type1/public/lm/lmss8.pfb></us
-r/share/texmf/fonts/type1/public/lm/lmsy10.pfb>
-Output written on presentation-light.pdf (28 pages, 4821035 bytes).
+r/share/texmf/fonts/type1/public/lm/lmssbx10.pfb></usr/share/texmf/fonts/type1/
+public/lm/lmsy10.pfb>
+Output written on presentation-light.pdf (33 pages, 4851749 bytes).
 PDF statistics:
- 268 PDF objects out of 1000 (max. 8388607)
- 162 compressed objects within 2 object streams
- 57 named destinations out of 1000 (max. 500000)
+ 301 PDF objects out of 1000 (max. 8388607)
+ 188 compressed objects within 2 object streams
+ 67 named destinations out of 1000 (max. 500000)
  214 words of extra memory for PDF output out of 10000 (max. 10000000)
 

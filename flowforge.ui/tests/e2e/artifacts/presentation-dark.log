@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.1.28)  8 FEB 2026 02:11
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.1.28)  8 FEB 2026 13:25
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1036,55 +1036,55 @@ line 58.
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texmf/fonts/enc/
 dvips/lm/lm-ec.enc} <./Uniwersytet_Bielsko-Bialski_-_logo.jpg>]
 LaTeX Font Info:    Trying to load font information for OT1+lmss on input line 
-73.
+78.
 
 (/usr/share/texmf/tex/latex/lm/ot1lmss.fd
 File: ot1lmss.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OML+lmm on input line 7
-3.
+8.
 
 (/usr/share/texmf/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-73.
+78.
 
 (/usr/share/texmf/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-73.
+78.
 
 (/usr/share/texmf/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10.95> on input line 73.
+(Font)              <10.95> on input line 78.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 73.
+(Font)              <8> on input line 78.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 73.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 73.
+(Font)              <6> on input line 78.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 78.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 73.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 78.
 
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <10.95> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 73.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 78.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <8> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 73.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 78.
 LaTeX Font Info:    Font shape `T1/lmss/m/it' in size <6> not available
-(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 73.
+(Font)              Font shape `T1/lmss/m/sl' tried instead on input line 78.
 LaTeX Font Info:    Trying to load font information for TS1+lmss on input line 
-73.
+78.
 
 (/usr/share/texmf/tex/latex/lm/ts1lmss.fd
 File: ts1lmss.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -1094,282 +1094,302 @@ File: ts1lmss.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 
 {/usr/share/texmf/fonts/enc/dvips/lm/lm-mathsy.enc}{/usr/share/texmf/fonts/enc/
 dvips/lm/lm-ts1.enc}]
-<dark/workflows-dark.png, id=42, 1927.2pt x 1092.08pt>
-File: dark/workflows-dark.png Graphic file (type png)
-<use dark/workflows-dark.png>
-Package pdftex.def Info: dark/workflows-dark.png  used on input line 78.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
-
 
 [3
 
- <./dark/workflows-dark.png>]
-<dark/workflows-actions-01b-more-open.png, id=50, 1927.2pt x 1092.08pt>
-File: dark/workflows-actions-01b-more-open.png Graphic file (type png)
-<use dark/workflows-actions-01b-more-open.png>
-Package pdftex.def Info: dark/workflows-actions-01b-more-open.png  used on inpu
-t line 83.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
-
+]
 
 [4
 
- <./dark/workflows-actions-01b-more-open.png>]
-<dark/workflows-actions-02-versions.png, id=57, 1927.2pt x 1092.08pt>
-File: dark/workflows-actions-02-versions.png Graphic file (type png)
-<use dark/workflows-actions-02-versions.png>
-Package pdftex.def Info: dark/workflows-actions-02-versions.png  used on input 
-line 87.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
-
+]
 
 [5
 
- <./dark/workflows-actions-02-versions.png>]
-<dark/workflows-actions-03-rename-form.png, id=64, 1927.2pt x 1092.08pt>
-File: dark/workflows-actions-03-rename-form.png Graphic file (type png)
-<use dark/workflows-actions-03-rename-form.png>
-Package pdftex.def Info: dark/workflows-actions-03-rename-form.png  used on inp
-ut line 91.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
-
+]
 
 [6
 
- <./dark/workflows-actions-03-rename-form.png>]
-<dark/workflows-actions-04-import.png, id=71, 1927.2pt x 1203.49625pt>
-File: dark/workflows-actions-04-import.png Graphic file (type png)
-<use dark/workflows-actions-04-import.png>
-Package pdftex.def Info: dark/workflows-actions-04-import.png  used on input li
-ne 95.
-(pdftex.def)             Requested size: 273.12912pt x 170.57161pt.
-
+]
 
 [7
 
- <./dark/workflows-actions-04-import.png>]
-<dark/workflow-editor-config-if.png, id=79, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-if.png Graphic file (type png)
-<use dark/workflow-editor-config-if.png>
-Package pdftex.def Info: dark/workflow-editor-config-if.png  used on input line
- 100.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+]
+<dark/workflows-dark.png, id=69, 1927.2pt x 1092.08pt>
+File: dark/workflows-dark.png Graphic file (type png)
+<use dark/workflows-dark.png>
+Package pdftex.def Info: dark/workflows-dark.png  used on input line 138.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [8
 
- <./dark/workflow-editor-config-if.png>]
-<dark/workflow-editor-config-switch.png, id=86, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-switch.png Graphic file (type png)
-<use dark/workflow-editor-config-switch.png>
-Package pdftex.def Info: dark/workflow-editor-config-switch.png  used on input 
-line 104.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+ <./dark/workflows-dark.png>]
+<dark/workflows-actions-01b-more-open.png, id=77, 1927.2pt x 1092.08pt>
+File: dark/workflows-actions-01b-more-open.png Graphic file (type png)
+<use dark/workflows-actions-01b-more-open.png>
+Package pdftex.def Info: dark/workflows-actions-01b-more-open.png  used on inpu
+t line 143.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [9
 
- <./dark/workflow-editor-config-switch.png>]
-<dark/workflow-editor-config-calculation.png, id=93, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-calculation.png Graphic file (type png)
-<use dark/workflow-editor-config-calculation.png>
-Package pdftex.def Info: dark/workflow-editor-config-calculation.png  used on i
-nput line 108.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+ <./dark/workflows-actions-01b-more-open.png>]
+<dark/workflows-actions-02-versions.png, id=84, 1927.2pt x 1092.08pt>
+File: dark/workflows-actions-02-versions.png Graphic file (type png)
+<use dark/workflows-actions-02-versions.png>
+Package pdftex.def Info: dark/workflows-actions-02-versions.png  used on input 
+line 147.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [10
 
- <./dark/workflow-editor-config-calculation.png>]
-<dark/workflow-editor-config-texttransform.png, id=100, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-texttransform.png Graphic file (type png)
-<use dark/workflow-editor-config-texttransform.png>
-Package pdftex.def Info: dark/workflow-editor-config-texttransform.png  used on
- input line 112.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+ <./dark/workflows-actions-02-versions.png>]
+<dark/workflows-actions-03-rename-form.png, id=91, 1927.2pt x 1092.08pt>
+File: dark/workflows-actions-03-rename-form.png Graphic file (type png)
+<use dark/workflows-actions-03-rename-form.png>
+Package pdftex.def Info: dark/workflows-actions-03-rename-form.png  used on inp
+ut line 151.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [11
 
- <./dark/workflow-editor-config-texttransform.png>]
-<dark/workflow-editor-config-textreplace.png, id=107, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-textreplace.png Graphic file (type png)
-<use dark/workflow-editor-config-textreplace.png>
-Package pdftex.def Info: dark/workflow-editor-config-textreplace.png  used on i
-nput line 116.
-(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
+ <./dark/workflows-actions-03-rename-form.png>]
+<dark/workflows-actions-04-import.png, id=98, 1927.2pt x 1203.49625pt>
+File: dark/workflows-actions-04-import.png Graphic file (type png)
+<use dark/workflows-actions-04-import.png>
+Package pdftex.def Info: dark/workflows-actions-04-import.png  used on input li
+ne 155.
+(pdftex.def)             Requested size: 273.12912pt x 170.57161pt.
 
 
 [12
 
- <./dark/workflow-editor-config-textreplace.png>]
-<dark/workflow-editor-config-httprequest.png, id=114, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-httprequest.png Graphic file (type png)
-<use dark/workflow-editor-config-httprequest.png>
-Package pdftex.def Info: dark/workflow-editor-config-httprequest.png  used on i
-nput line 120.
+ <./dark/workflows-actions-04-import.png>]
+<dark/workflow-editor-config-if.png, id=105, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-if.png Graphic file (type png)
+<use dark/workflow-editor-config-if.png>
+Package pdftex.def Info: dark/workflow-editor-config-if.png  used on input line
+ 160.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [13
 
- <./dark/workflow-editor-config-httprequest.png>]
-<dark/workflow-editor-config-parser.png, id=122, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-parser.png Graphic file (type png)
-<use dark/workflow-editor-config-parser.png>
-Package pdftex.def Info: dark/workflow-editor-config-parser.png  used on input 
-line 124.
+ <./dark/workflow-editor-config-if.png>]
+<dark/workflow-editor-config-switch.png, id=113, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-switch.png Graphic file (type png)
+<use dark/workflow-editor-config-switch.png>
+Package pdftex.def Info: dark/workflow-editor-config-switch.png  used on input 
+line 164.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [14
 
- <./dark/workflow-editor-config-parser.png>]
-<dark/workflow-editor-config-loop.png, id=129, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-loop.png Graphic file (type png)
-<use dark/workflow-editor-config-loop.png>
-Package pdftex.def Info: dark/workflow-editor-config-loop.png  used on input li
-ne 128.
+ <./dark/workflow-editor-config-switch.png>]
+<dark/workflow-editor-config-calculation.png, id=120, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-calculation.png Graphic file (type png)
+<use dark/workflow-editor-config-calculation.png>
+Package pdftex.def Info: dark/workflow-editor-config-calculation.png  used on i
+nput line 168.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [15
 
- <./dark/workflow-editor-config-loop.png>]
-<dark/workflow-editor-config-wait.png, id=136, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-config-wait.png Graphic file (type png)
-<use dark/workflow-editor-config-wait.png>
-Package pdftex.def Info: dark/workflow-editor-config-wait.png  used on input li
-ne 132.
+ <./dark/workflow-editor-config-calculation.png>]
+<dark/workflow-editor-config-texttransform.png, id=127, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-texttransform.png Graphic file (type png)
+<use dark/workflow-editor-config-texttransform.png>
+Package pdftex.def Info: dark/workflow-editor-config-texttransform.png  used on
+ input line 172.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [16
 
- <./dark/workflow-editor-config-wait.png>]
-<dark/workflow-editor.png, id=143, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor.png Graphic file (type png)
-<use dark/workflow-editor.png>
-Package pdftex.def Info: dark/workflow-editor.png  used on input line 137.
+ <./dark/workflow-editor-config-texttransform.png>]
+<dark/workflow-editor-config-textreplace.png, id=134, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-textreplace.png Graphic file (type png)
+<use dark/workflow-editor-config-textreplace.png>
+Package pdftex.def Info: dark/workflow-editor-config-textreplace.png  used on i
+nput line 176.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [17
 
- <./dark/workflow-editor.png>]
-<dark/workflow-editor-add-blocks.png, id=150, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-add-blocks.png Graphic file (type png)
-<use dark/workflow-editor-add-blocks.png>
-Package pdftex.def Info: dark/workflow-editor-add-blocks.png  used on input lin
-e 141.
+ <./dark/workflow-editor-config-textreplace.png>]
+<dark/workflow-editor-config-httprequest.png, id=141, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-httprequest.png Graphic file (type png)
+<use dark/workflow-editor-config-httprequest.png>
+Package pdftex.def Info: dark/workflow-editor-config-httprequest.png  used on i
+nput line 180.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [18
 
- <./dark/workflow-editor-add-blocks.png>]
-<dark/workflow-editor-variables.png, id=157, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-variables.png Graphic file (type png)
-<use dark/workflow-editor-variables.png>
-Package pdftex.def Info: dark/workflow-editor-variables.png  used on input line
- 145.
+ <./dark/workflow-editor-config-httprequest.png>]
+<dark/workflow-editor-config-parser.png, id=148, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-parser.png Graphic file (type png)
+<use dark/workflow-editor-config-parser.png>
+Package pdftex.def Info: dark/workflow-editor-config-parser.png  used on input 
+line 184.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [19
 
- <./dark/workflow-editor-variables.png>]
-<dark/workflow-editor-variables-edit.png, id=165, 1927.2pt x 1084.05pt>
-File: dark/workflow-editor-variables-edit.png Graphic file (type png)
-<use dark/workflow-editor-variables-edit.png>
-Package pdftex.def Info: dark/workflow-editor-variables-edit.png  used on input
- line 149.
+ <./dark/workflow-editor-config-parser.png>]
+<dark/workflow-editor-config-loop.png, id=156, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-loop.png Graphic file (type png)
+<use dark/workflow-editor-config-loop.png>
+Package pdftex.def Info: dark/workflow-editor-config-loop.png  used on input li
+ne 188.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [20
 
- <./dark/workflow-editor-variables-edit.png>]
-<dark/run-drawer-open.png, id=172, 1927.2pt x 1084.05pt>
-File: dark/run-drawer-open.png Graphic file (type png)
-<use dark/run-drawer-open.png>
-Package pdftex.def Info: dark/run-drawer-open.png  used on input line 154.
+ <./dark/workflow-editor-config-loop.png>]
+<dark/workflow-editor-config-wait.png, id=163, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-config-wait.png Graphic file (type png)
+<use dark/workflow-editor-config-wait.png>
+Package pdftex.def Info: dark/workflow-editor-config-wait.png  used on input li
+ne 192.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [21
 
- <./dark/run-drawer-open.png>]
-<dark/run-drawer-result.png, id=179, 1927.2pt x 1084.05pt>
-File: dark/run-drawer-result.png Graphic file (type png)
-<use dark/run-drawer-result.png>
-Package pdftex.def Info: dark/run-drawer-result.png  used on input line 158.
+ <./dark/workflow-editor-config-wait.png>]
+<dark/workflow-editor.png, id=170, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor.png Graphic file (type png)
+<use dark/workflow-editor.png>
+Package pdftex.def Info: dark/workflow-editor.png  used on input line 197.
 (pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [22
 
- <./dark/run-drawer-result.png>]
-<dark/executions-dark.png, id=186, 1927.2pt x 1092.08pt>
-File: dark/executions-dark.png Graphic file (type png)
-<use dark/executions-dark.png>
-Package pdftex.def Info: dark/executions-dark.png  used on input line 163.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
+ <./dark/workflow-editor.png>]
+<dark/workflow-editor-add-blocks.png, id=177, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-add-blocks.png Graphic file (type png)
+<use dark/workflow-editor-add-blocks.png>
+Package pdftex.def Info: dark/workflow-editor-add-blocks.png  used on input lin
+e 201.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [23
 
- <./dark/executions-dark.png>]
-<dark/execution-details.png, id=194, 1927.2pt x 1550.79375pt>
-File: dark/execution-details.png Graphic file (type png)
-<use dark/execution-details.png>
-Package pdftex.def Info: dark/execution-details.png  used on input line 168.
-(pdftex.def)             Requested size: 211.96324pt x 170.57161pt.
+ <./dark/workflow-editor-add-blocks.png>]
+<dark/workflow-editor-variables.png, id=185, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-variables.png Graphic file (type png)
+<use dark/workflow-editor-variables.png>
+Package pdftex.def Info: dark/workflow-editor-variables.png  used on input line
+ 205.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [24
 
- <./dark/execution-details.png>]
-<dark/scheduler-dark.png, id=201, 1927.2pt x 1092.08pt>
-File: dark/scheduler-dark.png Graphic file (type png)
-<use dark/scheduler-dark.png>
-Package pdftex.def Info: dark/scheduler-dark.png  used on input line 173.
-(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
+ <./dark/workflow-editor-variables.png>]
+<dark/workflow-editor-variables-edit.png, id=192, 1927.2pt x 1084.05pt>
+File: dark/workflow-editor-variables-edit.png Graphic file (type png)
+<use dark/workflow-editor-variables-edit.png>
+Package pdftex.def Info: dark/workflow-editor-variables-edit.png  used on input
+ line 209.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [25
 
- <./dark/scheduler-dark.png>]
-<dark/scheduler-actions-01-create.png, id=209, 1927.2pt x 1280.785pt>
-File: dark/scheduler-actions-01-create.png Graphic file (type png)
-<use dark/scheduler-actions-01-create.png>
-Package pdftex.def Info: dark/scheduler-actions-01-create.png  used on input li
-ne 178.
-(pdftex.def)             Requested size: 256.63197pt x 170.57161pt.
+ <./dark/workflow-editor-variables-edit.png>]
+<dark/run-drawer-open.png, id=200, 1927.2pt x 1084.05pt>
+File: dark/run-drawer-open.png Graphic file (type png)
+<use dark/run-drawer-open.png>
+Package pdftex.def Info: dark/run-drawer-open.png  used on input line 214.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [26
 
- <./dark/scheduler-actions-01-create.png>]
-<dark/scheduler-actions-02-edit.png, id=216, 1927.2pt x 1732.4725pt>
-File: dark/scheduler-actions-02-edit.png Graphic file (type png)
-<use dark/scheduler-actions-02-edit.png>
-Package pdftex.def Info: dark/scheduler-actions-02-edit.png  used on input line
- 182.
-(pdftex.def)             Requested size: 189.73181pt x 170.57161pt.
+ <./dark/run-drawer-open.png>]
+<dark/run-drawer-result.png, id=207, 1927.2pt x 1084.05pt>
+File: dark/run-drawer-result.png Graphic file (type png)
+<use dark/run-drawer-result.png>
+Package pdftex.def Info: dark/run-drawer-result.png  used on input line 218.
+(pdftex.def)             Requested size: 303.21214pt x 170.57161pt.
 
 
 [27
 
- <./dark/scheduler-actions-02-edit.png>]
-<dark/blocks-dark.png, id=223, 1927.2pt x 1449.415pt>
-File: dark/blocks-dark.png Graphic file (type png)
-<use dark/blocks-dark.png>
-Package pdftex.def Info: dark/blocks-dark.png  used on input line 187.
-(pdftex.def)             Requested size: 226.78421pt x 170.57161pt.
+ <./dark/run-drawer-result.png>]
+<dark/executions-dark.png, id=214, 1927.2pt x 1092.08pt>
+File: dark/executions-dark.png Graphic file (type png)
+<use dark/executions-dark.png>
+Package pdftex.def Info: dark/executions-dark.png  used on input line 223.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
 
 
 [28
+
+ <./dark/executions-dark.png>]
+<dark/execution-details.png, id=221, 1927.2pt x 1550.79375pt>
+File: dark/execution-details.png Graphic file (type png)
+<use dark/execution-details.png>
+Package pdftex.def Info: dark/execution-details.png  used on input line 228.
+(pdftex.def)             Requested size: 211.96324pt x 170.57161pt.
+
+
+[29
+
+ <./dark/execution-details.png>]
+<dark/scheduler-dark.png, id=228, 1927.2pt x 1092.08pt>
+File: dark/scheduler-dark.png Graphic file (type png)
+<use dark/scheduler-dark.png>
+Package pdftex.def Info: dark/scheduler-dark.png  used on input line 233.
+(pdftex.def)             Requested size: 301.00664pt x 170.57161pt.
+
+
+[30
+
+ <./dark/scheduler-dark.png>]
+<dark/scheduler-actions-01-create.png, id=235, 1927.2pt x 1280.785pt>
+File: dark/scheduler-actions-01-create.png Graphic file (type png)
+<use dark/scheduler-actions-01-create.png>
+Package pdftex.def Info: dark/scheduler-actions-01-create.png  used on input li
+ne 238.
+(pdftex.def)             Requested size: 256.63197pt x 170.57161pt.
+
+
+[31
+
+ <./dark/scheduler-actions-01-create.png>]
+<dark/scheduler-actions-02-edit.png, id=243, 1927.2pt x 1732.4725pt>
+File: dark/scheduler-actions-02-edit.png Graphic file (type png)
+<use dark/scheduler-actions-02-edit.png>
+Package pdftex.def Info: dark/scheduler-actions-02-edit.png  used on input line
+ 242.
+(pdftex.def)             Requested size: 189.73181pt x 170.57161pt.
+
+
+[32
+
+ <./dark/scheduler-actions-02-edit.png>]
+<dark/blocks-dark.png, id=250, 1927.2pt x 1449.415pt>
+File: dark/blocks-dark.png Graphic file (type png)
+<use dark/blocks-dark.png>
+Package pdftex.def Info: dark/blocks-dark.png  used on input line 247.
+(pdftex.def)             Requested size: 226.78421pt x 170.57161pt.
+
+
+[33
 
  <./dark/blocks-dark.png>]
 \tf@nav=\write6
@@ -1390,20 +1410,21 @@ Package rerunfilecheck Info: File `presentation-dark.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 26900 strings out of 475143
- 535515 string characters out of 5765663
- 874446 words of memory out of 5000000
- 49311 multiletter control sequences out of 15000+600000
- 597231 words of font info for 65 fonts, out of 8000000 for 9000
+ 26932 strings out of 475143
+ 535934 string characters out of 5765663
+ 877622 words of memory out of 5000000
+ 49332 multiletter control sequences out of 15000+600000
+ 599999 words of font info for 66 fonts, out of 8000000 for 9000
  34 hyphenation exceptions out of 8191
  101i,11n,107p,419b,604s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf/fonts/type1/public/lm/lmss10.pfb></usr/share/texmf/fonts/ty
 pe1/public/lm/lmss12.pfb></usr/share/texmf/fonts/type1/public/lm/lmss8.pfb></us
-r/share/texmf/fonts/type1/public/lm/lmsy10.pfb>
-Output written on presentation-dark.pdf (28 pages, 4020566 bytes).
+r/share/texmf/fonts/type1/public/lm/lmssbx10.pfb></usr/share/texmf/fonts/type1/
+public/lm/lmsy10.pfb>
+Output written on presentation-dark.pdf (33 pages, 4051198 bytes).
 PDF statistics:
- 268 PDF objects out of 1000 (max. 8388607)
- 162 compressed objects within 2 object streams
- 57 named destinations out of 1000 (max. 500000)
+ 301 PDF objects out of 1000 (max. 8388607)
+ 188 compressed objects within 2 object streams
+ 67 named destinations out of 1000 (max. 500000)
  214 words of extra memory for PDF output out of 10000 (max. 10000000)
 

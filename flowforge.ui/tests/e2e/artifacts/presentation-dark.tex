@@ -59,6 +59,11 @@
 
 \begin{frame}{Agenda}
   \begin{itemize}
+    \item Wstęp: potrzeba biznesowa, cel, analiza rozwiązań
+    \item Wymagania: funkcjonalne i niefunkcjonalne
+    \item Technologie i narzędzia
+    \item Projekt systemu: model danych, klasy, use case, UML
+    \item Wnioski i dalszy rozwój
     \item Widoki główne (Workflows)
     \item Akcje na workflow (More \textrightarrow{} Versions/Rename/Import)
     \item Konfiguracja bloków (If, Switch, Calculation, HTTP itp.)
@@ -69,6 +74,52 @@
     \item Widoki główne (Scheduler)
     \item Harmonogram (create/edit)
     \item Widoki główne (Blocks)
+  \end{itemize}
+\end{frame}
+
+% --- Wstęp ---
+\begin{frame}{Wstęp}
+  \begin{itemize}
+    \item Potrzeba biznesowa: szybkie budowanie i uruchamianie przepływów API bez kodu back-end.
+    \item Dlaczego: skrócenie time-to-market integracji oraz ujednolicenie operacji danych.
+    \item Do czego ma służyć: orkiestracja bloków (HTTP, parser, transformacje, warunki) w jednolitym edytorze.
+    \item Analiza podobnych rozwiązań: n8n, Zapier, Node-RED \textendash{} różnicujemy się lekkim UI i kontrolą on-prem.
+  \end{itemize}
+\end{frame}
+
+% --- Wymagania ---
+\begin{frame}{Wymagania}
+  \textbf{Funkcjonalne}
+  \begin{itemize}
+    \item Tworzenie, wersjonowanie i import/eksport workflowów.
+    \item Edycja bloków (If, Switch, HTTP, Parser, Calculation, itp.) na canvasie.
+    \item Uruchamianie i podgląd wyników (Run drawer, Execution details).
+    \item Planowanie zadań (Scheduler: create/edit/run now).
+  \end{itemize}
+  \vspace{6pt}
+  \textbf{Niefunkcjonalne}
+  \begin{itemize}
+    \item Responsywne UI (jasny/ciemny motyw).
+    \item Szybki czas renderu i stabilność canvasu.
+  \end{itemize}
+\end{frame}
+
+% --- Technologie ---
+\begin{frame}{Technologie i narzędzia}
+  \begin{itemize}
+    \item Języki: TypeScript (frontend), C\#/.NET (API), SQL (SQLite dev).
+    \item Biblioteki: React, React Flow, Vite, Playwright, NUnit, EF Core.
+    \item Narzędzia: VS Code / Rider, latexmk (slidedeck), jq/rg (dev), Git.
+  \end{itemize}
+\end{frame}
+
+% --- Projekt systemu ---
+\begin{frame}{Projekt systemu}
+  \begin{itemize}
+    \item Schemat bazy: tabele Workflow, Version, Block, Execution, Schedule (SQLite dev, migrowalne do produkcyjnej bazy).
+    \item Schemat klas: DTO + modele EF Core; pary interfejs/implementacja dla serwisów i repozytoriów.
+    \item Use case: tworzenie/edycja workflow, uruchomienie, schedulowanie, analiza przebiegu.
+    \item UML (wysoki poziom): edytor (UI) \textrightarrow{} API (Controllers) \textrightarrow{} Services/Repositories \textrightarrow{} DB.
   \end{itemize}
 \end{frame}
 
@@ -184,6 +235,15 @@
 % --- Widoki główne (Blocks) ---
 \begin{frame}{Blocks}
   \shot{blocks-dark.png}{Widok bloków systemowych \textendash{} tryb ciemny}
+\end{frame}
+
+% --- Wnioski (podsumowanie) ---
+\begin{frame}{Wnioski}
+  \begin{itemize}
+    \item Dostarczono komplet widoków: edytor, akcje workflow, run drawer, execution details, scheduler (light/dark).
+    \item Największe wyzwania: pozycjonowanie bloków na canvasie, spójność motywów, oczekiwanie na pełne załadowanie przed zrzutem.
+    \item Dalszy rozwój: autoryzacja produkcyjna, monitoring runtime, optymalizacja dla bardzo dużych diagramów.
+  \end{itemize}
 \end{frame}
 
 \end{document}

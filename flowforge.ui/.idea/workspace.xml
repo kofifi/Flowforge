@@ -4,19 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1c529906-1a94-4e96-a3e8-0903be0d00ad" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../flowforge.api/Services/BlockExecutors/TextTransformBlockExecutor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../flowforge.api/Services/BlockExecutors/TextTransformBlockExecutor.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../flowforge.nunit/Services/BlockExecutorsTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../flowforge.nunit/Services/BlockExecutorsTests.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/App.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/Icon.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/Icon.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/editor/RunDrawer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/editor/RunDrawer.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pages/ExecutionDetailsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/ExecutionDetailsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pages/SchedulerPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/SchedulerPage.tsx" afterDir="false" />
-    </list>
+    <list default="true" id="1c529906-1a94-4e96-a3e8-0903be0d00ad" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -83,7 +71,7 @@
       <workItem from="1768928563496" duration="10529000" />
       <workItem from="1769612286878" duration="687000" />
       <workItem from="1770305662243" duration="6043000" />
-      <workItem from="1770474618538" duration="6701000" />
+      <workItem from="1770474618538" duration="10713000" />
     </task>
     <servers />
   </component>

@@ -424,6 +424,7 @@ INPUT /usr/share/texmf/tex/latex/lm/ts1lmss.fd
 INPUT /usr/share/texmf/fonts/tfm/public/lm/ts1-lmss10.tfm
 INPUT /usr/share/texmf/fonts/enc/dvips/lm/lm-mathsy.enc
 INPUT /usr/share/texmf/fonts/enc/dvips/lm/lm-ts1.enc
+INPUT /usr/share/texmf/fonts/tfm/public/lm/ec-lmssbx10.tfm
 INPUT ./light/workflows.png
 INPUT ./light/workflows.png
 INPUT ./light/workflows.png
@@ -538,4 +539,5 @@ INPUT ./presentation-light.out
 INPUT /usr/share/texmf/fonts/type1/public/lm/lmss10.pfb
 INPUT /usr/share/texmf/fonts/type1/public/lm/lmss12.pfb
 INPUT /usr/share/texmf/fonts/type1/public/lm/lmss8.pfb
+INPUT /usr/share/texmf/fonts/type1/public/lm/lmssbx10.pfb
 INPUT /usr/share/texmf/fonts/type1/public/lm/lmsy10.pfb
