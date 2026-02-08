@@ -30,6 +30,13 @@ flowforge.ui/.parcel-cache
 flowforge.ui/playwright-report/
 flowforge.ui/test-results/
 flowforge.ui/tests/e2e/artifacts/
+flowforge.ui/playwright.config.ts
+flowforge.ui/tests/screens.spec.ts
+flowforge.ui/tests/e2e/tests/
 
 # Backend
 flowforge.api/flowforge.db*
+
+# Docs and presentations
+docs/
+presentation/
