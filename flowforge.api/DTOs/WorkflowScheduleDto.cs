@@ -13,6 +13,7 @@ public class WorkflowScheduleDto
     public bool IsActive { get; set; }
     public DateTime? LastRunAtUtc { get; set; }
     public DateTime? NextRunAtUtc { get; set; }
+    public string TimeZoneId { get; set; } = "UTC";
 }
 
 public class UpsertWorkflowScheduleDto
@@ -25,4 +26,5 @@ public class UpsertWorkflowScheduleDto
     public DateTime StartAtUtc { get; set; }
     public int? IntervalMinutes { get; set; }
     public bool IsActive { get; set; } = true;
+    public string TimeZoneId { get; set; } = "UTC";
 }

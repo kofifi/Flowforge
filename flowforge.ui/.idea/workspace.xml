@@ -4,7 +4,118 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1c529906-1a94-4e96-a3e8-0903be0d00ad" name="Changes" comment="" />
+    <list default="true" id="1c529906-1a94-4e96-a3e8-0903be0d00ad" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/flowforge.ui/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/App.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/App.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/api/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/api/types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/editor/ConfigDrawer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/editor/ConfigDrawer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/editor/forms/CalculationForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/editor/forms/CalculationForm.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/BlocksPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/BlocksPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/SchedulerPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/SchedulerPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/Uniwersytet_Bielsko-Bialski_-_logo.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/blocks-dark.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/execution-details.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/executions-dark.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/run-drawer-open.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/run-drawer-result.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/scheduler-actions-01-create.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/scheduler-actions-02-edit.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/scheduler-dark.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-add-blocks.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-calculation.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-httprequest.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-if.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-loop.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-parser.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-switch.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-textreplace.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-texttransform.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-config-wait.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-variables-edit.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor-variables.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflow-editor.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflows-actions-01b-more-open.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflows-actions-02-versions.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflows-actions-03-rename-form.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflows-actions-04-import.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/dark/workflows-dark.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/blocks.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/execution-details.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/executions.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/run-drawer-open.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/run-drawer-result.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/scheduler-actions-01-create.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/scheduler-actions-02-edit.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/scheduler.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-add-blocks.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-calculation.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-httprequest.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-if.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-loop.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-parser.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-switch.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-textreplace.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-texttransform.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-config-wait.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-variables-edit.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor-variables.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflow-editor.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflows-actions-01b-more-open.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflows-actions-02-versions.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflows-actions-03-rename-form.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflows-actions-04-import.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/light/workflows.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.aux" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.fdb_latexmk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.fls" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.nav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.out" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.snm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.tex" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-dark.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.aux" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.fdb_latexmk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.fls" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.nav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.out" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.snm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.tex" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation-light.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.aux" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.fdb_latexmk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.fls" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.nav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.out" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.snm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.tex" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/presentation.toc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/artifacts/texput.fls" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/e2e/screens.spec.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/Uniwersytet_Bielsko-Bialski_-_logo.jpg:Zone.Identifier" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main — kopia.pdf:Zone.Identifier" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.aux" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.fdb_latexmk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.fls" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.lof" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.lot" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.out" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/../latex/main.pdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.tex" beforeDir="false" afterPath="$PROJECT_DIR$/../latex/main.tex" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../latex/main.toc" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -72,6 +183,7 @@
       <workItem from="1769612286878" duration="687000" />
       <workItem from="1770305662243" duration="6043000" />
       <workItem from="1770474618538" duration="10713000" />
+      <workItem from="1770626295884" duration="21563000" />
     </task>
     <servers />
   </component>

@@ -15,6 +15,7 @@ type ScheduleForm = {
   startAt: string
   intervalMinutes: number
   isActive: boolean
+  timeZoneId: string
 }
 
 function normalizeWorkflows(data: unknown): WorkflowDto[] {
@@ -35,9 +36,18 @@ function normalizeSchedules(data: unknown): WorkflowScheduleDto[] {
   return []
 }
 
+const withDefaultTz = (items: WorkflowScheduleDto[], fallback: string) =>
+  items.map((s) => ({ ...s, timeZoneId: s.timeZoneId || fallback }))
+
 export default function SchedulerPage() {
   const navigate = useNavigate()
   const { theme, toggleTheme } = useThemePreference()
+  const browserTz =
+    (typeof Intl !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC'
+  const timeZoneOptions =
+    typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl
+      ? (Intl as unknown as { supportedValuesOf: (key: string) => string[] }).supportedValuesOf('timeZone')
+      : ['UTC']
   const [workflows, setWorkflows] = useState<WorkflowDto[]>([])
   const [schedules, setSchedules] = useState<WorkflowScheduleDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,6 +63,7 @@ export default function SchedulerPage() {
     startAt: '',
     intervalMinutes: 60,
     isActive: true,
+    timeZoneId: browserTz,
   })
 
   const statusLabel = useMemo(() => {
@@ -74,7 +85,7 @@ export default function SchedulerPage() {
         ])
         if (cancelled) return
         setWorkflows(normalizeWorkflows(wfRes))
-        setSchedules(normalizeSchedules(schedRes))
+        setSchedules(withDefaultTz(normalizeSchedules(schedRes), browserTz))
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Nie udało się pobrać danych')
       } finally {
@@ -102,12 +113,13 @@ export default function SchedulerPage() {
         startAtUtc: start.toISOString(),
         intervalMinutes: form.triggerType === 'Interval' ? form.intervalMinutes : null,
         isActive: form.isActive,
+        timeZoneId: form.timeZoneId || 'UTC',
       }
       const created = await requestJson<WorkflowScheduleDto>(
         '/api/WorkflowSchedule',
         withJson(payload),
       )
-      setSchedules((current) => [created, ...current])
+      setSchedules((current) => withDefaultTz([created, ...current], browserTz))
       setForm((current) => ({
         ...current,
         name: '',
@@ -135,7 +147,7 @@ export default function SchedulerPage() {
     try {
       await requestJson<void>(`/api/WorkflowSchedule/${scheduleId}/run`, { method: 'POST' })
       const refreshed = await requestJson<unknown>('/api/WorkflowSchedule')
-      setSchedules(normalizeSchedules(refreshed))
+      setSchedules(withDefaultTz(normalizeSchedules(refreshed), browserTz))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się uruchomić harmonogramu')
     }
@@ -178,6 +190,7 @@ export default function SchedulerPage() {
       startAt: toInputDate(schedule.startAtUtc),
       intervalMinutes: schedule.intervalMinutes ?? 60,
       isActive: schedule.isActive,
+      timeZoneId: schedule.timeZoneId || browserTz,
     })
   }
 
@@ -200,12 +213,18 @@ export default function SchedulerPage() {
         startAtUtc: toIsoUtc(editForm.startAt),
         intervalMinutes: editForm.triggerType === 'Interval' ? editForm.intervalMinutes : null,
         isActive: editForm.isActive,
+        timeZoneId: editForm.timeZoneId || 'UTC',
       }
       const updated = await requestJson<WorkflowScheduleDto>(
         `/api/WorkflowSchedule/${editingId}`,
         withJson(payload, { method: 'PUT' }),
       )
-      setSchedules((current) => current.map((item) => (item.id === editingId ? updated : item)))
+      setSchedules((current) =>
+        withDefaultTz(
+          current.map((item) => (item.id === editingId ? updated : item)),
+          browserTz,
+        ),
+      )
       cancelEdit()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się zaktualizować harmonogramu')
@@ -343,13 +362,38 @@ export default function SchedulerPage() {
               </label>
 
               <label className="filter-group">
-                <span>Start (UTC)</span>
+                <span>Start (lokalnie)</span>
                 <input
                   type="datetime-local"
                   value={form.startAt}
                   onChange={(event) => setForm((curr) => ({ ...curr, startAt: event.target.value }))}
                   style={{ opacity: form.triggerType === 'Once' || form.triggerType === 'Daily' ? 1 : 0.9 }}
                 />
+              </label>
+
+              <label className="filter-group custom-select">
+                <span>Strefa czasowa</span>
+                <div className="select-shell">
+                  <select
+                    value={form.timeZoneId}
+                    onChange={(event) =>
+                      setForm((curr) => ({
+                        ...curr,
+                        timeZoneId: event.target.value,
+                      }))
+                    }
+                  >
+                    {timeZoneOptions.map((tz) => (
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
+                    ))}
+                  </select>
+                  <Icon name="chevron-down" size={16} />
+                </div>
+                <p className="muted" style={{ marginTop: 4 }}>
+                  Domyślnie wykryto: {browserTz}
+                </p>
               </label>
 
               <label className="filter-group">
@@ -508,7 +552,7 @@ export default function SchedulerPage() {
                         />
                       </label>
                       <label className="filter-group">
-                        <span>Start (UTC)</span>
+                        <span>Start (lokalnie)</span>
                         <input
                           type="datetime-local"
                           value={editForm.startAt}
@@ -519,6 +563,24 @@ export default function SchedulerPage() {
                             }))
                           }
                         />
+                      </label>
+                      <label className="filter-group custom-select">
+                        <span>Strefa czasowa</span>
+                        <div className="select-shell">
+                          <select
+                            value={editForm.timeZoneId}
+                            onChange={(e) =>
+                              setEditForm((curr) => curr && ({ ...curr, timeZoneId: e.target.value }))
+                            }
+                          >
+                            {timeZoneOptions.map((tz) => (
+                              <option key={tz} value={tz}>
+                                {tz}
+                              </option>
+                            ))}
+                          </select>
+                          <Icon name="chevron-down" size={16} />
+                        </div>
                       </label>
                       <label className="filter-group">
                         <span>Opis</span>

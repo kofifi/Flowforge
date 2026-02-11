@@ -282,6 +282,10 @@ namespace Flowforge.Migrations
                     b.Property<DateTime>("StartAtUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("TriggerType")
                         .IsRequired()
                         .HasColumnType("TEXT");

@@ -11,6 +11,7 @@ public class WorkflowSchedule
     public bool IsActive { get; set; } = true;
     public DateTime? LastRunAtUtc { get; set; }
     public DateTime? NextRunAtUtc { get; set; }
+    public string TimeZoneId { get; set; } = "UTC";
 
     public int WorkflowId { get; set; }
     public Workflow Workflow { get; set; } = null!;

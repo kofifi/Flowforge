@@ -42,6 +42,7 @@ public class WorkflowScheduleService : IWorkflowScheduleService
         if (!schedule.IsActive)
             return null;
 
+        var tz = SafeTimeZone(schedule.TimeZoneId);
         var now = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
         var start = schedule.StartAtUtc == default
             ? now
@@ -53,21 +54,17 @@ public class WorkflowScheduleService : IWorkflowScheduleService
 
         if (trigger == "daily")
         {
-            var basis = last ?? now;
-            var target = new DateTime(basis.Year, basis.Month, basis.Day, start.Hour, start.Minute, start.Second, DateTimeKind.Utc);
-            if (target <= basis)
+            var basisLocal = TimeZoneInfo.ConvertTimeFromUtc(last ?? now, tz);
+            var startLocal = TimeZoneInfo.ConvertTimeFromUtc(start, tz);
+            var targetLocal = new DateTime(basisLocal.Year, basisLocal.Month, basisLocal.Day, startLocal.Hour, startLocal.Minute, startLocal.Second, DateTimeKind.Unspecified);
+            if (targetLocal <= basisLocal)
             {
-                target = target.AddDays(1);
+                targetLocal = targetLocal.AddDays(1);
             }
-            if (target <= now && last == null)
-            {
-                target = new DateTime(now.Year, now.Month, now.Day, start.Hour, start.Minute, start.Second, DateTimeKind.Utc);
-                if (target <= now)
-                {
-                    target = target.AddDays(1);
-                }
-            }
-            return target;
+            var targetUtc = TimeZoneInfo.ConvertTimeToUtc(targetLocal, tz);
+            return targetUtc <= now && last == null
+                ? TimeZoneInfo.ConvertTimeToUtc(targetLocal.AddDays(1), tz)
+                : targetUtc;
         }
 
         if (trigger == "once" || !schedule.IntervalMinutes.HasValue)
@@ -88,5 +85,18 @@ public class WorkflowScheduleService : IWorkflowScheduleService
             return schedule.NextRunAtUtc;
 
         return start > now ? start : now.AddMinutes(interval);
+    }
+
+    private static TimeZoneInfo SafeTimeZone(string? timeZoneId)
+    {
+        var id = string.IsNullOrWhiteSpace(timeZoneId) ? "UTC" : timeZoneId.Trim();
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(id);
+        }
+        catch
+        {
+            return TimeZoneInfo.Utc;
+        }
     }
 }

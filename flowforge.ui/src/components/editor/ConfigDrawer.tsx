@@ -212,7 +212,6 @@ const ConfigDrawer = ({
                   }
                 }
                 setCalculationConfigs={setCalculationConfigs}
-                formatVariableDisplay={formatVariableDisplay}
                 normalizeVariableName={normalizeVariableName}
                 markDirty={markDirty}
               />

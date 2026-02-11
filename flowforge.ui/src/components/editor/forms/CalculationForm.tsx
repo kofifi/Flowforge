@@ -6,7 +6,6 @@ type CalculationFormProps = {
   variables: WorkflowVariable[]
   config: CalculationConfig
   setCalculationConfigs: React.Dispatch<React.SetStateAction<Record<string, CalculationConfig>>>
-  formatVariableDisplay: (value: string) => string
   normalizeVariableName: (value: string) => string
   markDirty: () => void
 }
@@ -16,7 +15,6 @@ function CalculationForm({
   variables,
   config,
   setCalculationConfigs,
-  formatVariableDisplay,
   normalizeVariableName,
   markDirty,
 }: CalculationFormProps) {
@@ -58,7 +56,7 @@ function CalculationForm({
         id="calc-first"
         label="First variable"
         placeholder="e.g. amount"
-        value={formatVariableDisplay(config.firstVariable ?? '')}
+        value={config.firstVariable ?? ''}
         options={variables.map((variable) => `$${variable.name}`)}
         onValueChange={(value: string) => {
           const normalized = normalizeVariableName(value)
@@ -79,7 +77,7 @@ function CalculationForm({
         id="calc-second"
         label="Second variable"
         placeholder="e.g. tax"
-        value={formatVariableDisplay(config.secondVariable ?? '')}
+        value={config.secondVariable ?? ''}
         options={variables.map((variable) => `$${variable.name}`)}
         onValueChange={(value: string) => {
           const normalized = normalizeVariableName(value)
@@ -100,7 +98,7 @@ function CalculationForm({
         id="calc-result"
         label="Result variable"
         placeholder="e.g. total"
-        value={formatVariableDisplay(config.resultVariable ?? '')}
+        value={config.resultVariable ?? ''}
         options={variables.map((variable) => `$${variable.name}`)}
         onValueChange={(value: string) => {
           const normalized = normalizeVariableName(value)

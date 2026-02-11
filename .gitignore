@@ -8,6 +8,7 @@
 **/*.suo
 **/*.DotSettings.user
 .vs/
+node_modules/
 TestResult*/
 *.coverage
 *.coveragejson
@@ -27,12 +28,10 @@ flowforge.ui/dist/
 flowforge.ui/.eslintcache
 flowforge.ui/.turbo
 flowforge.ui/.parcel-cache
-flowforge.ui/playwright-report/
-flowforge.ui/test-results/
-flowforge.ui/tests/e2e/artifacts/
-flowforge.ui/playwright.config.ts
-flowforge.ui/tests/screens.spec.ts
-flowforge.ui/tests/e2e/tests/
+flowforge.playwright/tests/e2e/artifacts/
+flowforge.playwright/playwright-report/
+flowforge.playwright/test-results/
+flowforge.playwright/.cache/
 
 # Backend
 flowforge.api/flowforge.db*
@@ -40,3 +39,4 @@ flowforge.api/flowforge.db*
 # Docs and presentations
 docs/
 presentation/
+latex/node_modules/

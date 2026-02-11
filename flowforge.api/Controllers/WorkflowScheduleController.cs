@@ -109,6 +109,7 @@ public class WorkflowScheduleController : ControllerBase
         StartAtUtc = DateTime.SpecifyKind(schedule.StartAtUtc, DateTimeKind.Utc),
         IntervalMinutes = schedule.IntervalMinutes,
         IsActive = schedule.IsActive,
+        TimeZoneId = string.IsNullOrWhiteSpace(schedule.TimeZoneId) ? "UTC" : schedule.TimeZoneId,
         LastRunAtUtc = schedule.LastRunAtUtc.HasValue
             ? DateTime.SpecifyKind(schedule.LastRunAtUtc.Value, DateTimeKind.Utc)
             : null,
@@ -129,7 +130,8 @@ public class WorkflowScheduleController : ControllerBase
             ? DateTime.UtcNow
             : DateTime.SpecifyKind(dto.StartAtUtc, DateTimeKind.Utc),
         IntervalMinutes = dto.IntervalMinutes,
-        IsActive = dto.IsActive
+        IsActive = dto.IsActive,
+        TimeZoneId = string.IsNullOrWhiteSpace(dto.TimeZoneId) ? "UTC" : dto.TimeZoneId
     };
 
     private static DateTime? CalculateNextRun(WorkflowSchedule schedule)
@@ -137,28 +139,25 @@ public class WorkflowScheduleController : ControllerBase
         if (!schedule.IsActive)
             return null;
 
-        var now = DateTime.UtcNow;
-        var start = schedule.StartAtUtc == default ? now : schedule.StartAtUtc;
+        var tz = SafeTimeZone(schedule.TimeZoneId);
+        var now = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+        var start = schedule.StartAtUtc == default ? now : DateTime.SpecifyKind(schedule.StartAtUtc, DateTimeKind.Utc);
         var trigger = schedule.TriggerType?.Trim().ToLowerInvariant() ?? "";
-        var last = schedule.LastRunAtUtc;
+        var last = schedule.LastRunAtUtc.HasValue ? DateTime.SpecifyKind(schedule.LastRunAtUtc.Value, DateTimeKind.Utc) : (DateTime?)null;
 
         if (trigger == "daily")
         {
-            var basis = last ?? now;
-            var target = new DateTime(basis.Year, basis.Month, basis.Day, start.Hour, start.Minute, start.Second, DateTimeKind.Utc);
-            if (target <= basis)
+            var basisLocal = TimeZoneInfo.ConvertTimeFromUtc(last ?? now, tz);
+            var startLocal = TimeZoneInfo.ConvertTimeFromUtc(start, tz);
+            var targetLocal = new DateTime(basisLocal.Year, basisLocal.Month, basisLocal.Day, startLocal.Hour, startLocal.Minute, startLocal.Second, DateTimeKind.Unspecified);
+            if (targetLocal <= basisLocal)
             {
-                target = target.AddDays(1);
+                targetLocal = targetLocal.AddDays(1);
             }
-            if (target <= now && last == null)
-            {
-                target = new DateTime(now.Year, now.Month, now.Day, start.Hour, start.Minute, start.Second, DateTimeKind.Utc);
-                if (target <= now)
-                {
-                    target = target.AddDays(1);
-                }
-            }
-            return target;
+            var targetUtc = TimeZoneInfo.ConvertTimeToUtc(targetLocal, tz);
+            return targetUtc <= now && last == null
+                ? TimeZoneInfo.ConvertTimeToUtc(targetLocal.AddDays(1), tz)
+                : targetUtc;
         }
 
         if (trigger == "once" || !schedule.IntervalMinutes.HasValue)
@@ -179,5 +178,18 @@ public class WorkflowScheduleController : ControllerBase
             return schedule.NextRunAtUtc;
 
         return start > now ? start : now.AddMinutes(interval);
+    }
+
+    private static TimeZoneInfo SafeTimeZone(string? timeZoneId)
+    {
+        var id = string.IsNullOrWhiteSpace(timeZoneId) ? "UTC" : timeZoneId.Trim();
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(id);
+        }
+        catch
+        {
+            return TimeZoneInfo.Utc;
+        }
     }
 }

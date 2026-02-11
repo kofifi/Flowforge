@@ -464,13 +464,18 @@ body.editor-wide .editor-body {
 
 .block-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.9rem 1rem;
   border-radius: 14px;
   background: var(--surface-soft);
   border: 1px solid var(--border-soft);
+}
+
+.block-card > div {
+  flex: 1;
+  min-width: 0;
 }
 
 .block-card .label {
@@ -1446,6 +1451,10 @@ button.tiny {
 .node-card {
   display: grid;
   gap: 0.35rem;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
 }
 
 .node-header {
@@ -1547,16 +1556,16 @@ button.tiny {
 }
 
 .react-flow__node.flow-node {
-  border-radius: 16px;
-  border: 1px solid var(--border-soft);
-  background: var(--card);
-  padding: 0.75rem;
-  box-shadow: 0 10px 22px rgba(24, 30, 28, 0.12);
+  border: none;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .react-flow__node.flow-node.selected {
-  border-color: var(--border-strong);
-  box-shadow: 0 14px 28px rgba(24, 30, 28, 0.18);
+  border: none;
+  box-shadow: none;
 }
 
 .drawer-backdrop {

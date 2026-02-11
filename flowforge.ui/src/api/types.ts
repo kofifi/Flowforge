@@ -59,4 +59,5 @@ export type WorkflowScheduleDto = {
   isActive: boolean
   lastRunAtUtc?: string | null
   nextRunAtUtc?: string | null
+  timeZoneId: string
 }

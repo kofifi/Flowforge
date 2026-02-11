@@ -1,50 +1,16 @@
 \babel@toc {polish}{}\relax 
-\contentsline {section}{\numberline {1}Wstęp}{1}{section.1}%
-\contentsline {section}{\numberline {2}Analiza wymagań}{2}{section.2}%
-\contentsline {subsection}{\numberline {2.1}Opis problemu}{2}{subsection.2.1}%
-\contentsline {subsection}{\numberline {2.2}Grupa docelowa}{2}{subsection.2.2}%
-\contentsline {subsection}{\numberline {2.3}Analiza konkurencyjnych rozwiązań (edytory grafowe / node-based)}{2}{subsection.2.3}%
-\contentsline {subsection}{\numberline {2.4}Wymagania funkcjonalne}{2}{subsection.2.4}%
-\contentsline {subsection}{\numberline {2.5}Wymagania niefunkcjonalne}{3}{subsection.2.5}%
-\contentsline {section}{\numberline {3}Przegląd technologii}{4}{section.3}%
-\contentsline {subsection}{\numberline {3.1}Warstwa frontendowa: HTML, CSS, JavaScript/TypeScript}{4}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}Warstwa backendowa: ASP.NET Core}{6}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}Magazyn danych: SQLite dziś, ścieżka do MongoDB i relacyjnej produkcji}{7}{subsection.3.3}%
-\contentsline {subsection}{\numberline {3.4}Kontrola wersji i monorepo: Git}{8}{subsection.3.4}%
-\contentsline {subsection}{\numberline {3.5}Uzasadnienie wyboru stosu jako całości}{9}{subsection.3.5}%
-\contentsline {section}{\numberline {4}Projekt architektury aplikacji}{10}{section.4}%
-\contentsline {subsection}{\numberline {4.1}Opis architektury}{10}{subsection.4.1}%
-\contentsline {subsection}{\numberline {4.2}Diagramy architektoniczne}{10}{subsection.4.2}%
-\contentsline {subsection}{\numberline {4.3}Diagram komponentów}{11}{subsection.4.3}%
-\contentsline {subsection}{\numberline {4.4}Przepływ danych i przypadki użycia}{11}{subsection.4.4}%
-\contentsline {subsection}{\numberline {4.5}Warstwy i interakcje}{12}{subsection.4.5}%
-\contentsline {subsection}{\numberline {4.6}Projekt UI/UX}{12}{subsection.4.6}%
-\contentsline {subsection}{\numberline {4.7}Model bazy danych (szkic ERD)}{13}{subsection.4.7}%
-\contentsline {section}{\numberline {5}Implementacja}{14}{section.5}%
-\contentsline {subsection}{\numberline {5.1}Kluczowe moduły i funkcjonalności}{14}{subsection.5.1}%
-\contentsline {subsection}{\numberline {5.2}Interfejs użytkownika}{15}{subsection.5.2}%
-\contentsline {paragraph}{Edytor grafu}{15}{section*.5}%
-\contentsline {paragraph}{Modal wersji}{15}{section*.6}%
-\contentsline {paragraph}{Scheduler}{16}{section*.7}%
-\contentsline {paragraph}{Historia uruchomień}{16}{section*.8}%
-\contentsline {paragraph}{Menu kontekstowe i toolbar}{17}{section*.9}%
-\contentsline {paragraph}{Konfiguracja bloków}{18}{section*.10}%
-\contentsline {paragraph}{Zarządzanie zmiennymi}{18}{section*.11}%
-\contentsline {paragraph}{Styl i motyw}{19}{section*.12}%
-\contentsline {subsection}{\numberline {5.3}Obsługa danych i zarządzanie bazą danych}{20}{subsection.5.3}%
-\contentsline {paragraph}{Mapowanie modeli w warstwie backend}{21}{section*.13}%
-\contentsline {subsection}{\numberline {5.4}Integracja frontendu i backendu}{22}{subsection.5.4}%
-\contentsline {section}{\numberline {6}Testowanie}{23}{section.6}%
-\contentsline {subsection}{\numberline {6.1}Rodzaje testów}{23}{subsection.6.1}%
-\contentsline {subsection}{\numberline {6.2}Narzędzia testujące}{23}{subsection.6.2}%
-\contentsline {subsection}{\numberline {6.3}Wyniki testów (28.01.2026, lokalnie)}{23}{subsection.6.3}%
-\contentsline {subsection}{\numberline {6.4}Błędy i sposoby ich naprawy}{23}{subsection.6.4}%
-\contentsline {section}{\numberline {7}Wyzwania i rozwiązania}{24}{section.7}%
-\contentsline {subsection}{\numberline {7.1}Problemy napotkane podczas realizacji}{24}{subsection.7.1}%
-\contentsline {subsection}{\numberline {7.2}Metody rozwiązania}{24}{subsection.7.2}%
-\contentsline {subsection}{\numberline {7.3}Optymalizacje i usprawnienia}{24}{subsection.7.3}%
-\contentsline {section}{\numberline {8}Podsumowanie i wnioski}{25}{section.8}%
-\contentsline {subsection}{\numberline {8.1}Ocena realizacji celu}{25}{subsection.8.1}%
-\contentsline {subsection}{\numberline {8.2}Możliwości rozwoju}{25}{subsection.8.2}%
-\contentsline {subsection}{\numberline {8.3}Refleksje}{25}{subsection.8.3}%
-\contentsline {subsection}{\numberline {8.4}Wnioski końcowe}{25}{subsection.8.4}%
+\contentsline {section}{\numberline {1}Wprowadzenie}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Wstęp}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Cel pracy}{2}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Przegląd rozdziałów}{2}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Przegląd istniejących rozwiązań}{3}{subsection.1.4}%
+\contentsline {section}{\numberline {2}Projekt aplikacji}{5}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Analiza dziedziny problemowej}{5}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Specyfikacja wymagań}{7}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Model przypadków użycia}{9}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Specyfikacja przypadków użycia}{11}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Architektura logiczna i fizyczna}{15}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}Model informacyjny}{16}{subsection.2.6}%
+\contentsline {subsection}{\numberline {2.7}Interfejs użytkownika}{18}{subsection.2.7}%
+\contentsline {subsection}{\numberline {2.8}Projekt bazy danych}{20}{subsection.2.8}%
+\contentsline {subsection}{\numberline {2.9}Ideowe przedstawienie interakcji}{21}{subsection.2.9}%
