@@ -87,13 +87,15 @@ Tematem pracy jest projekt i implementacja Flowforge, aplikacji low-code ułatwi
 Celem pracy jest zbudowanie lekkiej platformy, która pozwala wizualnie konstruować przepływy i udostępniać je jako wywoływalne API, równocześnie zapewniając planowanie uruchomień, ręczne wywołania, wgląd w historię i wyniki oraz spójny interfejs w jasnym i ciemnym motywie, tak aby zminimalizować konieczność pisania kodu backendowego przy zachowaniu przejrzystości i możliwości audytu.
 
 \subsection{Przegląd rozdziałów}
-Rozdział pierwszy wprowadza czytelnika: przedstawia motywację, cel pracy i tło rynkowe, pokazując, jakie problemy integracyjne Flowforge ma rozwiązać oraz jak pozycjonuje się względem istniejących platform low-code/no-code. Rozdział drugi prowadzi przez projekt rozwiązania: zaczyna od modelu dziedziny i wymagań, następnie opisuje kluczowe przypadki użycia, architekturę logiczną i fizyczną, model danych oraz szkice interfejsu obejmujące edytor blokowy, listy workflowów, harmonogram i widok wykonań. Trzeci rozdział omawia implementację, strukturę kodu, wybrane decyzje techniczne i konfigurację środowisk. Rozdział czwarty podsumowuje rezultaty, wskazuje ograniczenia obecnej wersji i proponuje kierunki dalszego rozwoju (np. edytor bloków niestandardowych, rozbudowa telemetrii, nowe konektory).
+Praca została podzielona na cztery rozdziały ułożone zgodnie z naturalnym przebiegiem realizacji projektu. Rozdział pierwszy zawiera wprowadzenie: określa cel pracy, przedstawia kontekst problemu oraz zestawia aplikację z wybranymi narzędziami obecnymi na rynku automatyzacji. Rozdział drugi opisuje etap projektowy, obejmujący analizę dziedziny, wymagania, przypadki użycia, architekturę systemu, model danych i założenia interfejsu użytkownika.
+
+Rozdział trzeci przedstawia implementację aplikacji. W tej części omówiono zastosowany stos technologiczny, organizację warstwy backendowej i frontendowej, implementację dostępu do danych, migracje schematu, interfejs użytkownika oraz testy jednostkowe. Rozdział czwarty stanowi domknięcie pracy i obejmuje dwie części: perspektywy rozwojowe aplikacji oraz podsumowanie uzyskanych rezultatów.
 
 \newpage
 \subsection{Przegląd istniejących rozwiązań}
 Aby osadzić Flowforge w kontekście rynku, warto zestawić je z najczęściej używanymi platformami automatyzacji. Poniższe punkty będą uzupełnione zrzutami ekranu (widok budowy przepływu lub listy automatyzacji) dla zobrazowania ergonomii interfejsu:
 \begin{itemize}[noitemsep, topsep=0pt, leftmargin=*]
-    \item \textbf{n8n}\footnote{https://n8n.io} to edytor blokowy z dużym katalogiem konektorów oraz opcją hostowania lokalnego. Przy bardziej złożonych scenariuszach użytkownik często dopisuje własne skrypty JavaScript, a wersjonowanie i testy regresyjne trzeba budować samodzielnie.\\[2pt]
+    \item \textbf{n8n}\cite{n8n} to edytor blokowy z dużym katalogiem konektorów oraz opcją hostowania lokalnego. Przy bardziej złożonych scenariuszach użytkownik często dopisuje własne skrypty JavaScript, a wersjonowanie i testy regresyjne trzeba budować samodzielnie.\\[2pt]
     \begin{figure}[H]
     \centering
     \includegraphics[width=0.55\linewidth]{img/n8n.png}
@@ -102,20 +104,20 @@ Aby osadzić Flowforge w kontekście rynku, warto zestawić je z najczęściej u
 \end{itemize}
 
 \begin{itemize}[noitemsep, topsep=0pt, leftmargin=*]
-    \item \textbf{Node-RED}\footnote{https://nodered.org} to lekkie narzędzie często używane w IoT, łatwe w instalacji i rozbudowie o własne node'y. Brakuje w nim jednak wygodnej historii wykonań zapytań HTTP oraz kontroli wersji przepływów, co utrudnia audyt i współpracę zespołową.\\[2pt]
+    \item \textbf{Node-RED}\cite{nodered} to lekkie narzędzie często używane w IoT, łatwe w instalacji i rozbudowie o własne node'y. Brakuje w nim jednak wygodnej historii wykonań zapytań HTTP oraz kontroli wersji przepływów, co utrudnia audyt i współpracę zespołową.\\[2pt]
     \begin{figure}[H]
     \centering
     \includegraphics[width=0.55\linewidth]{img/Node-RED.png}
     \caption{Przykładowy widok przepływu w Node-RED}
     \end{figure}
     \newpage
-    \item \textbf{Zapier}\footnote{https://zapier.com} oferuje bardzo szeroki ekosystem integracji SaaS i szybki start w chmurze, ale dane pozostają poza kontrolą użytkownika, logi są ograniczone czasowo, a brak wariantu do samodzielnego hostowania podnosi koszty dla firm z restrykcyjnymi wymaganiami.\\[2pt]
+    \item \textbf{Zapier}\cite{zapier} oferuje bardzo szeroki ekosystem integracji SaaS i szybki start w chmurze, ale dane pozostają poza kontrolą użytkownika, logi są ograniczone czasowo, a brak wariantu do samodzielnego hostowania podnosi koszty dla firm z restrykcyjnymi wymaganiami.\\[2pt]
     \begin{figure}[H]
     \centering
     \includegraphics[width=0.55\linewidth]{img/zapier.png}
     \caption{Widok listy automatyzacji w Zapier}
     \end{figure}
-    \item \textbf{Power Automate}\footnote{https://powerautomate.microsoft.com} jest mocno zintegrowane z pakietem Microsoft 365 i usługami Azure. Wymaga subskrypcji, a eksport i przenoszenie przepływów poza tenant bywa ograniczone, co utrudnia migracje i testy w izolowanych środowiskach.\\[2pt]
+    \item \textbf{Power Automate}\cite{powerautomate} jest mocno zintegrowane z pakietem Microsoft 365 i usługami Azure. Wymaga subskrypcji, a eksport i przenoszenie przepływów poza tenant bywa ograniczone, co utrudnia migracje i testy w izolowanych środowiskach.\\[2pt]
     \begin{figure}[H]
     \centering
     \includegraphics[width=0.55\linewidth]{img/powerautomate.png}
@@ -181,7 +183,7 @@ Na etapie analizy wymagań oraz ich specyfikacji należy precyzyjnie opisać, cz
     \item Dane o wersjach, snapshotach, harmonogramach i uruchomieniach są trwałe w bazie; eksport snapshotów nie wymaga usług zewnętrznych.
     \item Motywy jasny i ciemny zachowują spójną typografię i kolorystykę między widokami.
     \item Środowisko buildów jest odtwarzalne: frontend uruchamiany poleceniami npm w katalogu `flowforge.ui`, backend przez `dotnet` na rozwiązaniu.
-    \item Testy jednostkowe backendu (NUnit) można uruchamiać niezależnie od pozostałych komponentów.
+    \item Testy jednostkowe backendu (NUnit) \cite{nunit} można uruchamiać niezależnie od pozostałych komponentów.
 \end{itemize}
 Warstwa niefunkcjonalna opisuje tempo i jakość pracy interfejsu, pełną walidację po kliencie i serwerze, prawidłową obsługę stref czasowych, trwałość danych oraz powtarzalne procesy buildów i testów.
 \subsection{Model przypadków użycia}
@@ -342,11 +344,11 @@ Poniższe diagramy uszczegóławiają pojedyncze akcje użytkownika w interfejsi
 \subsection{Architektura logiczna i fizyczna}
 \vspace{6pt}
 \noindent
-W tej części opisujemy docelowy podział warstw, który ma zostać wdrożony. Po stronie klienta przewidujemy jedną aplikację SPA\footnote{Single Page Application\cite{spa}.} w React 19 (budowaną Vite, routowaną React Router, z edytorem opartym o React Flow)\cite{react}, komunikującą się wyłącznie po HTTP/JSON z REST API\footnote{Interfejs REST w ASP.NET Core Web API\cite{aspnetcore}.}.
+W tej części opisujemy docelowy podział warstw, który ma zostać wdrożony. Po stronie klienta przewidujemy jedną aplikację SPA \cite{spa} w React 19 (budowaną Vite, routowaną React Router, z edytorem opartym o React Flow)\cite{react}, komunikującą się wyłącznie po HTTP/JSON z REST API \cite{aspnetcore}.
 
-Warstwa serwerowa pozostanie w ASP.NET Core\cite{aspnetcore}. Cienkie kontrolery REST przekazują żądania do serwisów domenowych, serwisy korzystają z repozytoriów, a EF Core\cite{efcore} zapisuje dane w pliku SQLite\cite{sqlite}. W tym samym procesie działa hosted service scheduler, który cyklicznie wyzwala zaplanowane uruchomienia. Serwer HTTP to Kestrel\footnote{Wbudowany serwer ASP.NET Core\cite{kestrel}.}, a wstrzykiwanie zależności DI\footnote{Dependency Injection w ASP.NET Core\cite{di}.} oraz DbContext EF Core utrzymują spójność konfiguracji danych.
+Warstwa serwerowa pozostanie w ASP.NET Core\cite{aspnetcore}. Cienkie kontrolery REST przekazują żądania do serwisów domenowych, serwisy korzystają z repozytoriów, a EF Core\cite{efcore} zapisuje dane w pliku SQLite\cite{sqlite}. W tym samym procesie działa hosted service scheduler, który cyklicznie wyzwala zaplanowane uruchomienia. Serwer HTTP to Kestrel \cite{kestrel}, a wstrzykiwanie zależności DI \cite{di} oraz DbContext EF Core utrzymują spójność konfiguracji danych.
 
-W wymiarze fizycznym przewidujemy trzy artefakty: przeglądarka renderująca SPA, proces API Kestrel z DI/DbContextem i schedulerem oraz plik bazy na dysku. Rysunek \ref{fig:architecture} pokazuje, że SPA może być serwowane wspólnie z API albo z osobnego hostingu statycznego; decyzja wdrożeniowa nie zmienia kontraktu REST.
+W wymiarze fizycznym przewidujemy trzy artefakty: przeglądarka renderująca SPA \cite{spa}, proces API Kestrel \cite{kestrel} z DI/DbContextem \cite{di} i schedulerem oraz plik bazy na dysku. Rysunek \ref{fig:architecture} pokazuje, że SPA może być serwowane wspólnie z API albo z osobnego hostingu statycznego; decyzja wdrożeniowa nie zmienia kontraktu REST.
 
 \begin{figure}[H]
 \centering
@@ -356,11 +358,11 @@ W wymiarze fizycznym przewidujemy trzy artefakty: przeglądarka renderująca SPA
 \end{figure}
 
 \noindent
-Rysunek \ref{fig:architecture} obrazuje planowany przepływ: SPA odpytuje API, kontrolery kierują ruch do serwisów, te do repozytoriów i EF Core, a zapis trafia do SQLite. Scheduler działa równolegle w tym samym procesie, wywołując serwisy w tle.
+Rysunek \ref{fig:architecture} obrazuje planowany przepływ: SPA \cite{spa} odpytuje API, kontrolery kierują ruch do serwisów, te do repozytoriów i EF Core \cite{efcore}, a zapis trafia do SQLite \cite{sqlite}. Scheduler działa równolegle w tym samym procesie, wywołując serwisy w tle.
 
-Model backendu utrzymujemy jako warstwową kompozycję „Controllers.Services.Repositories” z DI; frontend pozostaje przy klientowskim renderowaniu SPA. Taki podział ma ułatwić testy, wymianę warstw danych i ewentualne rozdzielenie hostingu SPA i API bez zmiany kontraktu.
+Model backendu utrzymujemy jako warstwową kompozycję „Controllers.Services.Repositories” z DI \cite{di}; frontend pozostaje przy klientowskim renderowaniu SPA \cite{spa}. Taki podział ma ułatwić testy, wymianę warstw danych i ewentualne rozdzielenie hostingu SPA i API bez zmiany kontraktu.
 
-Podsumowanie decyzji architektonicznej: utrzymujemy SPA w React z dostawą statyczną, backend w ASP.NET Core z REST API, Kestrel i EF Core na SQLite, a scheduler jako hosted service w tym samym procesie. Ten układ minimalizuje zależności, pozwala rozwijać UI i API niezależnie, a jednocześnie zachowuje prostą ścieżkę wdrożenia na jednej maszynie lub w rozdzielonych hostach bez modyfikacji protokołów.
+Podsumowanie decyzji architektonicznej: utrzymujemy SPA \cite{spa} w React \cite{react} z dostawą statyczną, backend w ASP.NET Core \cite{aspnetcore} z REST API, Kestrel \cite{kestrel} i EF Core \cite{efcore} na SQLite \cite{sqlite}, a scheduler jako hosted service w tym samym procesie. Ten układ minimalizuje zależności, pozwala rozwijać UI i API niezależnie, a jednocześnie zachowuje prostą ścieżkę wdrożenia na jednej maszynie lub w rozdzielonych hostach bez modyfikacji protokołów.
 
 \subsection{Model informacyjny}
 \vspace{6pt}
@@ -410,69 +412,28 @@ Celem tej części jest przedstawienie pełnego modelu klas w notacji crow’s f
 \subsection{Interfejs użytkownika}
 \vspace{6pt}
 \noindent
-Makiety UI ilustrują docelowy wygląd aplikacji w motywie jasnym i prezentują główne ekrany SPA widoczne dla użytkownika w przeglądarce. Zestaw obejmuje listę workflowów (z akcjami More, wersjami i importem), katalog bloków (mini-canvas i dostęp do konfiguracji), historię uruchomień, szczegóły pojedynczego runu, harmonogram oraz pracę w edytorze blokowym. Osobny kadr pokazuje konfigurację Parsera, czyli typowe pole formularza w drawrze bocznym.
+\indent Sekcja 2.7 opisuje wymagane zachowanie interfejsu użytkownika na poziomie funkcjonalnym, bez odwołania do makiet graficznych. Aplikację rozwijano podejściem \textit{Vertical Slice} \cite{verticalslice}, jednak od początku priorytet nadano logice backendowej: najpierw implementowano model danych, reguły biznesowe i kontrakty API, a dopiero następnie rozwijano warstwę interfejsu. Taka kolejność pozwalała najpierw ustabilizować zachowanie systemu i zweryfikować poprawność przypadków użycia na poziomie usług, co ograniczało ryzyko wielokrotnego przebudowywania UI po zmianach domenowych. Wstępna warstwa UI miała charakter minimalny i służyła głównie do weryfikacji działania przypadków użycia.
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.48\linewidth}
-  \centering
-  \includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{img/ui-workflows.png}
-  \caption{Widok listy workflowów. Lista projektów z akcjami More i szybkim tworzeniem}
-  \label{fig:ui-workflows}
-\end{minipage}\hfill
-\begin{minipage}{0.48\linewidth}
-  \centering
-  \includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{img/ui-blocks.png}
-  \caption{Widok Blocks. Katalog bloków z mini canvasem podglądu i dostępem do konfiguracji}
-  \label{fig:ui-blocks}
-\end{minipage}
-\end{figure}
+\indent Takie podejście zmniejsza ryzyko niespójności między tym, co użytkownik widzi w aplikacji, a tym, co system rzeczywiście wykonuje. Projekt interfejsu nie jest wtedy zbiorem niezależnych ekranów, tylko warstwą prezentacji dla wcześniej zweryfikowanych procesów domenowych. Każda akcja dostępna w UI ma odpowiadać konkretnemu przypadkowi użycia i jednoznacznej operacji po stronie API, a rezultat działania użytkownika powinien być możliwy do potwierdzenia przez stan bazy. Dzięki temu interfejs staje się narzędziem sterowania procesem, a nie elementem dekoracyjnym o nieustalonym znaczeniu operacyjnym.
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.48\linewidth}
-  \centering
-  \includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{img/ui-executions.png}
-  \caption{Widok Executions. Historia uruchomień z podstawowymi metadanymi}
-  \label{fig:ui-executions}
-\end{minipage}\hfill
-\begin{minipage}{0.48\linewidth}
-  \centering
-  \includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{img/ui-execution-details.png}
-  \caption{Widok Execution Details. Pełne dane wejścia/wyjścia, ścieżka bloków i logi}
-  \label{fig:ui-execution-details}
-\end{minipage}
-\end{figure}
+\indent Centralnym punktem pracy użytkownika ma być widok \texttt{Workflows}. Jego zadaniem jest obsługa cyklu życia przepływu: utworzenie, wybór, publikacja oraz zarządzanie wersjami. Zakłada się, że użytkownik otrzymuje listę przepływów wraz z podstawowymi metadanymi i zestawem działań kontekstowych. Z punktu widzenia użyteczności ważne jest, aby operacje administracyjne były dostępne bez opuszczania listy, natomiast operacje merytoryczne kierowały bezpośrednio do edytora. Widok ten pełni więc funkcję bramy wejściowej do dalszej pracy i porządkuje organizację projektów.
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.48\linewidth}
-  \centering
-  \includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{img/ui-scheduler.png}
-  \caption{Widok Scheduler. Lista harmonogramów z akcjami edycji, wyzwalania i zmianą strefy czasowej}
-  \label{fig:ui-scheduler}
-\end{minipage}\hfill
-\begin{minipage}{0.48\linewidth}
-  \centering
-  \includegraphics[width=\linewidth,height=0.32\textheight,keepaspectratio]{img/ui-editor.png}
-  \caption{Widok edytora workflow. Canvas React Flow zaraz po utworzeniu nowego skryptu}
-  \label{fig:ui-editor}
-\end{minipage}
-\end{figure}
+\indent Drugim obszarem jest katalog \texttt{Blocks} oraz edytor workflow. Katalog powinien udostępniać zbiór bloków systemowych z krótką charakterystyką funkcji, tak aby użytkownik mógł dobrać element adekwatny do problemu. Edytor ma umożliwiać konstruowanie grafu procesu przez dodawanie bloków, definiowanie połączeń oraz konfigurację parametrów. Istotnym wymaganiem jest zachowanie spójności między reprezentacją graficzną a modelem danych wysyłanym do API. Oznacza to konieczność walidacji podstawowych warunków poprawności jeszcze po stronie klienta, przy jednoczesnym traktowaniu backendu jako warstwy ostatecznej weryfikacji.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\linewidth,keepaspectratio]{img/ui-parser-config.png}
-\caption{Konfiguracja bloku Parser w edytorze. Pola formatu, źródła i mapowań do zmiennych w bocznym drawerze}
-\label{fig:ui-parser-config}
-\end{figure}
+\indent Kolejna grupa funkcji dotyczy obserwacji działania systemu. Widok \texttt{Executions} ma przedstawiać historię uruchomień w formie umożliwiającej szybkie filtrowanie i identyfikację interesujących przebiegów. Jego rolą nie jest analiza szczegółowa, lecz orientacja operacyjna: kiedy uruchomienie nastąpiło, jaki miało status i którego workflow dotyczyło. Analiza szczegółowa jest realizowana w widoku \texttt{Execution Details}, gdzie użytkownik powinien mieć dostęp do danych wejściowych, wyniku, sekwencji przejścia przez bloki oraz logów. Rozdzielenie tych dwóch poziomów przeglądu zmniejsza obciążenie poznawcze i ułatwia diagnostykę.
+
+\indent Istotnym elementem koncepcji interfejsu jest także obsługa harmonogramów w widoku \texttt{Scheduler}. Wymaga się, aby użytkownik mógł zdefiniować sposób wyzwalania przepływu, zarządzać aktywnością harmonogramu oraz kontrolować parametry czasu, w tym strefę czasową. Ponieważ wykonanie planowe realizuje usługa działająca w tle, interfejs powinien jednoznacznie komunikować, które ustawienia wpływają na kolejne uruchomienia, a które mają charakter informacyjny. Z perspektywy projektowej jest to krytyczne dla ograniczenia błędów operacyjnych wynikających z niejednoznacznej interpretacji czasu.
+
+\indent Uzupełnieniem powyższych widoków są formularze kontekstowe, między innymi konfiguracja bloku \texttt{Parser}. Formularz ma być osadzony w panelu bocznym, aby użytkownik mógł jednocześnie modyfikować parametry i obserwować strukturę całego przepływu. Wymagane jest zachowanie przewidywalnego mapowania pól formularza na strukturę danych przesyłaną do backendu. Tylko wtedy możliwe jest ograniczenie błędów integracyjnych oraz utrzymanie powtarzalności zachowania bloku przy kolejnych uruchomieniach.
+
+\indent Podsumowując, sekcja 2.7 ma charakter specyfikacji funkcjonalnej interfejsu, a nie prezentacji warstwy wizualnej. Brak makiet nie wynika z pominięcia tego obszaru, lecz z przyjętej kolejności prac: najpierw stabilizacja warstwy backendowej i kontraktów, następnie implementacja frontendu jako reprezentacji istniejących mechanizmów systemu. Takie podejście jest zgodne z celem pracy, w której kluczowe było wykazanie poprawności i spójności działania całego rozwiązania, a nie projektowanie interfejsu jako odrębnego artefaktu niezależnego od logiki wykonawczej.
 
 \newpage
 
 \subsection{Projekt bazy danych}
 \vspace{6pt}
 \noindent
-Schemat bazy ma układ \textit{hub-and-spoke}: \texttt{Workflows} jest węzłem centralnym, a rewizje, bloki, uruchomienia, harmonogramy i zmienne są satelitami spiętymi kluczami obcymi. To układ transakcyjny (nie star schema) i stanowi bazę dla edytora oraz schedulera. W środowisku deweloperskim zastosowano relacyjną bazę SQLite z mapowaniem przez Entity Framework Core. Poniższe punkty podsumowują przyjęty schemat i decyzje projektowe:
+Schemat bazy ma układ relacyjny z encją centralną \texttt{Workflows}, do której przez klucze obce powiązano encje zależne: rewizje, bloki, uruchomienia, harmonogramy i zmienne. W literaturze hurtownianej spotyka się pokrewne wzorce organizacji danych, takie jak \textit{hub-and-spoke} \cite{inmon} oraz \textit{star schema} \cite{kimball}, jednak w tym projekcie zastosowano wariant transakcyjny (OLTP) \cite{oltp}, dostosowany do operacyjnego charakteru systemu i częstych zapisów stanu. Taki układ stanowi bazę dla edytora oraz schedulera. W środowisku deweloperskim zastosowano relacyjną bazę SQLite \cite{sqlite} z mapowaniem przez Entity Framework Core \cite{efcore}. Poniższe punkty podsumowują przyjęty schemat i decyzje projektowe:
 \begin{itemize}[noitemsep, topsep=0pt, leftmargin=*]
     \item \textbf{Workflows}: nazwa, bieżąca rewizja robocza (SET NULL po skasowaniu rewizji).
     \item \textbf{Revisions}: snapshot JSON, znacznik aktywności, kaskadowe powiązanie z workflow.
@@ -496,7 +457,7 @@ Schemat bazy ma układ \textit{hub-and-spoke}: \texttt{Workflows} jest węzłem 
 \subsection{Ideowe przedstawienie interakcji}
 \vspace{6pt}
 \noindent
-\indent W tej sekcji zestawiono diagramy ilustrujące przepływ informacji między warstwami Flowforge. Najpierw pokazano mapę komponentów (SPA, API, baza, scheduler, klient zewnętrzny), następnie trzy sekwencje zdarzeń: publikację i jednorazowe uruchomienie, obsługę harmonogramu oraz wywołanie zewnętrzne. Każdy rysunek prezentuje pełną ścieżkę żądania HTTP, zapis stanu w bazie i punkt, w którym powstają logi oraz ścieżka bloków, co ma znaczenie dla obserwowalności i audytu.
+\indent W tej sekcji zestawiono diagramy ilustrujące przepływ informacji między warstwami aplikacji. Najpierw pokazano mapę komponentów (SPA \cite{spa}, API, baza, scheduler, klient zewnętrzny), następnie trzy sekwencje zdarzeń: publikację i jednorazowe uruchomienie, obsługę harmonogramu oraz wywołanie zewnętrzne. Każdy rysunek prezentuje pełną ścieżkę żądania HTTP, zapis stanu w bazie i punkt, w którym powstają logi oraz ścieżka bloków, co ma znaczenie dla obserwowalności i audytu.
 
 \begin{figure}[H]
 \centering
@@ -506,7 +467,7 @@ Schemat bazy ma układ \textit{hub-and-spoke}: \texttt{Workflows} jest węzłem 
 \end{figure}
 
 \noindent
-\indent Rysunek \ref{fig:interactions} pokazuje główne klocki: SPA i klient zewnętrzny korzystają z jednego kontraktu REST, API pośredniczy we wszystkich operacjach, a scheduler w tle wyzwala workflow na podstawie wpisów zapisanych w bazie SQLite/EF Core. Jeden punkt trwałości upraszcza audyt i obserwowalność, a brak bezpośrednich połączeń między klientami a schedulerem pozwala kontrolować uprawnienia wyłącznie na poziomie API.
+\indent Rysunek \ref{fig:interactions} pokazuje główne klocki: SPA \cite{spa} i klient zewnętrzny korzystają z jednego kontraktu REST, API pośredniczy we wszystkich operacjach, a scheduler w tle wyzwala workflow na podstawie wpisów zapisanych w bazie SQLite \cite{sqlite} i mapowanych przez EF Core \cite{efcore}. Jeden punkt trwałości upraszcza audyt i obserwowalność, a brak bezpośrednich połączeń między klientami a schedulerem pozwala kontrolować uprawnienia wyłącznie na poziomie API.
 \newpage
 
 \begin{figure}[H]
@@ -541,7 +502,392 @@ Schemat bazy ma układ \textit{hub-and-spoke}: \texttt{Workflows} jest węzłem 
 \noindent
 \indent Rysunek \ref{fig:interactions-external} pokazuje integrację bez UI: klient zewnętrzny wywołuje endpoint, API tworzy rekord wykonania i zwraca 202; po przetworzeniu dopisuje wynik, ścieżkę i logi widoczne potem w Executions. Ten sam kontrakt HTTP obowiązuje UI i integratora, co ułatwia walidację i diagnozę.
 
-\begin{thebibliography}{12}
+\newpage
+\section{Implementacja aplikacji}
+\indent Rozdział prezentuje, jak projekt został przełożony na działający kod. Zawiera omówienie użytego środowiska programistycznego, zestawu technologii i języków, a także wprowadzenie do kolejnych podsekcji, w których zostaną opisane najważniejsze elementy aplikacji i ich powiązania.
+
+\subsection{Wykorzystana technologia}
+Sekcja ta wprowadza kryteria doboru narzędzi użytych w projekcie oraz porządkuje dalszy opis implementacji. W kolejnych podsekcjach omówiono warstwę interfejsu użytkownika, część serwerową, sposób przechowywania danych oraz organizację pracy z kodem, ze wskazaniem wpływu tych decyzji na realizację wymagań, testowalność i koszt utrzymania pojedynczej instancji systemu.
+
+\subsubsection{Warstwa frontendowa: HTML, CSS, JavaScript/TypeScript}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/html.png}\\[-0.3em]
+        {\footnotesize HTML}
+    \end{minipage}
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/css.png}\\[-0.3em]
+        {\footnotesize CSS}
+    \end{minipage}
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/react.png}\\[-0.3em]
+        {\footnotesize React}
+    \end{minipage}
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/vite.png}\\[-0.3em]
+        {\footnotesize Vite}
+    \end{minipage}
+    \begin{minipage}{0.19\textwidth}
+        \centering
+        \includegraphics[height=1.8cm,keepaspectratio]{img/typescript.png}\\[-0.3em]
+        {\footnotesize TypeScript}
+    \end{minipage}
+    \caption{Warstwa frontendowa: HTML/CSS oraz stos Vite + React + TypeScript.}
+\end{figure}
+Frontend powstał w oparciu o Vite + React + TypeScript \cite{vite}\cite{react}\cite{typescript}, co zapewnia bardzo krótki czas startu deweloperskiego (HMR), typowanie modeli przesyłanych do API oraz czytelną strukturę komponentów. HTML i CSS pozostają fundamentem renderowania, a warstwa stylów jest ograniczona do lekkich arkuszów i zmiennych kolorystycznych, by nie tworzyć zależności od ciężkich frameworków UI. Stylowanie zachowuje spójność z React Flow \cite{reactflow}, który dostarcza kanwę do edycji grafów; kolory i typografia są definiowane we własnych klasach, co upraszcza utrzymanie i eliminację konfliktów między bibliotekami \cite{react}.
+
+Wybór TypeScriptu \cite{typescript} zamiast czystego JavaScriptu wynika z potrzeby jednoznacznego odwzorowania modeli domenowych po stronie klienta. Silne typowanie zmniejsza liczbę błędów integracyjnych, zwłaszcza przy serializacji/deskrypcji JSON z API. Alternatywy jak czysty JS przyspieszyłyby start, ale zwiększyłyby ryzyko błędów przy refaktoryzacji. React \cite{react}, w przeciwieństwie do frameworków szablonowych, pozwala budować hermetyczne komponenty edytora, paneli historii i harmonogramu, wykorzystując jeden model stanu.
+
+React Flow \cite{reactflow} został wybrany jako biblioteka do wizualnej edycji połączeń, ponieważ zapewnia interaktywny canvas z obsługą drag \& drop, walidację połączeń i blokadę cykli na poziomie UI, łatwe mapowanie węzłów na dane domenowe.
+
+HTML i CSS wykorzystano zgodnie z minimalnym podejściem: brak frameworka typu Bootstrap zmniejsza rozmiar paczki i eliminuje nadmiar styli. Zamiast tego definiowane są zmienne kolorów, spacing i typografia w jednym miejscu, co pozwala utrzymać spójny akcent wizualny i łatwo przełączać motyw jasny/ciemny.
+
+\subsubsection{Warstwa backendowa: ASP.NET Core}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[height=3cm,keepaspectratio]{img/dotnet.png}
+    \end{minipage}
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.8, every node/.style={transform shape}]
+            \node[rectangle, rounded corners=10pt, minimum width=3.4cm, minimum height=1.8cm, draw=green!70!black, very thick, fill=green!60!black!70] (n) {};
+            \node[text=white, font=\bfseries\Large] at (n) {NUnit};
+        \end{tikzpicture}
+    \end{minipage}
+    \caption{Stos serwerowy: ASP.NET Core/EF Core oraz testy NUnit.}
+\end{figure}
+\indent Backend działa jako ASP.NET Core Web API z podziałem na kontrolery, serwisy i repozytoria \cite{aspnetcore}\cite{di}. Kontrolery obsługują kontrakt HTTP i mapowanie DTO, serwisy realizują reguły biznesowe, a repozytoria operują na \texttt{DbContext}. Taki podział ułatwia testowanie i utrzymanie oraz ogranicza mieszanie logiki domenowej z warstwą transportową.
+
+Konfiguracja startowa obejmuje rejestrację zależności DI \cite{di} dla modułów workflowów, bloków, połączeń, zmiennych, rewizji i harmonogramu. Zastosowano też mechanizm executorów (\texttt{IBlockExecutor}), który oddziela logikę pojedynczych bloków od głównego algorytmu wykonania.
+
+Centralnym elementem logiki jest serwis wykonania workflowu. Wczytuje graf bloków i połączeń, uruchamia przebieg od bloku \texttt{Start} i deleguje kolejne kroki do właściwych executorów. Odpowiada również za sterowanie przebiegiem, kontrolę cykli i zapis historii działań.
+
+W ramach tej samej aplikacji planuje się uruchomienie schedulera jako usługi działającej w tle. Usługa ma cyklicznie sprawdzać harmonogramy gotowe do wykonania, uruchamiać workflow oraz aktualizować pola \texttt{LastRunAtUtc} i \texttt{NextRunAtUtc}. Cały mechanizm ma pracować na czasie UTC, z przeliczeniem na strefy czasowe przy wyznaczaniu kolejnych terminów uruchomienia.
+
+W warstwie trwałości przewidziano EF Core z jawnie opisanymi relacjami i regułami usuwania w \texttt{FlowforgeDbContext} \cite{efcore}. Po uruchomieniu system ma wykonywać migracje oraz weryfikować dostępność wymaganych bloków systemowych, aby zapewnić spójny stan danych potrzebnych do działania edytora i endpointów wykonawczych.
+
+\newpage
+\subsubsection{Magazyn danych: SQLite}
+\begin{figure}[H]
+    \centering
+    \includegraphics[height=3cm,keepaspectratio]{img/sqlite.png}
+    \caption{Magazyn danych w trybie deweloperskim: SQLite.}
+\end{figure}
+\indent W planowanej architekturze magazyn danych ma opierać się na SQLite \cite{sqlite}, aby uprościć uruchomienie systemu i ograniczyć narzut administracyjny na etapie rozwoju projektu. Baza plikowa ma pozwolić na szybkie odtworzenie środowiska lokalnego bez instalacji osobnego serwera SQL, co jest istotne przy częstych zmianach modeli i testach funkcjonalnych.
+
+Model danych ma być utrzymywany przez EF Core \cite{efcore} z jawnym mapowaniem relacji między workflowami, blokami, połączeniami, harmonogramami i historią wykonań. Zakłada się stosowanie kluczy głównych i obcych, reguł usuwania kaskadowego tam, gdzie usunięcie obiektu nadrzędnego powinno czyścić dane zależne, oraz ograniczeń \texttt{restrict}/\texttt{set null} w miejscach wymagających zachowania spójności referencyjnej.
+
+Ewolucja schematu ma odbywać się przez migracje EF Core \cite{efcore}, tak aby każda zmiana modelu była wersjonowana i możliwa do odtworzenia w innych środowiskach. Plan zakłada uruchamianie migracji przy starcie aplikacji, co zmniejsza ryzyko niespójności między kodem domenowym a strukturą tabel oraz skraca czas przygotowania środowiska demonstracyjnego.
+
+W warstwie operacyjnej przewidziano zapisywanie znaczników czasu w UTC oraz utrzymanie lekkiego profilu danych, bez dużych załączników binarnych w bazie. Dla danych o zmiennej strukturze (np. konfiguracje bloków i ślady wykonania) zakłada się przechowywanie treści serializowanych, co upraszcza rozwój funkcji edytora. W przypadku wzrostu obciążenia docelowy model ma umożliwiać przejście na serwerową bazę SQL bez zmiany kontraktów API i logiki aplikacyjnej.
+
+\newpage
+\subsubsection{Kontrola wersji i monorepo: Git}
+\begin{figure}[H]
+    \centering
+    \includegraphics[height=3cm,keepaspectratio]{img/git.png}
+    \caption{Kontrola wersji: Git w układzie monorepo.}
+\end{figure}
+\indent W ramach projektu przyjęto organizację kodu w jednym repozytorium obejmującym część serwerową, interfejs użytkownika i testy \cite{git}. Takie podejście pozwala wersjonować całą zmianę funkcjonalną jako spójną całość: razem z modyfikacją logiki backendu można zapisać odpowiadające jej zmiany w UI i testach. Dzięki temu historia projektu jest czytelniejsza, a ryzyko niespójności między warstwami systemu jest mniejsze.
+
+Monorepo porządkuje również codzienną pracę. Przegląd zmian odbywa się w jednym miejscu, a odtworzenie środowiska jest prostsze, ponieważ struktura projektu i zasady pracy są wspólne dla wszystkich modułów. Jednocześnie każdy komponent zachowuje własny cykl zależności i narzędzi (\texttt{dotnet restore}, \texttt{npm install}), co pozwala utrzymać techniczną niezależność poszczególnych części aplikacji.
+
+W zakresie praktyki wersjonowania zakłada się krótkie gałęzie robocze, częste scalanie oraz oznaczanie istotnych wersji tagami. Dla utrzymania porządku konieczne jest także konsekwentne pomijanie artefaktów lokalnych i plików builda, takich jak \texttt{bin/}, \texttt{obj/} i \texttt{node\_modules/}. Z punktu widzenia pracy inżynierskiej taki model ułatwia odtworzenie kolejnych etapów rozwoju systemu i powiązanie decyzji projektowych z konkretnymi zmianami w kodzie.
+
+\newpage
+\subsubsection{Środowisko programistyczne: Rider i WebStorm}
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\linewidth}
+        \centering
+        \includegraphics[height=2.6cm,keepaspectratio]{img/RiderLogo.png}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\linewidth}
+        \centering
+        \includegraphics[height=2.6cm,keepaspectratio]{img/WebStormLogo.png}
+    \end{minipage}
+    \caption{Użyte środowiska IDE: JetBrains Rider oraz JetBrains WebStorm}
+\end{figure}
+\indent W opisie zaplecza technicznego uwzględniono dwa środowiska IDE: JetBrains Rider \cite{rider} oraz JetBrains WebStorm \cite{webstorm}. W praktyce Rider był używany do rozwoju warstwy backendowej (.NET), natomiast WebStorm do implementacji i utrzymania warstwy frontendowej (React/TypeScript). Nie są to elementy docelowego stosu uruchomieniowego aplikacji, ale narzędzia wspierające proces implementacji, debugowania i uruchamiania testów.
+
+\subsubsection{Uzasadnienie wyboru stosu jako całości}
+\indent Dobór stosu technologicznego oparto na trzech kryteriach: spójności modelu danych między frontendem i backendem, prostocie wdrożenia oraz możliwości dalszego rozwoju systemu bez przebudowy podstaw architektury. Połączenie TypeScriptu \cite{typescript} w warstwie klienckiej i kontraktów JSON po stronie API ogranicza ryzyko rozbieżności semantycznych oraz ułatwia utrzymanie jednolitej walidacji danych wejściowych i wyników wykonania workflow.
+
+Istotnym argumentem był również koszt utrzymania środowiska. Zastosowanie SQLite \cite{sqlite} i jednego procesu aplikacyjnego dla API oraz harmonogramu pozwala uruchomić system bez dodatkowej infrastruktury bazodanowej i bez skomplikowanej konfiguracji usług pomocniczych. Taka organizacja jest wystarczająca dla zakładanego obciążenia projektu i upraszcza przygotowanie środowiska demonstracyjnego.
+
+\newpage
+\subsection{Implementacja dostępu do danych}
+\indent Warstwa dostępu do danych jest elementem łączącym logikę backendu z rzeczywistym stanem aplikacji. Jej rola nie ogranicza się do prostego zapisu i odczytu rekordów, ale obejmuje także utrzymanie spójności między modułami odpowiedzialnymi za edycję workflow, wykonywanie bloków oraz planowanie uruchomień. W projekcie przyjęto założenie, że model domenowy powinien być czytelny na poziomie kodu, a struktura relacyjna ma wynikać z tego modelu, a nie odwrotnie. Dzięki temu łatwiej zachować spójny język opisu systemu zarówno w dokumentacji, jak i w implementacji.
+
+\subsubsection{Zakres odpowiedzialności warstwy danych}
+\indent W implementacji dostępu do danych rozdzielono trzy poziomy odpowiedzialności. Kontrolery API odpowiadają za przyjęcie żądania i mapowanie danych wejściowych, serwisy za reguły biznesowe, natomiast repozytoria za komunikację z bazą danych. Takie rozdzielenie upraszcza rozwój systemu, ponieważ zmiany w sposobie przechowywania danych nie muszą od razu wpływać na logikę endpointów. Jednocześnie logika biznesowa nie jest rozpraszana po wielu klasach infrastrukturalnych, co ułatwia testowanie oraz analizę błędów.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=0.8cm and 0.6cm,
+    box/.style={draw=black!70, rounded corners=3pt, minimum height=1cm, minimum width=2.45cm, align=center, fill=gray!8},
+    arr/.style={->, thick, >=latex}
+]
+    \node[box] (c) {Controller};
+    \node[box, right=of c] (s) {Service};
+    \node[box, right=of s] (r) {Repository};
+    \node[box, right=of r] (d) {DbContext};
+    \node[box, right=of d] (q) {SQLite};
+
+    \draw[arr] (c) -- (s);
+    \draw[arr] (s) -- (r);
+    \draw[arr] (r) -- (d);
+    \draw[arr] (d) -- (q);
+\end{tikzpicture}
+\caption{Podział odpowiedzialności w warstwie dostępu do danych}
+\label{fig:data-layer-responsibility}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{img/WorkflowExecutionController.png}
+\end{minipage}\hfill
+\begin{minipage}{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{img/WorkflowExecutionService.png}
+\end{minipage}\hfill
+\begin{minipage}{0.32\linewidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.24\textheight,keepaspectratio]{img/WorkflowExecutionRepository.png}
+\end{minipage}
+\caption[Implementacja przepływu end-to-end: kontroler, serwis i repozytorium]{Implementacja przepływu end-to-end: \texttt{WorkflowExecutionController}, \texttt{WorkflowExecutionService} i \texttt{WorkflowExecutionRepository}}
+\label{fig:code-e2e-placeholder}
+\end{figure}
+
+\indent W praktyce taki układ pozwala precyzyjnie kontrolować zapytania wykonywane do bazy. Operacje odczytu i zapisu są skupione w repozytoriach dedykowanych konkretnym obszarom domeny, takim jak workflow, wykonania czy harmonogramy. Dzięki temu możliwe jest tworzenie metod odzwierciedlających rzeczywiste przypadki użycia, zamiast operowania na ogólnych zapytaniach o niejasnym przeznaczeniu. Ma to duże znaczenie przy utrzymaniu aplikacji, gdzie czytelność kodu przekłada się bezpośrednio na tempo wprowadzania zmian.
+
+\subsubsection{Model relacyjny i mapowanie encji}
+\indent Model danych oparto na encjach odpowiadających głównym pojęciom domenowym. Workflow pełni rolę obiektu nadrzędnego dla bloków, zmiennych, rewizji i historii uruchomień. Bloki są połączone relacjami reprezentującymi przepływ wykonania, a harmonogramy wskazują, kiedy dana definicja ma zostać uruchomiona. Taki model umożliwia odwzorowanie zarówno statycznej struktury przepływu, jak i zdarzeń dynamicznych, które pojawiają się podczas działania systemu. W tej sekcji diagram pełni funkcję referencyjną, a nacisk położono na mapowanie w kodzie.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\linewidth,keepaspectratio]{img/er-db.png}
+\caption{ERD całości modelu danych Flowforge}
+\label{fig:er-full-322}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.49\linewidth}
+    \centering
+    \includegraphics[width=0.9\linewidth,height=0.252\textheight,keepaspectratio]{img/DbContext1.png}
+\end{minipage}\hfill
+\begin{minipage}{0.49\linewidth}
+    \centering
+    \includegraphics[width=0.9\linewidth,height=0.252\textheight,keepaspectratio]{img/DbContext2.png}
+\end{minipage}
+\caption[Implementacja kontekstu danych FlowforgeDbContext]{Implementacja kontekstu danych \texttt{FlowforgeDbContext}: encje, relacje i reguły integralności}
+\label{fig:code-relations-placeholder}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\linewidth,height=0.34\textheight,keepaspectratio]{img/WorkflowExecutionModel1.png}
+
+\vspace{0.6em}
+
+\includegraphics[width=0.94\linewidth,height=0.34\textheight,keepaspectratio]{img/WorkflowExecutionModel2.png}
+\caption[Model WorkflowExecution: mapowanie pól trwałych i transportowych]{Model \texttt{WorkflowExecution}: mapowanie pól trwałych i pól transportowych (\texttt{JsonIgnore}, \texttt{NotMapped})}
+\label{fig:code-serialization-placeholder}
+\end{figure}
+
+\indent Model \texttt{WorkflowExecution} opisuje pojedyncze wykonanie procesu i stanowi centralny punkt zapisu historii uruchomień. Definiuje identyfikator wykonania, powiązanie z rekordem \texttt{Workflow}, znaczniki czasu oraz metadane potrzebne do ustalenia, kiedy i w jakim kontekście uruchomiono dany przepływ. W praktyce to właśnie ten model buduje podstawę ścieżki audytowej: pozwala nie tylko stwierdzić, że wykonanie miało miejsce, ale także odtworzyć jego przebieg i rezultat.
+
+\indent Struktura klasy została podzielona na dwie warstwy reprezentacji danych. Pierwsza warstwa to pola trwałe (\texttt{InputData}, \texttt{ResultData}, \texttt{PathData}, \texttt{ActionsData}), przechowywane w bazie w postaci tekstowej i traktowane jako źródło prawdy po stronie persystencji. Druga warstwa to pola transportowe (\texttt{Input}, \texttt{Result}, \texttt{Path}, \texttt{Actions}), używane przez logikę aplikacyjną i odpowiedzi API. Dzięki temu model nie miesza wymagań schematu relacyjnego z wygodą pracy na typach domenowych po stronie kodu.
+
+\indent Adnotacje \texttt{JsonIgnore} i \texttt{NotMapped} wyznaczają granicę odpowiedzialności między ORM i serializacją HTTP. \texttt{JsonIgnore} ukrywa pola \texttt{*Data} przed bezpośrednią ekspozycją w kontrakcie API, co ogranicza ryzyko udostępniania surowego formatu technicznego. Z kolei \texttt{NotMapped} informuje EF Core, że pola transportowe nie mają być mapowane jako oddzielne kolumny. W efekcie jedna klasa może jednocześnie obsługiwać zapis w bazie i czytelny kontrakt danych zwracanych klientowi.
+
+\indent Mechanizm getterów i setterów realizuje konwersję między obiema reprezentacjami. Odczyt deserializuje dane JSON do obiektów używanych przez silnik wykonawczy i UI, natomiast zapis serializuje struktury domenowe z powrotem do postaci trwałej. Taki układ upraszcza ewolucję modelu, ponieważ zmiany po stronie API lub logiki wykonania można w wielu przypadkach wprowadzać bez przebudowy relacyjnego schematu tabel. W kontekście implementacji dostępu do danych model \texttt{WorkflowExecution} definiuje więc zarówno format utrwalania wyników, jak i sposób ich bezpiecznej prezentacji na zewnątrz systemu.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\linewidth,height=0.34\textheight,keepaspectratio]{img/WorkflowExecutionRepostioryMappings.png}
+\caption[Odczyt danych wykonania i mapowanie pól Path/Actions]{Odczyt danych wykonania i mapowanie pól \texttt{Path}/\texttt{Actions} w \texttt{WorkflowExecutionRepository}}
+\label{fig:code-repository-read-placeholder}
+\end{figure}
+
+\indent Konfiguracja relacji została zaprojektowana tak, aby odzwierciedlać konsekwencje biznesowe usuwania i aktualizacji danych. W relacjach silnie zależnych stosowane są reguły kaskadowe, natomiast tam, gdzie utrata danych mogłaby utrudnić analizę historii, preferowane są ograniczenia typu \texttt{restrict} lub \texttt{set null}. Pozwala to uniknąć przypadkowego usunięcia kluczowych informacji, np. powiązań potrzebnych do odtworzenia przebiegu wykonania. Z perspektywy inżynierskiej jest to istotne, ponieważ integralność danych staje się częścią kontraktu systemu, a nie jedynie efektem ubocznym działania ORM.
+
+\indent Dla pól o zmiennej strukturze, takich jak konfiguracje wybranych bloków, przyjęto zapis serializowany. Rozwiązanie to ułatwia rozwój aplikacji w sytuacji, gdy lista parametrów może się zmieniać wraz z dodawaniem nowych typów bloków. Jednocześnie kluczowe atrybuty identyfikujące i łączące obiekty pozostają relacyjne, co zapewnia wydajne filtrowanie i sortowanie danych. Takie połączenie elastyczności oraz rygoru strukturalnego dobrze odpowiada charakterowi narzędzia low-code.
+
+\subsubsection{Migracje i kontrola zmian schematu}
+\indent Zmiany modelu danych są wersjonowane z użyciem migracji EF Core \cite{efcore}. Każda modyfikacja encji, relacji lub ograniczeń jest zapisywana jako osobny krok, który można odtworzyć w innym środowisku. Takie podejście porządkuje proces rozwoju i ogranicza ryzyko ręcznych, niespójnych zmian w bazie. Ma to również znaczenie metodyczne: historia migracji pokazuje, jak ewoluował model danych wraz z kolejnymi wymaganiami.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9504\linewidth,height=0.2673\textheight,keepaspectratio]{img/UseSqlLite.png}
+
+\vspace{0.6em}
+
+\includegraphics[width=0.9504\linewidth,height=0.2673\textheight,keepaspectratio]{img/MigrateProgramCs.png}
+\caption[Konfiguracja UseSqlite(...) i wywołanie Database.Migrate()]{Konfiguracja \texttt{UseSqlite(...)} oraz wywołanie \texttt{Database.Migrate()} w \texttt{Program.cs}}
+\label{fig:code-sqlite-migrate-placeholder}
+\end{figure}
+
+\indent Istotnym elementem jest automatyczne dopasowanie schematu przy uruchomieniu aplikacji. Dzięki temu nową instancję systemu można odtworzyć bez dodatkowych kroków administracyjnych. Po stronie implementacji oznacza to mniejszą liczbę błędów wynikających z różnic wersji bazy oraz bardziej przewidywalne uruchomienie aplikacji na nowych maszynach.
+
+\subsection{Interfejs}
+\indent W tej sekcji przedstawiono działający interfejs aplikacji w jasnym motywie oraz rzeczywiste widoki systemu z dostępnymi operacjami użytkownika.
+
+\begin{itemize}[noitemsep, topsep=0pt, leftmargin=*]
+    \item \textbf{Workflows}: tworzenie przepływu, wejście do edytora, akcje kontekstowe i zarządzanie wersjami.
+    \item \textbf{Blocks}: przegląd bloków systemowych i przejście do konfiguracji.
+    \item \textbf{Editor}: budowanie grafu procesu, łączenie bloków i edycja parametrów.
+    \item \textbf{Executions}: historia uruchomień z szybkim podglądem statusu i czasu wykonania.
+    \item \textbf{Execution Details}: analiza wejścia, wyniku, ścieżki bloków i logów.
+    \item \textbf{Scheduler}: planowanie cyklicznych uruchomień i ręczne wyzwalanie.
+    \item \textbf{Parser config}: konfiguracja bloku Parser w bocznym panelu.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-workflows.png}
+\caption{Interfejs: widok Workflows}
+\label{fig:impl-ui-workflows}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-workflows}, znajduje się widok \texttt{Workflows} prezentujący listę przepływów wraz z metadanymi, statusem publikacji i zestawem operacji administracyjnych dostępnych bezpośrednio z tabeli.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-blocks.png}
+\caption{Interfejs: widok Blocks}
+\label{fig:impl-ui-blocks}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-blocks}, znajduje się widok \texttt{Blocks} pokazujący katalog bloków systemowych z podziałem na typy funkcjonalne, co ułatwia wybór komponentów przed budową lub modyfikacją przepływu.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-executions.png}
+\caption{Interfejs: widok Executions}
+\label{fig:impl-ui-executions}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-executions}, znajduje się widok \texttt{Executions} z historią uruchomień, statusem i czasem wykonania, a także możliwością filtrowania rekordów i przejścia do szczegółów konkretnego wykonania.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-execution-details.png}
+\caption{Interfejs: widok Execution Details}
+\label{fig:impl-ui-execution-details}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-execution-details}, znajduje się widok \texttt{Execution Details} zawierający dane wejściowe, wynik, ścieżkę przejścia między blokami oraz logi diagnostyczne potrzebne do analizy przebiegu.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-scheduler.png}
+\caption{Interfejs: widok Scheduler}
+\label{fig:impl-ui-scheduler}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-scheduler}, znajduje się widok \texttt{Scheduler} przeznaczony do konfigurowania uruchomień planowych, aktywacji harmonogramów, wyboru strefy czasowej i bieżącej kontroli parametrów cyklu.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-editor.png}
+\caption{Interfejs: widok edytora workflow}
+\label{fig:impl-ui-editor}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-editor}, znajduje się główny edytor workflow, w którym użytkownik buduje graf procesu przez dodawanie bloków, łączenie ich krawędziami oraz weryfikację struktury przepływu przed publikacją.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-parser-config.png}
+\caption{Interfejs: konfiguracja bloku Parser}
+\label{fig:impl-ui-parser-config}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-parser-config}, znajduje się formularz konfiguracji bloku \texttt{Parser} z polami formatu danych, źródła wejścia i mapowania wyników, co pozwala precyzyjnie zdefiniować transformację treści.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/AddBlockContextMenu.png}
+\caption{Interfejs: context menu dodawania bloków}
+\label{fig:impl-ui-addblock-context}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-addblock-context}, znajduje się menu kontekstowe dodawania bloków dostępne na canvasie edytora, które skraca ścieżkę pracy i umożliwia szybkie rozszerzanie grafu bez zmiany widoku.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-variables.png}
+\caption{Interfejs: widok zmiennych}
+\label{fig:impl-ui-variables}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-variables}, znajduje się widok zmiennych workflow wykorzystywanych przez bloki podczas wykonania, z listą nazw i wartości wspólnych dla całego przebiegu procesu.
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,keepaspectratio]{img/ui-variables-edit.png}
+\caption{Interfejs: edycja zmiennych}
+\label{fig:impl-ui-variables-edit}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-ui-variables-edit}, znajduje się formularz edycji zmiennych umożliwiający zmianę wcześniej zdefiniowanych parametrów przepływu oraz kontrolę poprawności danych przekazywanych między blokami.
+\end{figure}
+
+\subsection{Testy jednostkowe (NUnit)}
+\indent Weryfikację poprawności logiki aplikacji przeprowadzono z użyciem testów jednostkowych w frameworku NUnit \cite{nunit}, uruchamianych w projekcie \texttt{flowforge.nunit}. Zakres testów obejmuje kontrolery, serwisy, repozytoria oraz modele domenowe. Każdy przypadek testowy koncentruje się na jednej odpowiedzialności i jest wykonywany w izolacji od pozostałych warstw, co ogranicza ryzyko błędnej interpretacji wyniku i ułatwia wykrywanie regresji.
+
+\indent Podstawowy sposób uruchamiania testów zapewnia interfejs linii poleceń \cite{dotnettest}:
+\begin{lstlisting}[style=myStyle,caption={Uruchamianie testów jednostkowych NUnit z poziomu CLI}]
+dotnet test flowforge.nunit/Flowforge.NUnit.csproj
+\end{lstlisting}
+\indent Mimo dostępności trybu CLI, w praktyce testy wykonywano głównie w środowisku JetBrains Rider \cite{rider}, korzystając z zakładki \texttt{Tests}. Takie podejście przyspiesza analizę wyników i skraca czas przejścia od błędu do poprawki.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{img/UnitTestsRun.png}
+\caption{Uruchomienie testów jednostkowych projektu \texttt{Flowforge.NUnit}}
+\label{fig:impl-tests-nunit-run}
+\par\smallskip
+\noindent Na rysunku \ref{fig:impl-tests-nunit-run}, znajduje się widok uruchomienia testów jednostkowych wraz z informacją o przebiegu wykonania i podsumowaniem wyników.
+\end{figure}
+
+\newpage
+\section{Zakończenie}
+\indent Zrealizowany system potwierdza, że podejście backend-first \cite{backendfirst} pozwala zbudować stabilny fundament dla aplikacji low-code, a następnie rozwijać interfejs użytkownika bez utraty spójności modelu domenowego. W trakcie prac wdrożono mechanizm definiowania i wykonywania workflow, obsługę harmonogramów, historię uruchomień oraz podstawowy zestaw testów jednostkowych. Uzyskany rezultat spełnia założenia funkcjonalne i tworzy punkt wyjścia do dalszego rozwoju produktu.
+
+\subsection{Perspektywy rozwojowe aplikacji}
+\indent Pierwszym naturalnym kierunkiem rozwoju jest konteneryzacja środowiska uruchomieniowego z użyciem Dockera \cite{docker}. Rozdzielenie komponentów na obrazy (API, frontend, baza danych lub wolumen danych) uprościłoby proces wdrożenia, a także zwiększyło powtarzalność środowisk między komputerem deweloperskim, serwerem testowym i środowiskiem produkcyjnym. W praktyce oznacza to mniejszą liczbę problemów konfiguracyjnych i szybsze uruchamianie nowych instancji systemu.
+
+\indent Drugim obszarem jest rozbudowa warstwy testów o testy end-to-end z użyciem Playwright \cite{playwright}. Obecne testy jednostkowe dobrze zabezpieczają logikę backendu, jednak nie obejmują pełnych scenariuszy użytkownika przechodzących przez UI, API i warstwę danych jednocześnie. Dodanie testów E2E dla kluczowych ścieżek (utworzenie workflow, publikacja, uruchomienie, analiza wykonania, konfiguracja harmonogramu) podniosłoby wiarygodność kolejnych wydań i ograniczyło ryzyko regresji po zmianach interfejsu.
+
+\indent Z punktu widzenia procesu wytwarzania zasadne jest także wdrożenie pipeline'ów \mbox{CI/CD} w repozytorium Git, np. z wykorzystaniem GitHub Actions \cite{githubactions}. Pipeline powinien wykonywać automatycznie: kompilację rozwiązania, testy jednostkowe, testy E2E, kontrolę jakości kodu oraz budowę artefaktów. Taki model skraca czas informacji zwrotnej, a jednocześnie wprowadza obiektywną bramkę jakości przed scaleniem zmian do gałęzi głównej.
+
+\indent W warstwie funkcjonalnej aplikacja może być rozwijana przez dodawanie nowych typów bloków systemowych, np. konektorów do baz danych oraz bloków odpytujących dane bezpośrednio z relacyjnych źródeł. Rozszerzanie katalogu bloków zwiększa zakres przypadków użycia, które użytkownik może zrealizować bez modyfikacji kodu źródłowego.
+
+\indent Kolejnym krokiem może być wprowadzenie mechanizmu tworzenia własnych bloków przez GUI. W wariancie podstawowym użytkownik definiowałby parametry wejściowe i wyjściowe, reguły walidacji oraz prostą logikę transformacji w bezpiecznym sandboxie wykonawczym. W wariancie zaawansowanym możliwe byłoby udostępnienie kreatora bloków z wersjonowaniem, testem podglądu i publikacją do lokalnego katalogu organizacji. Takie rozwiązanie zwiększa elastyczność platformy, ale wymaga równoległego zaprojektowania kontroli bezpieczeństwa, limitów zasobów i polityki uprawnień.
+
+\indent Istotnym usprawnieniem pozostaje również moduł kont użytkowników oraz uprawnień. W aktualnym stanie aplikacja zakłada pojedynczy kontekst pracy, natomiast wdrożenie modelu wieloużytkownikowego pozwoliłoby przypisywać role (np. administrator, projektant workflow, obserwator), ograniczać dostęp do wybranych procesów oraz prowadzić audyt zmian na poziomie użytkownika. Rozszerzenie o uwierzytelnianie i autoryzację umożliwiłoby bezpieczne użycie systemu w zespołach oraz organizacjach o bardziej formalnych wymaganiach dostępowych.
+
+\subsection{Podsumowanie}
+\indent Aplikacja została wykonana zgodnie z założeniami projektowymi przyjętymi na początku pracy, jako rozwiązanie umożliwiające tworzenie, uruchamianie i monitorowanie workflow w architekturze low-code. Realizację oparto na połączeniu backendu ASP.NET Core \cite{aspnetcore}, modelu danych EF Core \cite{efcore} oraz interfejsu SPA \cite{spa} opartego na React \cite{react}. W efekcie powstało rozwiązanie obejmujące pełny cykl życia przepływu: od definicji bloków i połączeń, przez publikację i uruchomienie, po analizę wyników i historii wykonań.
+
+\indent Istotnym rezultatem projektu jest zachowanie spójności między modelem domenowym, API i interfejsem użytkownika. Rozdzielenie odpowiedzialności na kontrolery, serwisy i repozytoria uporządkowało kod oraz ograniczyło mieszanie logiki biznesowej z warstwą infrastrukturalną, a migracje EF Core \cite{efcore} i automatyczne dopasowanie schematu bazy zwiększyły powtarzalność uruchomień. Warstwę jakościową oparto na testach jednostkowych backendu \cite{nunit}, które stanowią stabilną bazę do dalszego rozwoju.
+
+\indent Do głównych zalet aplikacji należą: szybkie uruchomienie bez rozbudowanej infrastruktury, czytelny model tworzenia przepływów blokowych oraz możliwość śledzenia przebiegu wykonania na podstawie historii i danych wejścia/wyjścia. Z perspektywy rynkowej jest to kierunek uzasadniony, ponieważ organizacje potrzebują narzędzi automatyzujących procesy wewnętrzne bez konieczności każdorazowego programowania dedykowanych integracji. Oznacza to, że aplikacja odpowiada na realną potrzebę skrócenia czasu wdrażania automatyzacji i obniżenia kosztu utrzymania rozwiązań procesowych.
+
+\newpage
+\begin{thebibliography}{99}
 \bibitem{n8n} Dokumentacja n8n. Dostęp: 9 lutego 2026. \url{https://n8n.io}
 \bibitem{nodered} Projekt Node-RED. Dostęp: 9 lutego 2026. \url{https://nodered.org}
 \bibitem{zapier} Zapier Platform Overview. Dostęp: 9 lutego 2026. \url{https://zapier.com}
@@ -550,9 +896,29 @@ Schemat bazy ma układ \textit{hub-and-spoke}: \texttt{Workflows} jest węzłem 
 \bibitem{kestrel} Microsoft Docs: Kestrel web server implementation in ASP.NET Core. Dostęp: 10 lutego 2026. \url{https://learn.microsoft.com/aspnet/core/fundamentals/servers/kestrel}
 \bibitem{di} Microsoft Docs: Dependency injection in ASP.NET Core. Dostęp: 10 lutego 2026. \url{https://learn.microsoft.com/aspnet/core/fundamentals/dependency-injection}
 \bibitem{react} React Documentation. Dostęp: 10 lutego 2026. \url{https://react.dev}
+\bibitem{typescript} TypeScript Handbook. Dostęp: 10 lutego 2026. \url{https://www.typescriptlang.org/docs/}
+\bibitem{vite} Vite Documentation. Dostęp: 10 lutego 2026. \url{https://vitejs.dev/guide/}
 \bibitem{aspnetcore} ASP.NET Core documentation. Dostęp: 10 lutego 2026. \url{https://learn.microsoft.com/aspnet/core}
 \bibitem{efcore} Entity Framework Core documentation. Dostęp: 10 lutego 2026. \url{https://learn.microsoft.com/ef/core}
 \bibitem{sqlite} SQLite Documentation. Dostęp: 10 lutego 2026. \url{https://www.sqlite.org}
+\bibitem{reactflow} React Flow documentation. Dostęp: 10 lutego 2026. \url{https://reactflow.dev}
+\bibitem{nunit} NUnit Documentation. Dostęp: 10 lutego 2026. \url{https://nunit.org/}
+\bibitem{dotnettest} Microsoft Docs: \texttt{dotnet test}. Dostęp: 19 lutego 2026. \url{https://learn.microsoft.com/dotnet/core/tools/dotnet-test}
+\bibitem{git} Pro Git Book. Dostęp: 10 lutego 2026. \url{https://git-scm.com/book}
+\bibitem{inmon} W. H. Inmon, \textit{Building the Data Warehouse}, 4th ed., Wiley, 2005.
+\bibitem{kimball} R. Kimball, M. Ross, \textit{The Data Warehouse Toolkit: The Definitive Guide to Dimensional Modeling}, 3rd ed., Wiley, 2013.
+\bibitem{oltp} A. Silberschatz, H. F. Korth, S. Sudarshan, \textit{Database System Concepts}, 7th ed., McGraw-Hill, 2019.
+\bibitem{backendfirst} S. Newman, \textit{Building Microservices}, 2nd ed., O'Reilly Media, 2021.
+\bibitem{verticalslice} J. Bogard, “Vertical Slice Architecture”, 2018. Dostęp: 19 lutego 2026. \url{https://www.jimmybogard.com/vertical-slice-architecture/}
+\bibitem{rider} JetBrains Rider Documentation. Dostęp: 19 lutego 2026. \url{https://www.jetbrains.com/rider/documentation/}
+\bibitem{webstorm} JetBrains WebStorm Documentation. Dostęp: 19 lutego 2026. \url{https://www.jetbrains.com/webstorm/documentation/}
+\bibitem{docker} Docker Documentation. Dostęp: 19 lutego 2026. \url{https://docs.docker.com}
+\bibitem{playwright} Playwright Documentation. Dostęp: 19 lutego 2026. \url{https://playwright.dev/docs/intro}
+\bibitem{githubactions} GitHub Actions Documentation. Dostęp: 19 lutego 2026. \url{https://docs.github.com/actions}
 \end{thebibliography}
+
+\listoffigures
+
+\lstlistoflistings
 
 \end{document}

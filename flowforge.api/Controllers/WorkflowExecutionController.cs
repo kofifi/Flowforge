@@ -70,7 +70,7 @@ public class WorkflowExecutionController : ControllerBase
         return NoContent();
     }
 
-    // Zmieniona trasa, aby nie było konfliktu
+
     [HttpPost("/api/Workflow/{id}/run")]
     public async Task<ActionResult<WorkflowExecution>> Run(int id, [FromBody] Dictionary<string, string>? inputs = null, [FromQuery] bool skipWaits = false)
     {

@@ -43,7 +43,6 @@ public class WorkflowExecutionService : IWorkflowExecutionService
 
     public async Task<WorkflowExecution> EvaluateAsync(Workflow workflow, Dictionary<string, string>? inputs = null, bool skipWaits = false)
     {
-    // Handle duplicate variable names by grouping and taking the last defined value (case-insensitive).
     var variables = workflow.WorkflowVariables
         .GroupBy(v => v.Name ?? string.Empty, StringComparer.OrdinalIgnoreCase)
         .ToDictionary(g => g.Key, g => g.Last().DefaultValue ?? string.Empty, StringComparer.OrdinalIgnoreCase);
@@ -170,7 +169,6 @@ public class WorkflowExecutionService : IWorkflowExecutionService
 
         actions.Add(actionDescription);
 
-        // Wybierz połączenia w zależności od błędu
         var nextConnections = current.SourceConnections
             ?.Where(c => c.ConnectionType == (error ? ConnectionType.Error : ConnectionType.Success))
             .ToList();

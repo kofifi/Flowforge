@@ -36,6 +36,32 @@ public class BlockExecutorsTests
     }
 
     [Test]
+    public void Calculation_AddsCommaDecimalNumbersAndStoresResult()
+    {
+        var block = new Block
+        {
+            Name = "Calc",
+            SystemBlock = new SystemBlock { Type = "Calculation" },
+            JsonConfig = """
+            {
+              "Operation": "Add",
+              "FirstVariable": "a",
+              "SecondVariable": "b",
+              "ResultVariable": "sum"
+            }
+            """
+        };
+        var vars = new Dictionary<string, string> { ["a"] = "2,5", ["b"] = "3,5" };
+        var executor = new CalculationBlockExecutor();
+
+        Assert.That(executor.CanExecute(block), Is.True);
+        var result = executor.Execute(block, vars);
+
+        Assert.That(result.Error, Is.False);
+        Assert.That(vars["sum"], Is.EqualTo("6"));
+    }
+
+    [Test]
     public void Calculation_DivideByZero_KeepsFirstOperand()
     {
         var block = new Block

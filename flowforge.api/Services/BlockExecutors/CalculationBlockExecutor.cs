@@ -1,5 +1,6 @@
 using Flowforge.Models;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.Json;
 
 namespace Flowforge.Services;
@@ -34,8 +35,8 @@ public class CalculationBlockExecutor : IBlockExecutor
                 variables[destination] = first + second;
                 return new BlockExecutionResult($"{destination} = {first} + {second}", false);
             default:
-                double.TryParse(first, out var a);
-                double.TryParse(second, out var b);
+                TryParseNumber(first, out var a);
+                TryParseNumber(second, out var b);
                 var result = config.Operation switch
                 {
                     CalculationOperation.Add => a + b,
@@ -44,8 +45,27 @@ public class CalculationBlockExecutor : IBlockExecutor
                     CalculationOperation.Divide => b == 0 ? a : a / b,
                     _ => a
                 };
-                variables[destination] = result.ToString();
+                variables[destination] = result.ToString(CultureInfo.InvariantCulture);
                 return new BlockExecutionResult($"{destination} = {a} {symbol} {b} => {result}", false);
         }
+    }
+
+    private static bool TryParseNumber(string? input, out double value)
+    {
+        if (double.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+            return true;
+
+        if (double.TryParse(input, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
+            return true;
+
+        if (input is not null)
+        {
+            var normalized = input.Replace(',', '.');
+            if (double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+                return true;
+        }
+
+        value = 0;
+        return false;
     }
 }
